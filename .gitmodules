@@ -1,0 +1,3 @@
+[submodule "SimpleGL"]
+	path = SimpleGL
+	url = https://github.com/rhoffsch42/SimpleGL.git
