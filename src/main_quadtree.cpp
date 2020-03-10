@@ -13,25 +13,14 @@ public:
 
 void blitToWindow(FrameBuffer* readFramebuffer, GLenum attachmentPoint, UIPanel* panel) {
 	GLuint fbo;
-	if (readFramebuffer) {
-		fbo = readFramebuffer->fbo;
-	}
-	else {
-		fbo = panel->getFbo();
-	}
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-	glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
-
-	glReadBuffer(attachmentPoint);
-	GLenum drawBuffers[1] = { GL_COLOR_ATTACHMENT0 };
-	glDrawBuffers(1, drawBuffers);
-
 	int w;
 	int h;
 	if (readFramebuffer) {
+		fbo = readFramebuffer->fbo;
 		w = readFramebuffer->getWidth();
 		h = readFramebuffer->getHeight();
 	} else if (panel->getTexture()) {
+		fbo = panel->getFbo();
 		w = panel->getTexture()->getWidth();
 		h = panel->getTexture()->getHeight();
 	} else {
@@ -39,6 +28,12 @@ void blitToWindow(FrameBuffer* readFramebuffer, GLenum attachmentPoint, UIPanel*
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
 		return ;
 	}
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
+	glReadBuffer(attachmentPoint);
+	GLenum drawBuffers[1] = { GL_COLOR_ATTACHMENT0 };
+	glDrawBuffers(1, drawBuffers);
+
 	glBlitFramebuffer(0, 0, w, h, \
 		panel->_posX, panel->_posY, panel->_posX2, panel->_posY2, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 

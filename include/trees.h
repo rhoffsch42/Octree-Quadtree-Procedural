@@ -21,12 +21,12 @@
 
 #include "quadtree.hpp"
 
-
 #include <cmath>
 #include <string>
 #include <cstdio>
 #include <list>
 #include <algorithm>
+#include <thread>
 
 #define WINX 1600
 #define WINY 900
