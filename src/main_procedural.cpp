@@ -210,10 +210,6 @@ void	scene_procedural() {
 			defaultFps->printFps();
 
 			glfwGetCursorPos(manager.glfw->_window, &manager.mouseX, &manager.mouseY);
-			int playerPosX = manager.mouseX - (WINX / 2);//center of screen is 0:0
-			int playerPosY = WINY - manager.mouseY - (WINY / 2);//center of screen is 0:0   //invert glfw Y to match opengl image
-			Math::Vector3	vec(playerPosX, playerPosY, 0);
-			double dist = (double(vec.magnitude()) / double(WINY*2));
 
 			int start, end;
 			for (unsigned int i = 0; i < manager.core_amount; i++) {
