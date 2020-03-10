@@ -11,25 +11,6 @@ public:
 	bool			draw_borders;
 };
 
-void	renderObj3d(list<Obj3d*>	obj3dList, Cam& cam) {
-	// cout << "rendering Obj3d ..." << endl;
-	//assuming all Obj3d have the same program
-	if (obj3dList.empty())
-		return;
-	Obj3d*		obj = *(obj3dList.begin());
-	Obj3dPG&	pg = obj->getProgram();
-	glUseProgram(pg._program);
-	Math::Matrix4	proMatrix(cam.getProjectionMatrix());
-	Math::Matrix4	viewMatrix = cam.getViewMatrix();
-	proMatrix.mult(viewMatrix);
-	for (Obj3d* object : obj3dList)
-		object->render(proMatrix);
-	for (Obj3d* object : obj3dList) {
-		object->local._matrixChanged = false;
-		object->_worldMatrixChanged = false;
-	}
-}
-
 void blitToWindow(FrameBuffer* readFramebuffer, GLenum attachmentPoint, UIPanel* panel) {
 	GLuint fbo;
 	if (readFramebuffer) {
@@ -114,15 +95,13 @@ void	scene_4Tree() {
 	uiBaseImage.setSize(width * size_coef, height * size_coef);
 
 	Texture* image4Tree = new Texture(data4Tree, width, height);
-
 	UIImage	ui4Tree(image4Tree);
 	ui4Tree.setPos(width * size_coef, 0);
 	ui4Tree.setSize(width * size_coef, height * size_coef);
 
 	Fps	fps144(144);
 	Fps	fps60(60);
-	Fps* defaultFps = &fps144;
-
+	Fps* defaultFps = &fps60;
 	Math::Vector3	color = Math::Vector3(0,0,0);
 
 	std::cout << "Begin while loop" << endl;
@@ -130,13 +109,9 @@ void	scene_4Tree() {
 		if (defaultFps->wait_for_next_frame()) {
 
 			glfwPollEvents();
-			//glfw.updateMouse();//to do before cam's events
-			//cam.events(glfw, float(defaultFps->tick));
 
-			// root->browse(0, displayLeaf);
 			bool draw = manager.draw_borders;
 			root->browse(manager.threshold, [data4Tree, width, draw, color](QuadNode* node){
-				// std::cout << "class lambda leaf " << node->width << "x" << node->height << " at " << node->x << ":" << node->y << std::endl;
 				for (unsigned int j = 0; j < node->height; j++) {
 					for (unsigned int i = 0; i < node->width; i++) {
 						unsigned int posx = node->x + i;
@@ -155,10 +130,8 @@ void	scene_4Tree() {
 					}
 				}
 			});
-			// assemble4TreeData(data4Tree, root, width, manager.draw_borders, manager.threshold, Math::Vector3(0,0,0));
 			image4Tree->updateData(data4Tree, root->width, root->height);
 
-			// printFps();
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 			blitToWindow(nullptr, GL_COLOR_ATTACHMENT0, &uiBaseImage);
 			blitToWindow(nullptr, GL_COLOR_ATTACHMENT0, &ui4Tree);
