@@ -1,0 +1,6 @@
+include/GL/**/* linguist-vendored=true
+include/GLFW/**/* linguist-vendored=true
+include/tinyobjloader/**/* linguist-vendored=true
+obj3d/mlx_opengl.h linguist-vendored=true
+*.obj linguist-vendored=true
+*.mtl linguist-detectable=false
