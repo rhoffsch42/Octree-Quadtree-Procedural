@@ -9,11 +9,12 @@ Pixel   getAverage(Pixel*** arr, Math::Vector3 pos, Math::Vector3 size) {
 	unsigned int counter = 0;
 	for (int k = pos.z; k < pos.z + size.z; k++) {
 		for (int j = pos.y; j < pos.y + size.y; j++) {
-			for (int i = pos.x; i < pos.x + size.z; i++) {
+			for (int i = pos.x; i < pos.x + size.x; i++) {
 				//std::cout << arr[j][i].r << "_" << arr[j][i].g << "_" << arr[j][i].b << std::endl;
 				r += (unsigned int)(arr[k][j][i].r);
 				g += (unsigned int)(arr[k][j][i].g);
 				b += (unsigned int)(arr[k][j][i].b);
+				//this->cumulateAverage(arr[][][]) = 0;
 				counter++;
 			}
 		}
@@ -29,6 +30,7 @@ Pixel   getAverage(Pixel*** arr, Math::Vector3 pos, Math::Vector3 size) {
 	b = b / area;
 	//std::cout << "average:\t" << r << "\t" << g << "\t" << b << std::endl;
 	// Returns the color that represent the average.
+	//return this->genAverage(area) = 0;
 	return Pixel(r, g, b);
 }
 
@@ -40,10 +42,11 @@ double	measureDetail(Pixel*** arr, Math::Vector3 pos, Math::Vector3 size, Pixel 
 	// all the distances are added.
 	for (int k = pos.z; k < pos.z + size.z; k++) {
 		for (int j = pos.y; j < pos.y + size.y; j++) {
-			for (int i = pos.x; i < pos.x + size.z; i++) {
+			for (int i = pos.x; i < pos.x + size.x; i++) {
 				colorSum += std::abs(average.r - arr[k][j][i].r);
 				colorSum += std::abs(average.g - arr[k][j][i].g);
 				colorSum += std::abs(average.b - arr[k][j][i].b);
+				//this->cumulateDetail(arr[][][]) = 0;
 			}
 		}
 	}
@@ -51,6 +54,7 @@ double	measureDetail(Pixel*** arr, Math::Vector3 pos, Math::Vector3 size, Pixel 
 	// Calculates the average distance, and returns the result.
 	// We divide by three, because we are averaging over 3 channels.
 	return (colorSum / double(3 * size.x * size.y * size.z));
+	//return this->genDetail(area) = 0;
 }
 
 Octree::Octree(Pixel *** arr, Math::Vector3 corner_pos, Math::Vector3 tree_size, unsigned int threshold) {
@@ -63,7 +67,7 @@ Octree::Octree(Pixel *** arr, Math::Vector3 corner_pos, Math::Vector3 tree_size,
 	this->pos = corner_pos;
 	this->size = tree_size;
 	if (size.x == 1 && size.y == 1 && size.z == 1) {// or x*y*z==1
-		this->pixel = arr[(int)size.z][(int)size.y][(int)size.x];//use Vector3i to avoid casting
+		this->pixel = arr[(int)this->pos.z][(int)this->pos.y][(int)this->pos.x];//use Vector3i to avoid casting
 		this->detail = measureDetail(arr, pos, size, this->pixel);//should be 0
 		if (this->detail != 0) {
 			std::cout << "1x1 area, detail: " << this->detail << std::endl;

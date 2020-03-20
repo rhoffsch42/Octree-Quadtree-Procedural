@@ -7,7 +7,7 @@
 #include "math.hpp"
 #include "quadtree.hpp"
 
-#define OC_DEBUG_LEAF		true
+#define OC_DEBUG_LEAF		0
 #define OC_DEBUG_LEAF_AREA	1
 #define OC_DEBUG_FILL_TOO	false
 #define OC_DEBUG_BUILD_TOO	true
