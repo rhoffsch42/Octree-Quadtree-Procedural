@@ -3,6 +3,10 @@
 #include "math.hpp"
 #include "chunk.hpp"
 
+#define CHUNK_GEN_DEBUG	1
+
+typedef uint8_t** hmap;
+
 class ChunkGenerator
 {
 public:
@@ -16,7 +20,8 @@ public:
 	PerlinSettings	settings;
 private:
 	Math::Vector3	playerPos;
-	Math::Vector3	currentTile;
+	Math::Vector3	currentChunk;
+	hmap**			heightMaps;
 
 	void	updatePlayerPos(Math::Vector3 player_pos);
 	void	initValues(float diff, float& inc, float& start, float& end, float& endShift, float intersectionDimension, float size);

@@ -54,7 +54,23 @@
 #define WINY 900
 #define WIN32_VS_FOLDER string("")
 
-void	renderObj3d(list<Obj3d*>	obj3dList, Cam& cam) {//make a renderObj3d for only 1 obj
+float	isForward(Properties& local_referenciel, Math::Vector3 target_pos) {//upgrade this to isInFustrum
+	//return 1;
+	Math::Vector3	ref_pos(local_referenciel.getPos());
+	Math::Rotation	ref_rot(local_referenciel.getRot());
+	Math::Vector3	diff(target_pos);
+	diff.sub(ref_pos);
+
+	Math::Vector3	right = VEC3_RIGHT;
+	Math::Vector3	up = VEC3_UP;
+	right.ZYXrotate(ref_rot, -ROT_WAY);
+	up.ZYXrotate(ref_rot, -ROT_WAY);
+	Math::Vector3	forward = Math::Vector3::cross(up, right);
+
+	return Math::Vector3::dot(forward, diff);
+}
+
+void	renderObj3d(list<Obj3d*>&	obj3dList, Cam& cam) {//make a renderObj3d for only 1 obj
 	// cout << "render all Obj3d" << endl;
 	//assuming all Obj3d have the same program
 	if (obj3dList.empty())
@@ -65,8 +81,17 @@ void	renderObj3d(list<Obj3d*>	obj3dList, Cam& cam) {//make a renderObj3d for onl
 	Math::Matrix4	proMatrix(cam.getProjectionMatrix());
 	Math::Matrix4	viewMatrix = cam.getViewMatrix();
 	proMatrix.mult(viewMatrix);// do it in shader ? NO cauz shader will do it for every vertix
-	for (Obj3d* object : obj3dList)
-		object->render(proMatrix);
+	unsigned int	counter = 0;
+	for (Obj3d* object : obj3dList) {
+		Math::Vector3	center(object->local.getPos());
+		Math::Vector3	dim(object->local.getScale());
+		center.add(dim.x / 2.0f, dim.y / 2.0f, dim.z / 2.0f);
+		if (isForward(cam.local, center) > 0) {
+			object->render(proMatrix);
+			counter++;
+		}
+	}
+	std::cout << "rendered objects: " << counter << std::endl;
 	for (Obj3d* object : obj3dList) {
 		object->local._matrixChanged = false;
 		object->_worldMatrixChanged = false;
@@ -1774,6 +1799,8 @@ static void		keyCallback_ocTree(GLFWwindow* window, int key, int scancode, int a
 	(void)window; (void)key; (void)scancode; (void)action; (void)mods;
 	//std::cout << __PRETTY_FUNCTION__ << std::endl;
 
+	float	move = 150;
+
 	if (action == GLFW_PRESS) {
 		//std::cout << "GLFW_PRESS" << std::endl;
 		OctreeManager* manager = static_cast<OctreeManager*>(glfwGetWindowUserPointer(window));
@@ -1784,35 +1811,26 @@ static void		keyCallback_ocTree(GLFWwindow* window, int key, int scancode, int a
 			if (key == GLFW_KEY_EQUAL) {
 				manager->threshold++;
 				manager->glfw->setTitle(std::to_string(manager->threshold).c_str());
-			}
-			else if (key == GLFW_KEY_MINUS && manager->threshold > 0) {
+			} else if (key == GLFW_KEY_MINUS && manager->threshold > 0) {
 				manager->threshold--;
 				manager->glfw->setTitle(std::to_string(manager->threshold).c_str());
-			}
-			else if (key == GLFW_KEY_ENTER) {
+			} else if (key == GLFW_KEY_ENTER) {
 				manager->polygon_mode++;
 				manager->polygon_mode = GL_POINT + (manager->polygon_mode % 3);
 				for (std::list<Obj3d*>::iterator it = manager->renderlist.begin(); it != manager->renderlist.end(); ++it) {
 					(*it)->setPolygonMode(manager->polygon_mode);
 				}
+			} else if (key == GLFW_KEY_X) {
+				manager->cam->local.translate(move, 0, 0);
+			}
+			else if (key == GLFW_KEY_Y) {
+				manager->cam->local.translate(0, move, 0);
+			}
+			else if (key == GLFW_KEY_Z) {
+				manager->cam->local.translate(0, 0, move);
 			}
 		}
 	}
-}
-
-float	getDirectionBetween(Properties& local_referenciel, Math::Vector3 target_pos) {
-	Math::Vector3	ref_pos(local_referenciel.getPos());
-	Math::Rotation	ref_rot(local_referenciel.getRot());
-	Math::Vector3	diff(target_pos);
-	diff.sub(ref_pos);
-
-	Math::Vector3	right = VEC3_RIGHT;
-	Math::Vector3	up = VEC3_UP;
-	right.ZYXrotate(ref_rot, -ROT_WAY);
-	up.ZYXrotate(ref_rot, -ROT_WAY);
-	Math::Vector3	forward = Math::Vector3::cross(up, right);
-
-	return Math::Vector3::dot(forward, diff);
 }
 
 void	scene_octree() {
@@ -1825,6 +1843,9 @@ void	scene_octree() {
 	m.glfw->func[GLFW_KEY_EQUAL] = keyCallback_ocTree;
 	m.glfw->func[GLFW_KEY_MINUS] = keyCallback_ocTree;
 	m.glfw->func[GLFW_KEY_ENTER] = keyCallback_ocTree;
+	m.glfw->func[GLFW_KEY_X] = keyCallback_ocTree;
+	m.glfw->func[GLFW_KEY_Y] = keyCallback_ocTree;
+	m.glfw->func[GLFW_KEY_Z] = keyCallback_ocTree;
 
 	siv::PerlinNoise perlin(m.seed);
 	m.perlin = &perlin;
@@ -1838,7 +1859,6 @@ void	scene_octree() {
 
 	Cam		cam(*(m.glfw));
 	cam.speed = 40;
-	cam.local.setPos(0, 100, 0);
 	cam.printProperties();
 	cam.lockedMovement = false;
 	cam.lockedOrientation = false;
@@ -1871,21 +1891,13 @@ void	scene_octree() {
 	//playerList.push_back(&player1);
 #endif
 #ifndef OCTREE
-	Pixel	black(0, 0, 0);
-	Pixel	red(255, 0, 0);
-	Pixel	green(0, 255, 0);
-	Pixel	blue(0, 0, 255);
-	Pixel	white(255, 255, 255);
-	Pixel	purple(255, 0, 255);
-	Pixel	cyan(0, 255, 255);
-	Pixel	yellow(255, 255, 0);
-	Pixel*	colors[8] = { &black, &red, &green, &blue, &white, &purple, &cyan, &yellow };
-
 #define M_PERLIN_GENERATION		1
 #define M_OCTREE_OPTIMISATION	1
 #define M_DISPLAY_BLACK			1
 
 	cam.local.setPos(50, 150, 50);
+	//cam.local.setPos(28, 186, 90);
+	cam.local.setPos(28, 150, 90);
 	//chunk generator
 	PerlinSettings	ps(perlin);
 	Math::Vector3	playerPos = cam.local.getPos();
@@ -1895,7 +1907,6 @@ void	scene_octree() {
 	float	scale_coef = 0.99;
 	float	scale_coe2 = 1.0;
 	//scale_coef = 1;
-
 
 	list<Obj3d*>	octreeDisplay;
 	for (unsigned int k = 0; k < generator.size.z; k++) {
@@ -1967,7 +1978,7 @@ void	scene_octree() {
 									Math::Vector3	center(worldPos);
 									center.add(node->size.x / 2, node->size.y / 2, node->size.z / 2);
 
-									if (node->pixel.r < 150 && getDirectionBetween(cam.local, center) > 0) {
+									if (node->pixel.r < 150) {
 										Obj3d* cube = new Obj3d(cubebp, obj3d_prog);
 										cube->setColor(node->pixel.r, node->pixel.g, node->pixel.b);
 										cube->local.setPos(worldPos);
@@ -1990,7 +2001,7 @@ void	scene_octree() {
 						}
 					}
 				}
-				std::cout << "Rendered Objects: " << m.renderlist.size() << std::endl;
+				std::cout << "Total Objects: " << m.renderlist.size() << std::endl;
 			}
 
 			// printFps();
@@ -2001,7 +2012,6 @@ void	scene_octree() {
 
 			//renderSkybox(skybox, cam);
 			glfwSwapBuffers(m.glfw->_window);
-
 
 			if (GLFW_PRESS == glfwGetKey(m.glfw->_window, GLFW_KEY_ESCAPE))
 				glfwSetWindowShouldClose(m.glfw->_window, GLFW_TRUE);
