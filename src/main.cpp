@@ -54,7 +54,7 @@
 #define WINY 900
 #define WIN32_VS_FOLDER string("")
 
-float	isForward(Properties& local_referenciel, Math::Vector3 target_pos) {//upgrade this to isInFustrum
+float	isForward(Properties& local_referenciel, Math::Vector3 target_pos) {//upgrade this to isInFrustum
 	//return 1;
 	Math::Vector3	ref_pos(local_referenciel.getPos());
 	Math::Rotation	ref_rot(local_referenciel.getRot());
@@ -70,28 +70,118 @@ float	isForward(Properties& local_referenciel, Math::Vector3 target_pos) {//upgr
 	return Math::Vector3::dot(forward, diff);
 }
 
-void	renderObj3d(list<Obj3d*>&	obj3dList, Cam& cam) {//make a renderObj3d for only 1 obj
+void iqFrustumF_CreatePerspective(float* frus, float fovy, float aspect, float znear, float zfar) {
+	//from http ://www.iquilezles.org/www/articles/frustum/frustum.htm
+	const float an = fovy/2.0f * (3.141592653589f / 180.0f);//corrected
+	const float si = sinf(an);
+	const float co = cosf(an);
+	frus[0] = 0.0f;		frus[1] = -co;		frus[2] = si;			frus[3] = 0.0f;//top
+	frus[4] = 0.0f;		frus[5] = co;		frus[6] = si;			frus[7] = 0.0f;//bottom
+	frus[8] = co;		frus[9] = 0.0f;		frus[10] = si * aspect;	frus[11] = 0.0f;//left
+	frus[12] = -co;		frus[13] = 0.0f;	frus[14] = si * aspect;	frus[15] = 0.0f;//right
+	frus[16] = 0.0f;	frus[17] = 0.0f;	frus[18] = 1.0f;		frus[19] = zfar;//far
+	frus[20] = 0.0f;	frus[21] = 0.0f;	frus[22] = -1.0f;		frus[23] = -znear;//near
+
+	//corrected signs...
+	frus[0] = 0.0f;		frus[1] = -co;		frus[2] = -si;			frus[3] = 0.0f;//top
+	frus[4] = 0.0f;		frus[5] = co;		frus[6] = -si;			frus[7] = 0.0f;//bottom
+	frus[8] = co;		frus[9] = 0.0f;		frus[10] = -si * aspect;	frus[11] = 0.0f;//left
+	frus[12] = -co;		frus[13] = 0.0f;	frus[14] = -si * aspect;	frus[15] = 0.0f;//right
+	frus[16] = 0.0f;	frus[17] = 0.0f;	frus[18] = 1.0f;		frus[19] = zfar;//far
+	frus[20] = 0.0f;	frus[21] = 0.0f;	frus[22] = -1.0f;		frus[23] = -znear;//near
+}
+
+Math::Vector3	getMat4Xvector(Math::Matrix4& mat, Math::Vector3 vec) {
+	mat.setOrder(ROW_MAJOR);
+	float*	m = mat.getData();
+	Math::Vector3	vec2;
+	vec2.x = vec.x * m[0] + vec.y * m[1] + vec.z * m[2] + 1 * m[3];
+	vec2.y = vec.x * m[4] + vec.y * m[5] + vec.z * m[6] + 1 * m[7];
+	vec2.z = vec.x * m[8] + vec.y * m[9] + vec.z * m[10] + 1 * m[11];
+	return vec2;
+}
+
+//target_pos must be in cam space
+bool	isInFrustum(float* frustum, Math::Vector3 target_pos) {
+	int	in = 0;
+	size_t	max = 4;// 6 = all planes, 4 = no far no near
+	for (size_t i = 0; i < max; i++) {
+		Math::Vector3	normal(frustum[i * 4 + 0], frustum[i * 4 + 1], frustum[i * 4 + 2]);
+		if (Math::Vector3::dot(normal, target_pos) > 0)
+			in++;
+	}
+	//manual for near and far
+	max += 2;
+	if (target_pos.z > -frustum[19])
+		in++;
+	if (target_pos.z < frustum[23])
+		in++;
+	return ((in == max) ? true : false);//is on the right halfspace of all planes, ie. is in the frustum
+}
+
+void	renderObj3d(list<Obj3d*>& obj3dList, Cam& cam) {//make a renderObj3d for only 1 obj
 	// cout << "render all Obj3d" << endl;
 	//assuming all Obj3d have the same program
 	if (obj3dList.empty())
 		return;
-	Obj3d*		obj = *(obj3dList.begin());
-	Obj3dPG&	pg = obj->getProgram();
+	Obj3d* obj = *(obj3dList.begin());
+	Obj3dPG& pg = obj->getProgram();
 	glUseProgram(pg._program);//used once for all obj3d
 	Math::Matrix4	proMatrix(cam.getProjectionMatrix());
 	Math::Matrix4	viewMatrix = cam.getViewMatrix();
 	proMatrix.mult(viewMatrix);// do it in shader ? NO cauz shader will do it for every vertix
-	unsigned int	counter = 0;
+
+
+	float			frustum[24];
+	iqFrustumF_CreatePerspective(frustum, cam.getFov(), float(WINX) / float(WINY), cam.getNear(), cam.getFar());//todo save aspect ratio in Cam::
+	unsigned int	counterForward = 0;
+	unsigned int	counterFrustum = 0;
+	Math::Vector3	center;
+	Math::Vector3	dim;
+	Math::Vector3	centerCamSpace;
+	Math::Vector3	oldcolor;
+	Math::Vector3	color;
+
 	for (Obj3d* object : obj3dList) {
-		Math::Vector3	center(object->local.getPos());
-		Math::Vector3	dim(object->local.getScale());
+		center = object->local.getPos();
+		dim = object->local.getScale();
 		center.add(dim.x / 2.0f, dim.y / 2.0f, dim.z / 2.0f);
-		if (isForward(cam.local, center) > 0) {
-			object->render(proMatrix);
-			counter++;
+		centerCamSpace = getMat4Xvector(proMatrix, center);//transform object pos to camera space
+		bool draw = true;
+		oldcolor = object->getColor();
+		color;
+		if (isInFrustum(frustum, centerCamSpace)) {
+			color = Math::Vector3(40, 200, 200);//cyan
+			counterFrustum++;
+		} else if (isForward(cam.local, center) > 0) {
+			color = Math::Vector3(200, 200, 40);//yellow
+			counterForward++;
+			draw = false;
+		} else {
+			draw = false;
 		}
+		if (object->getPolygonMode() == GL_LINE) {
+			color = oldcolor;
+		}
+
+		if (draw) {
+			object->setColor(color.x, color.y, color.z);
+			object->render(proMatrix);
+			object->setColor(oldcolor.x, oldcolor.y, oldcolor.z);
+		}
+
 	}
-	std::cout << "rendered objects: " << counter << std::endl;
+	if (0) {
+		char*		planes[6] = { "top", "bottom", "left", "right", "far", "near" };
+		for (size_t i = 0; i < 6; i++) {
+			Math::Vector3	normal(frustum[i * 4 + 0], frustum[i * 4 + 1], frustum[i * 4 + 2]);
+			std::cout << "normal " << planes[i] << "\t"; normal.printData();
+		}
+	std::cout << "fustrum objects: " << counterFrustum << std::endl;
+	std::cout << "forward objects: " << counterForward << "\t(not in fustrum)" << std::endl;
+	std::cout << "total objects: " << obj3dList.size() << std::endl;
+	std::cout << std::endl;
+	}
 	for (Obj3d* object : obj3dList) {
 		object->local._matrixChanged = false;
 		object->_worldMatrixChanged = false;
@@ -1119,7 +1209,7 @@ void	scene_procedural() {
 
 	const siv::PerlinNoise perlin(manager.seed);
 
-	int screenSize = 250;
+	int screenSize = 800;
 	manager.areaWidth = screenSize;
 	manager.areaHeight = screenSize;
 	manager.frequency = double(screenSize) / 75;
@@ -1837,7 +1927,7 @@ void	scene_octree() {
 #ifndef INIT_GLFW
 	OctreeManager	m;
 	m.glfw = new Glfw(WINX, WINY);
-	glDisable(GL_CULL_FACE);
+	//glDisable(GL_CULL_FACE);
 	m.glfw->setTitle("Tests octree");
 	m.glfw->activateDefaultCallbacks(&m);
 	m.glfw->func[GLFW_KEY_EQUAL] = keyCallback_ocTree;
@@ -1852,6 +1942,7 @@ void	scene_octree() {
 
 	Obj3dBP::defaultSize = 1;
 	Texture*	tex_skybox = new Texture("images/skybox4.bmp");
+	Texture*	tex_lena = new Texture("images/lena.bmp");
 	Obj3dPG		obj3d_prog(OBJ3D_VS_FILE, OBJ3D_FS_FILE);
 	SkyboxPG	sky_pg(CUBEMAP_VS_FILE, CUBEMAP_FS_FILE);
 	Skybox		skybox(*tex_skybox, sky_pg);
@@ -1898,6 +1989,7 @@ void	scene_octree() {
 	cam.local.setPos(50, 150, 50);
 	//cam.local.setPos(28, 186, 90);
 	cam.local.setPos(28, 150, 90);
+	//cam.local.setPos(0, 0, 100);
 	//chunk generator
 	PerlinSettings	ps(perlin);
 	Math::Vector3	playerPos = cam.local.getPos();
@@ -1913,7 +2005,7 @@ void	scene_octree() {
 		for (unsigned int j = 0; j < generator.size.y; j++) {
 			for (unsigned int i = 0; i < generator.size.x; i++) {
 				Chunk* chunkPtr = generator.grid[k][j][i];
-				chunkPtr->root->browse(2, [&m, &cubebp, &obj3d_prog, scale_coef, scale_coe2, &octreeDisplay, chunkPtr](Octree* node) {
+				chunkPtr->root->browse(0, [&m, &cubebp, &obj3d_prog, scale_coef, scale_coe2, &octreeDisplay, chunkPtr, tex_lena](Octree* node) {
 					if (M_DISPLAY_BLACK || (node->pixel.r != 0 && node->pixel.g != 0 && node->pixel.b != 0)) {
 						Math::Vector3	worldPos(chunkPtr->pos);
 						worldPos.add(node->pos);
@@ -1924,7 +2016,9 @@ void	scene_octree() {
 							cube->local.setPos(worldPos);
 							cube->local.setScale(node->size.x * scale_coef, node->size.y * scale_coef, node->size.z * scale_coef);
 							cube->setPolygonMode(m.polygon_mode);
+							cube->displayTexture = true;
 							cube->displayTexture = false;
+							cube->setTexture(tex_lena);
 							m.renderlist.push_back(cube);
 							if (M_DISPLAY_BLACK) {
 								Obj3d* cube2 = new Obj3d(cubebp, obj3d_prog);
@@ -1942,20 +2036,58 @@ void	scene_octree() {
 		}
 	}
 
+	if (0) {
+		int start = -10;
+		int	step = 3;
+		int amount = 15;
+		m.renderlist.clear();
+		for (int k = 0; k < amount; k++) {
+			for (int j = 0; j < amount; j++) {
+				for (int i = 0; i < amount; i++) {
+					Obj3d* cube = new Obj3d(cubebp, obj3d_prog);
+					cube->setColor(127, 127, 127);
+					cube->local.setPos(start + i * step, start + j * step, start + k * step);
+					cube->local.setScale(1, 1, 1);
+					cube->setPolygonMode(m.polygon_mode);
+					cube->displayTexture = false;
+					m.renderlist.push_back(cube);
+				}
+			}
+		}
+		float	thickness = 0.2f;
+		float	len = 100.0f;
+		Obj3d	xdim(cubebp, obj3d_prog);
+		Obj3d	ydim(cubebp, obj3d_prog);
+		Obj3d	zdim(cubebp, obj3d_prog);
+		xdim.setColor(255, 0, 0);
+		ydim.setColor(0, 255, 0);
+		zdim.setColor(0, 0, 255);
+		xdim.local.setScale(len, thickness, thickness);
+		ydim.local.setScale(thickness, len, thickness);
+		zdim.local.setScale(thickness, thickness, len);
+		m.renderlist.push_back(&xdim);
+		m.renderlist.push_back(&ydim);
+		m.renderlist.push_back(&zdim);
+	}
+
 #endif
 	Fps	fps144(144);
 	Fps	fps60(60);
 	Fps* defaultFps = &fps60;
 
+	generator.printData();
+
 	std::cout << "Begin while loop" << endl;
 	while (!glfwWindowShouldClose(m.glfw->_window)) {
 		if (defaultFps->wait_for_next_frame()) {
+
+			defaultFps->printFps();
 
 			glfwPollEvents();
 			m.glfw->updateMouse();//to do before cam's events
 			m.cam->events(*m.glfw, float(defaultFps->getTick()));
 
-			if (generator.updateGrid(cam.local.getPos())) {
+			if (1 && generator.updateGrid(cam.local.getPos())) {
 				for (auto i : m.renderlist)
 					delete i;
 				m.renderlist.clear();
@@ -1963,54 +2095,59 @@ void	scene_octree() {
 					delete i;
 				octreeDisplay.clear();
 
-				for (unsigned int k = 0; k < generator.size.z; k++) {
-					for (unsigned int j = 0; j < generator.size.y; j++) {
-						for (unsigned int i = 0; i < generator.size.x; i++) {
-							Chunk* chunkPtr = generator.grid[k][j][i];
-							if (!chunkPtr->root) {
-								std::cout << "fuck there is no root\n";
-								exit(1);
-							}
-							chunkPtr->root->browse(2, [&m, &cubebp, &obj3d_prog, scale_coef, scale_coe2, &octreeDisplay, chunkPtr, &cam](Octree* node) {
-								if (M_DISPLAY_BLACK || (node->pixel.r != 0 && node->pixel.g != 0 && node->pixel.b != 0)) {
-									Math::Vector3	worldPos(chunkPtr->pos);
-									worldPos.add(node->pos);
-									Math::Vector3	center(worldPos);
-									center.add(node->size.x / 2, node->size.y / 2, node->size.z / 2);
+				if (1) {
+					for (unsigned int k = 0; k < generator.size.z; k++) {
+						for (unsigned int j = 0; j < generator.size.y; j++) {
+							for (unsigned int i = 0; i < generator.size.x; i++) {
+								Chunk* chunkPtr = generator.grid[k][j][i];
+								if (!chunkPtr->root) {
+									std::cout << "fuck there is no root\n";
+									exit(1);
+								}
+								chunkPtr->root->browse(0, [&m, &cubebp, &obj3d_prog, scale_coef, scale_coe2, &octreeDisplay, chunkPtr, &cam, tex_lena](Octree* node) {
+									if (M_DISPLAY_BLACK || (node->pixel.r != 0 && node->pixel.g != 0 && node->pixel.b != 0)) {
+										Math::Vector3	worldPos(chunkPtr->pos);
+										worldPos.add(node->pos);
+										Math::Vector3	center(worldPos);
+										center.add(node->size.x / 2, node->size.y / 2, node->size.z / 2);
 
-									if (node->pixel.r < 150) {
-										Obj3d* cube = new Obj3d(cubebp, obj3d_prog);
-										cube->setColor(node->pixel.r, node->pixel.g, node->pixel.b);
-										cube->local.setPos(worldPos);
-										cube->local.setScale(node->size.x * scale_coef, node->size.y * scale_coef, node->size.z * scale_coef);
-										cube->setPolygonMode(m.polygon_mode);
-										cube->displayTexture = false;
-										m.renderlist.push_back(cube);
-										if (M_DISPLAY_BLACK) {
-											Obj3d* cube2 = new Obj3d(cubebp, obj3d_prog);
-											cube2->setColor(0, 0, 0);
-											cube2->local.setPos(worldPos);
-											cube2->local.setScale(node->size.x * scale_coe2, node->size.y * scale_coe2, node->size.z * scale_coe2);
-											cube2->setPolygonMode(GL_LINE);
-											cube2->displayTexture = false;
-											octreeDisplay.push_back(cube2);
+										if (node->pixel.r < 255) {
+											Obj3d* cube = new Obj3d(cubebp, obj3d_prog);
+											cube->setColor(node->pixel.r, node->pixel.g, node->pixel.b);
+											cube->local.setPos(worldPos);
+											cube->local.setScale(node->size.x * scale_coef, node->size.y * scale_coef, node->size.z * scale_coef);
+											cube->setPolygonMode(m.polygon_mode);
+											cube->displayTexture = true;
+											cube->displayTexture = false;
+											cube->setTexture(tex_lena);
+											m.renderlist.push_back(cube);
+											if (M_DISPLAY_BLACK) {
+												Obj3d* cube2 = new Obj3d(cubebp, obj3d_prog);
+												cube2->setColor(0, 0, 0);
+												cube2->local.setPos(worldPos);
+												cube2->local.setScale(node->size.x * scale_coe2, node->size.y * scale_coe2, node->size.z * scale_coe2);
+												cube2->setPolygonMode(GL_LINE);
+												cube2->displayTexture = false;
+												octreeDisplay.push_back(cube2);
+											}
 										}
 									}
-								}
-							});
+								});
+							}
 						}
 					}
 				}
 				std::cout << "Total Objects: " << m.renderlist.size() << std::endl;
 			}
 
-			// printFps();
 			GLuint	mode = m.polygon_mode;
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			//std::cout << "renderlist\n";
 			renderObj3d(m.renderlist, cam);
+			//std::cout << "octreeDisplay\n";
 			renderObj3d(octreeDisplay, cam);
 
-			//renderSkybox(skybox, cam);
+			renderSkybox(skybox, cam);
 			glfwSwapBuffers(m.glfw->_window);
 
 			if (GLFW_PRESS == glfwGetKey(m.glfw->_window, GLFW_KEY_ESCAPE))
@@ -2023,7 +2160,7 @@ void	scene_octree() {
 }
 
 int		main(void) {
-	check_paddings();
+	//check_paddings();
 	// test_behaviors();
 	//test_mult_mat4(); exit(0);
 	std::cout << "____START____ : " << Misc::getCurrentDirectory() << std::endl;

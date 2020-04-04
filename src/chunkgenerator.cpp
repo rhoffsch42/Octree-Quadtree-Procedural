@@ -13,7 +13,8 @@ ChunkGenerator::ChunkGenerator(Math::Vector3 player_pos, PerlinSettings perlin_s
 	Math::Vector3 v(this->size);
 	v.div(2);
 	Math::Vector3	smallestChunk(this->currentChunk);
-	smallestChunk.sub(v);
+	//smallestChunk.sub(v);
+	smallestChunk.sub((int)v.x, (int)v.y, (int)v.z);//a Vector3i would be better
 
 	this->heightMaps = new hmap * [this->size.z];
 	for (unsigned int k = 0; k < this->size.z; k++) {
@@ -83,7 +84,7 @@ bool	ChunkGenerator::updateGrid(Math::Vector3 player_pos) {
 		std::cout << "diff: ";
 		diff.printData();
 
-		Math::Vector3	halfGrid(int(this->size.x / 2), int(this->size.y / 2), int(this->size.z / 2));
+		Math::Vector3	halfGrid(int(this->size.x / 2), int(this->size.y / 2), int(this->size.z / 2));//a Vector3i would be better
 		Math::Vector3	smallestChunk(this->currentChunk); smallestChunk.sub(halfGrid);
 
 		Math::Vector3	absdiff(std::abs(diff.x), std::abs(diff.y), std::abs(diff.z));
@@ -163,4 +164,20 @@ void	ChunkGenerator::updatePlayerPos(Math::Vector3 player_pos) {
 		this->currentChunk.y--;
 	if (this->playerPos.z < 0) // same
 		this->currentChunk.z--;
+}
+
+void	ChunkGenerator::printData() {
+	std::cout << "currentChunk:"; this->currentChunk.printData();
+	std::cout << std::endl;
+	for (int k = 0; k < this->size.z; k++) {
+		for (int j = 0; j < this->size.y; j++) {
+			for (int i = 0; i < this->size.x; i++) {
+				std::cout << "[" << k << "]";
+				std::cout << "[" << j << "]";
+				std::cout << "[" << i << "]\t";
+					this->grid[k][j][i]->printData();
+				std::cout << std::endl;
+			}
+		}
+	}
 }

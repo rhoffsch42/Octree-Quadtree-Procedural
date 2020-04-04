@@ -1,4 +1,5 @@
 #include "chunk.hpp"
+#include <iostream>
 
 Chunk::Chunk() {}
 
@@ -74,4 +75,10 @@ Chunk::~Chunk() {
 		delete[] this->data[k];
 	}
 	delete[] this->data;
+}
+
+void	Chunk::printData() {
+	std::cout << "tile: "; this->tile.printData();
+	std::cout << "pos: "; this->pos.printData();
+	std::cout << "root: " << this->data << std::endl;
 }
