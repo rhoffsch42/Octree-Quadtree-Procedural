@@ -175,7 +175,7 @@ void	ChunkGenerator::printData() {
 				std::cout << "[" << k << "]";
 				std::cout << "[" << j << "]";
 				std::cout << "[" << i << "]\t";
-					this->grid[k][j][i]->printData();
+				this->grid[k][j][i]->printData();
 				std::cout << std::endl;
 			}
 		}

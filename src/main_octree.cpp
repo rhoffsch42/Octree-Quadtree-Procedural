@@ -1,3 +1,36 @@
+#include "simplegl.h"
+
+#include "program.hpp"
+#include "object.hpp"
+#include "obj3dPG.hpp"
+#include "obj3dBP.hpp"
+#include "obj3d.hpp"
+#include "misc.hpp"
+#include "cam.hpp"
+#include "texture.hpp"
+#include "skyboxPG.hpp"
+#include "skybox.hpp"
+#include "glfw.hpp"
+#include "transformBH.hpp"
+#include "fps.hpp"
+#include "gamemanager.hpp"
+#include "framebuffer.hpp"
+#include "uipanel.hpp"
+#include "quadtree.hpp"
+#include "octree.hpp"
+#include "chunk.hpp"
+#include "chunkgenerator.hpp"
+
+#include "perlin.hpp"
+
+#include <thread>
+#include <cmath>
+#include <string>
+#include <cstdio>
+#include <vector>
+#include <list>
+#include <algorithm>
+#include <cassert>
 
 class OctreeManager : public QuadTreeManager
 {

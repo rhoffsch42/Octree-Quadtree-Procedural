@@ -16,12 +16,14 @@
 #define PERLIN_DEF_FLATTERING	1
 #define PERLIN_DEF_ISLAND		1
 #define	CHUNK_DEF_SIZE			32
+#define VOXEL_EMPTY				Pixel(255, 255, 255)
+
 
 class PerlinSettings
 {
 public:
 	void	genHeightMap(int posx, int posz, int sizex, int sizez) {
-		std::cout << "_ " << __PRETTY_FUNCTION__ << std::endl;
+		//std::cout << "_ " << __PRETTY_FUNCTION__ << std::endl;
 		//std::cout << posx << ":" << posz << std::endl;
 		this->posX = posx;
 		this->posZ = posz;
@@ -29,7 +31,7 @@ public:
 		this->sizeZ = sizez;
 
 		if (!this->map) {//so that we can override the current map if it was already generated with different pos
-			std::cout << "new!" << std::endl;
+			//std::cout << "new!" << std::endl;
 			this->map = new uint8_t * [this->sizeZ];
 			for (int z = 0; z < this->sizeZ; z++)
 				this->map[z] = new uint8_t[this->sizeX];
@@ -108,12 +110,14 @@ public:
 	Chunk(const Math::Vector3& tile_number, unsigned int chunk_size, PerlinSettings& perlinSettings);
 	~Chunk();
 
+	void	printData();
+
 	Math::Vector3	tile;
 	Math::Vector3	pos;
 	unsigned int	size;
 	Octree*			root;
-	//uint8_t**		heightMap;
 	uint8_t***		data;
+
 private:
 	Chunk();
 };

@@ -66,6 +66,9 @@ Octree::Octree(Pixel *** arr, Math::Vector3 corner_pos, Math::Vector3 tree_size,
 	this->pixel.b = 0;
 	this->pos = corner_pos;
 	this->size = tree_size;
+	this->summit = corner_pos;
+	this->summit.add(tree_size);
+	this->neighbors = 0;//all sides are not empty by default (could count corners too, so 26)
 	if (size.x == 1 && size.y == 1 && size.z == 1) {// or x*y*z==1
 		this->pixel = arr[(int)this->pos.z][(int)this->pos.y][(int)this->pos.x];//use Vector3i to avoid casting
 		this->detail = measureDetail(arr, pos, size, this->pixel);//should be 0
@@ -177,4 +180,76 @@ Octree::~Octree() {
 
 bool		Octree::isLeaf() const {
 	return (this->children == nullptr);
+}
+
+Octree* Octree::getRoot(Math::Vector3 target_pos, Math::Vector3 target_size) {
+	static int ii = 0;
+	ii++;
+
+	Math::Vector3	target_summit(target_pos);
+	target_summit.add(target_size);//the highest summit of the root;
+
+	if (target_pos.x < this->pos.x || target_pos.y < this->pos.y || target_pos.z < this->pos.z || \
+		this->summit.x <= target_pos.x || this->summit.y <= target_pos.y || this->summit.z <= target_pos.z) {
+		// ie the required root is fully or partially outside of the current root
+		//std::cout << ">>1";
+		return nullptr;
+	} else if (this->pos.x == target_pos.x && this->pos.y == target_pos.y && this->pos.z == target_pos.z && \
+		this->size.x == target_size.x && this->size.y == target_size.y && this->size.z == target_size.z) {
+		//found the exact root (pos and size)
+		//std::cout << ">>2";
+		return this;
+	} else if (this->isLeaf()) {
+		//the exact root is contained in this current leaf root
+		//	/!\ size could be invalid, from the current octree perspective
+		//std::cout << ">>3";
+		return this;
+	} else {
+		// send the request to the right child!
+		int index = 0;
+		if (target_pos.x >= this->pos.x + this->size.x - int(this->size.x / 2))// cf layer sizes, in the constructor
+			index += 1;
+		if (target_pos.y >= this->pos.y + this->size.y - int(this->size.y / 2))// same
+			index += 4;
+		if (target_pos.z >= this->pos.z + this->size.z - int(this->size.z / 2))// same
+			index += 2;
+
+		if (this->children[index]) {//if not, then it will return null, should ne impossible (detected with summits)
+			return this->children[index]->getRoot(target_pos, target_size);
+			//std::cout << ">>4";
+		} else {
+			std::cout << "Problem with data in " << __PRETTY_FUNCTION__ << std::endl;
+			std::cout << "\ttarget pos: \t"; target_pos.printData();
+			std::cout << "\ttarget size:\t"; target_size.printData();
+			std::cout << "\troot pos:   \t"; this->pos.printData();
+			std::cout << "\troot size:  \t"; this->size.printData();
+			return nullptr;
+		}
+	}
+}
+
+void		Octree::verifyNeighbors(Pixel filter, Math::Vector3 pos_offset) {
+	Math::Vector3	maxSummit(this->summit);
+	Math::Vector3	minSummit(this->pos);
+	Octree*			mainRoot = this;
+	this->browse(0, [mainRoot, &minSummit, &maxSummit, &filter, &pos_offset](Octree* node) {
+		node->neighbors = 0;
+		Math::Vector3	left(node->pos); left.sub(node->size.x, 0, 0);
+		Math::Vector3	right(node->pos); right.add(node->size.x, 0, 0);
+		Math::Vector3	down(node->pos); down.sub(0, node->size.y, 0);
+		Math::Vector3	up(node->pos); up.add(0, node->size.y, 0);
+		Math::Vector3	back(node->pos); back.sub(0, 0, node->size.z);
+		Math::Vector3	front(node->pos); front.add(0, 0, node->size.z);
+		Math::Vector3* sides[6] = { &left, &right, &down, &up, &back, &front };
+		for (size_t i = 0; i < 6; i++) {
+			Octree* root = mainRoot->getRoot(*sides[i], node->size);
+			if (root \
+				&& root->pixel.r != filter.r && root->pixel.g != filter.g && root->pixel.b != filter.b \
+				&& root->size.x == node->size.x && root->size.y == node->size.y && root->size.z == node->size.z) {// check for fully obstructed
+				//we found a neighbor and it is not empty
+				node->neighbors++;
+			}
+		}
+	});
+
 }

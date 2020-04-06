@@ -14,6 +14,8 @@ public:
 	~ChunkGenerator();
 	bool	updateGrid(Math::Vector3 player_pos);
 
+	void	printData();
+
 	unsigned int	chunkSize;
 	Math::Vector3	size;//3*3*3
 	Chunk****		grid;//3*3*3 Chunk*

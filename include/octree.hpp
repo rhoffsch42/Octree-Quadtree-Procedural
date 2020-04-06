@@ -31,14 +31,24 @@ class Octree
 {
 public:
 	Octree(Pixel*** arr, Math::Vector3 corner_pos, Math::Vector3 tree_size, unsigned int threshold);
-	Octree::~Octree();
+	~Octree();
 	bool		isLeaf() const;
+
+	/*
+		- Size must correspond to a valid root depending on the pos, will return NULL if not.
+		- if returned root is bigger (ie contains the requested root), it means it is a leaf,
+			the user should check the size, and be aware of this
+	*/
+	Octree*		getRoot(Math::Vector3 target_pos, Math::Vector3 target_size);
+	void		verifyNeighbors(Pixel filter, Math::Vector3 pos_offset);
 
 	/*
 		Octree::browse is declared in the hpp, because of linkage problems
 		https://stackoverflow.com/questions/36880799/how-i-can-pass-lambda-expression-to-c-template-as-parameter
 		https://stackoverflow.com/questions/3575901/can-lambda-functions-be-templated
 	*/
+
+	//faire un browse vers un root target?
 	template<class UnaryPredicate>
 	void	browse(int threshold, UnaryPredicate p) {
 		if (this->detail <= threshold || this->isLeaf()) {
@@ -65,6 +75,18 @@ public:
 	double			detail;//average difference between the average pixel and all pixel
 	Math::Vector3	pos;
 	Math::Vector3	size;
+	Math::Vector3	summit;//the opposite summit of the cube
+	uint8_t			neighbors;
+	/*
+		could be encoded in 6bits
+		LEFT	32	XX100000
+		RIGHT	16	XX010000
+		UP		8	XX001000
+		DOWN	4	XX000100
+		FRONT	2	XX000010
+		BACK	1	XX000001
+	*/
+
 	//unsigned int	x;
 	//unsigned int	y;
 	//unsigned int	z;
