@@ -178,10 +178,10 @@ void	renderObj3d(list<Obj3d*>& obj3dList, Cam& cam, bool force_draw = false) {//
 			std::cout << "normal " << planes[i] << "\t"; normal.printData();
 		}
 	}
-	std::cout << "fustrum objects: " << counterFrustum << std::endl;
-	std::cout << "forward objects: " << counterForward << "\t(not in fustrum)" << std::endl;
-	std::cout << "total objects: " << obj3dList.size() << std::endl;
-	std::cout << std::endl;
+	//std::cout << "fustrum objects: " << counterFrustum << std::endl;
+	//std::cout << "forward objects: " << counterForward << "\t(not in fustrum)" << std::endl;
+	//std::cout << "total objects: " << obj3dList.size() << std::endl;
+	//std::cout << std::endl;
 	for (Obj3d* object : obj3dList) {
 		object->local._matrixChanged = false;
 		object->_worldMatrixChanged = false;
@@ -1864,8 +1864,8 @@ public:
 		this->octaves = std::clamp(this->octaves, 1, 16);
 
 		this->player = nullptr;
-		this->chunk_size = 32;
-		this->chunk_display = 5;
+		this->chunk_size = 96;
+		this->chunk_display = 1;
 		this->polygon_mode = GL_POINT;
 		this->polygon_mode = GL_LINE;
 		this->polygon_mode = GL_FILL;
@@ -1929,6 +1929,7 @@ static void		keyCallback_ocTree(GLFWwindow* window, int key, int scancode, int a
 }
 
 void	buildObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager, Obj3dBP& cubebp, Obj3dPG& obj3d_prog, list<Obj3d*>& gridDisplay, list<Obj3d*>& octreeDisplay, Texture* tex_lena) {
+	std::cout << "_ " << __PRETTY_FUNCTION__ << std::endl;
 	for (auto i : manager.renderlist)
 		delete i;
 	for (auto i : octreeDisplay)
@@ -1938,6 +1939,8 @@ void	buildObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager,
 	manager.renderlist.clear();
 	octreeDisplay.clear();
 	gridDisplay.clear();
+
+	int		hiddenBlocks = 0;
 
 	float	scale_coef = 0.99;
 	float	scale_coe2 = 1.0;
@@ -1969,16 +1972,12 @@ void	buildObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager,
 					cubeGrid->displayTexture = false;
 					gridDisplay.push_back(cubeGrid);
 				}
-				chunkPtr->root->browse(0, [&manager, &cubebp, &obj3d_prog, scale_coef, scale_coe2, &octreeDisplay, chunkPtr, tex_lena](Octree* node) {
+				chunkPtr->root->browse(0, [&manager, &cubebp, &obj3d_prog, scale_coef, scale_coe2, &octreeDisplay, chunkPtr, tex_lena, &hiddenBlocks](Octree* node) {
 					if (M_DISPLAY_BLACK || (node->pixel.r != 0 && node->pixel.g != 0 && node->pixel.b != 0)) {
 						Math::Vector3	worldPos(chunkPtr->pos);
 						worldPos.add(node->pos);
 						Math::Vector3	center(worldPos);
 						center.add(node->size.x / 2, node->size.y / 2, node->size.z / 2);
-						if (node->neighbors > 6) {
-							std::cout << "verify neighbors used multiple time?\n";
-							exit(2);
-						}
 						if ((node->pixel.r < VOXEL_EMPTY.r \
 							|| node->pixel.g < VOXEL_EMPTY.g \
 							|| node->pixel.b < VOXEL_EMPTY.b) \
@@ -1995,19 +1994,25 @@ void	buildObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager,
 
 							//if (node->neighbors == 1)// faire une texture pour chaque numero
 							//	cube->setColor(0, 127, 127);
-							if (node->neighbors == 6) {//we can see if there is false positive on fully obstructed voxel, some are partially obstructed
-								cube->setColor(0, 0, 255);
-								cube->setPolygonMode(GL_LINE);
+
+							//we can see if there is false positive on fully obstructed voxel, some are partially obstructed
+							if (node->neighbors == 6) {
+								cube->setColor(100, 200, 100);
+								cube->setPolygonMode(manager.polygon_mode);
+								cube->setPolygonMode(GL_FILL);
+								hiddenBlocks++;
+								manager.renderlist.push_back(cube);
+							} else {
+								manager.renderlist.push_back(cube);
 							}
-							manager.renderlist.push_back(cube);
 							if (M_DISPLAY_BLACK) {
-								Obj3d* cube2 = new Obj3d(cubebp, obj3d_prog);
-								cube2->setColor(0, 0, 0);
-								cube2->local.setPos(worldPos);
-								cube2->local.setScale(node->size.x * scale_coe2, node->size.y * scale_coe2, node->size.z * scale_coe2);
-								cube2->setPolygonMode(GL_LINE);
-								cube2->displayTexture = false;
-								octreeDisplay.push_back(cube2);
+									Obj3d* cube2 = new Obj3d(cubebp, obj3d_prog);
+									cube2->setColor(0, 0, 0);
+									cube2->local.setPos(worldPos);
+									cube2->local.setScale(node->size.x * scale_coe2, node->size.y * scale_coe2, node->size.z * scale_coe2);
+									cube2->setPolygonMode(GL_LINE);
+									cube2->displayTexture = false;
+									octreeDisplay.push_back(cube2);
 							}
 						}
 					}
@@ -2015,6 +2020,7 @@ void	buildObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager,
 			}
 		}
 	}
+	std::cout << "hiddenBlocks:\t" << hiddenBlocks << std::endl;
 }
 
 void	scene_octree() {
@@ -2022,6 +2028,9 @@ void	scene_octree() {
 	OctreeManager	m;
 	m.glfw = new Glfw(WINX, WINY);
 	//glDisable(GL_CULL_FACE);
+	//glEnable(GL_BLEND);
+	//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
 	m.glfw->setTitle("Tests octree");
 	m.glfw->activateDefaultCallbacks(&m);
 	m.glfw->func[GLFW_KEY_EQUAL] = keyCallback_ocTree;
@@ -2082,11 +2091,12 @@ void	scene_octree() {
 	//cam.local.setPos(28, 186, 90);
 	cam.local.setPos(28, 150, 90);
 	//cam.local.setPos(85, 222, 100);//last obj:89 220 102
-	//cam.local.setPos(0, 0, 100);
+	//cam.local.setPos(-180, 40, -110);
 	//chunk generator
 	PerlinSettings	ps(perlin);
 	Math::Vector3	playerPos = cam.local.getPos();
-	ChunkGenerator	generator(playerPos, ps, m.chunk_size);
+	ChunkGenerator	generator(playerPos, ps, m.chunk_size, \
+							Math::Vector3(m.chunk_display, m.chunk_display, m.chunk_display));
 
 	list<Obj3d*>	octreeDisplay;
 	list<Obj3d*>	gridDisplay;
@@ -2131,7 +2141,7 @@ void	scene_octree() {
 	Fps	fps60(60);
 	Fps* defaultFps = &fps60;
 
-	generator.printData();
+	//generator.printData();
 
 	std::cout << "Begin while loop" << endl;
 	while (!glfwWindowShouldClose(m.glfw->_window)) {
@@ -2145,7 +2155,8 @@ void	scene_octree() {
 
 		#ifndef LONETREE
 			//89 220 102
-			Chunk* mainChunk = generator.grid[1][1][1];
+			int ind = generator.size.x / 2;
+			Chunk* mainChunk = generator.grid[ind][ind][ind];
 			Math::Vector3	lone(89, 220, 102);
 			lone.sub(mainChunk->pos);
 			Octree* loneTree = mainChunk->root->getRoot(lone, Math::Vector3(1, 1, 1));
@@ -2164,11 +2175,9 @@ void	scene_octree() {
 				Octree* root = mainChunk->root->getRoot(down, loneTree->size);
 				if (root && root->pixel.r != VOXEL_EMPTY.r && root->pixel.g != VOXEL_EMPTY.g && root->pixel.b != VOXEL_EMPTY.b) {
 					std::wcout << "found..\n";
-					std::wcout << "found2..\n";
 					//if we found a neighbor and it is not empty
 				} else {
 					std::wcout << "no way..\n";
-					std::wcout << "no way2..\n";
 				}
 			}
 		#endif
@@ -2180,12 +2189,12 @@ void	scene_octree() {
 
 			//GLuint	mode = m.polygon_mode;
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-			std::cout << "renderlist\n";
+			//std::cout << "renderlist\n";
 			renderObj3d(m.renderlist, cam);
-			std::cout << "octreeDisplay\n";
+			//std::cout << "octreeDisplay\n";
 			renderObj3d(octreeDisplay, cam);
 			glDisable(GL_CULL_FACE);
-			std::cout << "gridDisplay\n";
+			//std::cout << "gridDisplay\n";
 			renderObj3d(gridDisplay, cam, FORCE_DRAW);
 			glEnable(GL_CULL_FACE);
 

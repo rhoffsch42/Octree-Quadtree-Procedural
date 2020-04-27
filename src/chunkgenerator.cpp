@@ -1,6 +1,6 @@
 #include "chunkgenerator.hpp"
 
-ChunkGenerator::ChunkGenerator(Math::Vector3 player_pos, PerlinSettings perlin_settings, unsigned int chunk_size)
+ChunkGenerator::ChunkGenerator(Math::Vector3 player_pos, PerlinSettings perlin_settings, unsigned int chunk_size, Math::Vector3	grid_size)
 	: settings(perlin_settings)
 {
 	std::cout << "_ " << __PRETTY_FUNCTION__ << std::endl;
@@ -9,7 +9,7 @@ ChunkGenerator::ChunkGenerator(Math::Vector3 player_pos, PerlinSettings perlin_s
 	this->updatePlayerPos(player_pos);
 
 	//init grid
-	this->size = Math::Vector3(3, 3, 3);//better be odd for equal horizon on every cardinal points
+	this->size = grid_size;//better be odd for equal horizon on every cardinal points
 	Math::Vector3 v(this->size);
 	v.div(2);
 	Math::Vector3	smallestChunk(this->currentChunk);

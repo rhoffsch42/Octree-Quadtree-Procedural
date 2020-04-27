@@ -14,6 +14,7 @@
 #define PERLIN_DEF_OCTAVES		8
 #define PERLIN_DEF_FREQUENCY	8
 #define PERLIN_DEF_FLATTERING	1
+#define PERLIN_DEF_HEIGHTCOEF	1
 #define PERLIN_DEF_ISLAND		1
 #define	CHUNK_DEF_SIZE			32
 #define VOXEL_EMPTY				Pixel(255, 255, 255)
@@ -46,7 +47,7 @@ public:
 				value = std::pow(value, this->flattering);
 				double dist = (double(currentPos.magnitude()) / double(PERLIN_NORMALIZER / 2));//normalized 0..1
 				value = std::clamp(value + this->island * (0.5 - dist), 0.0, 1.0);
-
+				value *= this->heightCoef;
 				this->map[z][x] = uint8_t(value * 255.0);
 			}
 		}
@@ -58,7 +59,12 @@ public:
 		this->octaves = PERLIN_DEF_OCTAVES;
 		this->frequency = PERLIN_DEF_FREQUENCY;
 		this->flattering = PERLIN_DEF_FLATTERING;
+		this->heightCoef = PERLIN_DEF_HEIGHTCOEF;
 		this->island = PERLIN_DEF_ISLAND;
+		
+		//this->flattering = 2;
+		this->heightCoef = 1.0 / 5.0;
+
 		this->map = nullptr;
 		this->posX = 0;
 		this->posZ = 0;
@@ -72,6 +78,7 @@ public:
 		this->octaves = src.octaves;
 		this->frequency = src.frequency;
 		this->flattering = src.flattering;
+		this->heightCoef = src.heightCoef;
 		this->island = src.island;
 		this->map = nullptr;//doesnt cpy map!;
 		this->posX = src.posX;
@@ -95,6 +102,7 @@ public:
 	unsigned int		octaves;
 	double				frequency;
 	double				flattering;
+	double				heightCoef;
 	double				island;
 	uint8_t**			map;
 	int					posX;

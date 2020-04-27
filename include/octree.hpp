@@ -38,9 +38,12 @@ public:
 		- Size must correspond to a valid root depending on the pos, will return NULL if not.
 		- if returned root is bigger (ie contains the requested root), it means it is a leaf,
 			the user should check the size, and be aware of this
+		? should the empty node be null instead of storing them in the octree?
+		? should the average ignore empty nodes?
 	*/
 	Octree*		getRoot(Math::Vector3 target_pos, Math::Vector3 target_size);
-	void		verifyNeighbors(Pixel filter, Math::Vector3 pos_offset);
+	bool		contain(Pixel pix, Math::Vector3 pos, Math::Vector3 size);
+	void		verifyNeighbors(Pixel filter);
 
 	/*
 		Octree::browse is declared in the hpp, because of linkage problems
@@ -57,6 +60,7 @@ public:
 				exit(1);
 			}
 			p(this);// lamda-expr
+			//return a bool to stop the browse? is it possible?
 			/*
 				func ptr works too, but args cant be transfered like in lambda-expr
 				create a lambda expression using the func and args instead
@@ -76,7 +80,7 @@ public:
 	Math::Vector3	pos;
 	Math::Vector3	size;
 	Math::Vector3	summit;//the opposite summit of the cube
-	uint8_t			neighbors;
+	uint8_t			neighbors;// can be partially empty, do not use this to cull voxel
 	/*
 		could be encoded in 6bits
 		LEFT	32	XX100000

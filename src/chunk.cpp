@@ -33,10 +33,9 @@ Chunk::Chunk(const Math::Vector3& tile_number, unsigned int chunk_size, PerlinSe
 						v = 150;
 					else
 						v = 75;
-					v = 75;
 					//std::cout << value << " ";
 					//std::cout << (int)v << " ";
-					this->data[k][j][i] = v;
+					this->data[k][j][i] = 75;
 				}
 			}
 		}
@@ -58,7 +57,7 @@ Chunk::Chunk(const Math::Vector3& tile_number, unsigned int chunk_size, PerlinSe
 	}
 	// important note: all chunks have their octree starting at pos 0 0 0. 
 	this->root = new Octree(pix, Math::Vector3(0,0,0), size_vec, 0);
-	this->root->verifyNeighbors(VOXEL_EMPTY, this->pos);//white
+	this->root->verifyNeighbors(VOXEL_EMPTY);//white
 
 	/*
 fustrum objects: 5649
