@@ -1981,7 +1981,7 @@ void	buildObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager,
 						if ((node->pixel.r < VOXEL_EMPTY.r \
 							|| node->pixel.g < VOXEL_EMPTY.g \
 							|| node->pixel.b < VOXEL_EMPTY.b) \
-							&& node->neighbors < 7)// should be < 6
+							&& node->neighbors < 64)// should be < NEIGHBOR_ALL or node->n & NEIGHBOR_ALL != 0
 						{
 							Obj3d* cube = new Obj3d(cubebp, obj3d_prog);
 							cube->setColor(node->pixel.r, node->pixel.g, node->pixel.b);
@@ -1996,13 +1996,14 @@ void	buildObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager,
 							//	cube->setColor(0, 127, 127);
 
 							//we can see if there is false positive on fully obstructed voxel, some are partially obstructed
-							if (node->neighbors == 6) {
+							if (node->neighbors == NEIGHBOR_ALL) {
 								cube->setColor(100, 200, 100);
 								cube->setPolygonMode(manager.polygon_mode);
 								cube->setPolygonMode(GL_FILL);
 								hiddenBlocks++;
 								manager.renderlist.push_back(cube);
 							} else {
+								// push only the faces next to an EMPTY_VOXEL in an allin buffer
 								manager.renderlist.push_back(cube);
 							}
 							if (M_DISPLAY_BLACK) {

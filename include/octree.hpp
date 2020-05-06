@@ -14,6 +14,15 @@
 
 #define	CHILDREN	8
 
+//neighbors
+#define NEIGHBOR_ALL	63	//00111111
+#define NEIGHBOR_LEFT	32	//00100000
+#define NEIGHBOR_RIGHT	16	//00010000
+#define NEIGHBOR_DOWN	8	//00001000
+#define NEIGHBOR_UP		4	//00000100
+#define NEIGHBOR_BACK	2	//00000010
+#define NEIGHBOR_FRONT	1	//00000001
+
 /*
 _________
 | A | B |
@@ -80,16 +89,7 @@ public:
 	Math::Vector3	pos;
 	Math::Vector3	size;
 	Math::Vector3	summit;//the opposite summit of the cube
-	uint8_t			neighbors;// can be partially empty, do not use this to cull voxel
-	/*
-		could be encoded in 6bits
-		LEFT	32	XX100000
-		RIGHT	16	XX010000
-		UP		8	XX001000
-		DOWN	4	XX000100
-		FRONT	2	XX000010
-		BACK	1	XX000001
-	*/
+	uint8_t			neighbors;
 
 	//unsigned int	x;
 	//unsigned int	y;

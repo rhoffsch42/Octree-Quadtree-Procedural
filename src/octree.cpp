@@ -315,12 +315,12 @@ void		Octree::verifyNeighbors(Pixel filter) {
 			Math::Vector3	sizeYaxis(node->size.x, 1, node->size.z);
 			Math::Vector3	sizeZaxis(node->size.x, node->size.y, 1);
 
-			if (!mainRoot->contain(filter, posleft, sizeXaxis)) { node->neighbors++; }
-			if (!mainRoot->contain(filter, posright, sizeXaxis)) { node->neighbors++; }
-			if (!mainRoot->contain(filter, posdown, sizeYaxis)) { node->neighbors++; }
-			if (!mainRoot->contain(filter, posup, sizeYaxis)) { node->neighbors++; }
-			if (!mainRoot->contain(filter, posback, sizeZaxis)) { node->neighbors++; }
-			if (!mainRoot->contain(filter, posfront, sizeZaxis)) { node->neighbors++; }
+			if (!mainRoot->contain(filter, posleft, sizeXaxis)) { node->neighbors |= NEIGHBOR_LEFT; }
+			if (!mainRoot->contain(filter, posright, sizeXaxis)) { node->neighbors |= NEIGHBOR_RIGHT; }
+			if (!mainRoot->contain(filter, posdown, sizeYaxis)) { node->neighbors |= NEIGHBOR_DOWN; }
+			if (!mainRoot->contain(filter, posup, sizeYaxis)) { node->neighbors |= NEIGHBOR_UP; }
+			if (!mainRoot->contain(filter, posback, sizeZaxis)) { node->neighbors |= NEIGHBOR_BACK; }
+			if (!mainRoot->contain(filter, posfront, sizeZaxis)) { node->neighbors |= NEIGHBOR_FRONT; }
 	
 #endif
 #ifdef USE_BACKTRACKING_SEARCH
