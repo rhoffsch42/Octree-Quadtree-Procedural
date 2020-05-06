@@ -1,0 +1,5 @@
+operator overload Math::
+build faces with opengl instances arrays
+	vbo for matrix or pos
+virtual destructors
+Math:: refs in parameters to avoid copy cons

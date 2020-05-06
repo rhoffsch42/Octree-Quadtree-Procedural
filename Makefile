@@ -59,7 +59,8 @@ SGL_SRC_FILE	=	blueprint.cpp \
 					fps.cpp \
 					gamemanager.cpp \
 					framebuffer.cpp \
-					uipanel.cpp
+					uipanel.cpp \
+					renderer.cpp
 
 SGL_DIR			=	SimpleGL
 SGL_OBJ_DIR		=	$(SGL_DIR)/obj
