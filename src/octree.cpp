@@ -321,7 +321,7 @@ void		Octree::verifyNeighbors(Pixel filter) {
 			if (!mainRoot->contain(filter, posup, sizeYaxis)) { node->neighbors |= NEIGHBOR_UP; }
 			if (!mainRoot->contain(filter, posback, sizeZaxis)) { node->neighbors |= NEIGHBOR_BACK; }
 			if (!mainRoot->contain(filter, posfront, sizeZaxis)) { node->neighbors |= NEIGHBOR_FRONT; }
-	
+
 #endif
 #ifdef USE_BACKTRACKING_SEARCH
 			// getRoot() on size/2 until we find all adjacent leafs, and check if empty

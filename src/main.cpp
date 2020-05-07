@@ -305,7 +305,7 @@ void	scene1() {
 	Skybox		skybox(*texture3, sky_pg);
 
 #ifndef CAM
-	Cam		cam(glfw);
+	Cam		cam(glfw.getWidth(), glfw.getHeight());
 	cam.local.setPos(0, 0, 10);
 	cam.printProperties();
 	cam.lockedMovement = false;
@@ -528,7 +528,7 @@ void scene2() {
 	obj3dList.push_back(&rocket2);
 
 
-	Cam		cam(glfw);
+	Cam		cam(glfw.getWidth(), glfw.getHeight());
 	cam.local.setPos(0, 15, 35);
 	cam.printProperties();
 	cam.lockedMovement = false;
@@ -1433,7 +1433,7 @@ void	scene_vox() {
 	Texture*	tex_skybox = new Texture("images/skybox4.bmp");
 	Skybox		skybox(*tex_skybox, sky_pg);
 
-	Cam		cam(*(manager.glfw));
+	Cam		cam(manager.glfw->getWidth(), manager.glfw->getHeight());
 	cam.speed = 4*15;
 	cam.local.setPos(0, 30, 0);
 	cam.printProperties();
@@ -1689,7 +1689,10 @@ public:
 	siv::PerlinNoise*	perlin;
 	double				frequency;
 	int					octaves;
-	std::list<Obj3d*>	renderlist;
+	std::list<Object*>	renderlist;
+	std::list<Object*>	renderlistOctree;
+	std::list<Object*>	renderlistGrid;
+	std::list<Object*>	renderlistSkybox;
 	GLuint				polygon_mode;
 	Obj3d*				player;
 	unsigned int		chunk_size;
@@ -1724,8 +1727,8 @@ static void		keyCallback_ocTree(GLFWwindow* window, int key, int scancode, int a
 			} else if (key == GLFW_KEY_ENTER) {
 				manager->polygon_mode++;
 				manager->polygon_mode = GL_POINT + (manager->polygon_mode % 3);
-				for (std::list<Obj3d*>::iterator it = manager->renderlist.begin(); it != manager->renderlist.end(); ++it) {
-					(*it)->setPolygonMode(manager->polygon_mode);
+				for (std::list<Object*>::iterator it = manager->renderlist.begin(); it != manager->renderlist.end(); ++it) {
+					((Obj3d*)(*it))->setPolygonMode(manager->polygon_mode);
 				}
 			} else if (key == GLFW_KEY_X) {
 				manager->cam->local.translate(move, 0, 0);
@@ -1740,17 +1743,17 @@ static void		keyCallback_ocTree(GLFWwindow* window, int key, int scancode, int a
 	}
 }
 
-void	buildObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager, Obj3dBP& cubebp, Obj3dPG& obj3d_prog, list<Obj3d*>& gridDisplay, list<Obj3d*>& octreeDisplay, Texture* tex_lena) {
+void	buildObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager, Obj3dBP& cubebp, Obj3dPG& obj3d_prog, Texture* tex_lena) {
 	std::cout << "_ " << __PRETTY_FUNCTION__ << std::endl;
 	for (auto i : manager.renderlist)
 		delete i;
-	for (auto i : octreeDisplay)
+	for (auto i : manager.renderlistOctree)
 		delete i;
-	for (auto i : gridDisplay)
+	for (auto i : manager.renderlistGrid)
 		delete i;
 	manager.renderlist.clear();
-	octreeDisplay.clear();
-	gridDisplay.clear();
+	manager.renderlistOctree.clear();
+	manager.renderlistGrid.clear();
 
 	int		hiddenBlocks = 0;
 
@@ -1782,9 +1785,9 @@ void	buildObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager,
 					cubeGrid->local.setScale(chunkPtr->size * scale_coe2, chunkPtr->size * scale_coe2, chunkPtr->size * scale_coe2);
 					cubeGrid->setPolygonMode(GL_LINE);
 					cubeGrid->displayTexture = false;
-					gridDisplay.push_back(cubeGrid);
+					manager.renderlistGrid.push_back(cubeGrid);
 				}
-				chunkPtr->root->browse(0, [&manager, &cubebp, &obj3d_prog, scale_coef, scale_coe2, &octreeDisplay, chunkPtr, tex_lena, &hiddenBlocks](Octree* node) {
+				chunkPtr->root->browse(0, [&manager, &cubebp, &obj3d_prog, scale_coef, scale_coe2, chunkPtr, tex_lena, &hiddenBlocks](Octree* node) {
 					if (M_DISPLAY_BLACK || (node->pixel.r != 0 && node->pixel.g != 0 && node->pixel.b != 0)) {
 						Math::Vector3	worldPos(chunkPtr->pos);
 						worldPos.add(node->pos);
@@ -1825,7 +1828,7 @@ void	buildObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager,
 									cube2->local.setScale(node->size.x * scale_coe2, node->size.y * scale_coe2, node->size.z * scale_coe2);
 									cube2->setPolygonMode(GL_LINE);
 									cube2->displayTexture = false;
-									octreeDisplay.push_back(cube2);
+									manager.renderlistOctree.push_back(cube2);
 							}
 						}
 					}
@@ -1856,7 +1859,7 @@ void	scene_octree() {
 	siv::PerlinNoise perlin(m.seed);
 	m.perlin = &perlin;
 
-	std::string		pathPrefix("SimpleGL/");
+	std::string	pathPrefix("SimpleGL/");
 	Texture*	tex_skybox = new Texture(pathPrefix + "images/skybox4.bmp");
 	Texture*	tex_lena = new Texture(pathPrefix + "images/lena.bmp");
 
@@ -1864,14 +1867,12 @@ void	scene_octree() {
 	Obj3dBP		cubebp(pathPrefix + "obj3d/cube.obj", true, false);
 
 
-	Renderer	renderer(pathPrefix + OBJ3D_VS_FILE, pathPrefix + OBJ3D_FS_FILE, \
-						pathPrefix + CUBEMAP_VS_FILE, pathPrefix + CUBEMAP_FS_FILE);
-	Obj3dPG		obj3d_prog(pathPrefix + OBJ3D_VS_FILE, pathPrefix + OBJ3D_FS_FILE);
-	SkyboxPG	sky_pg(pathPrefix + CUBEMAP_VS_FILE, pathPrefix + CUBEMAP_FS_FILE);
-	Skybox		skybox(*tex_skybox, *renderer.skyboxProgram);
-	//Skybox		skybox(*tex_skybox, sky_pg);
+	MeshRenderer	rendererObj3d(pathPrefix + OBJ3D_VS_FILE, pathPrefix + OBJ3D_FS_FILE);
+	SkyboxRenderer	rendererSkybox(pathPrefix + CUBEMAP_VS_FILE, pathPrefix + CUBEMAP_FS_FILE);
+	Skybox			skybox(*tex_skybox, *rendererSkybox.program);
+	m.renderlistSkybox.push_back(&skybox);
 
-	Cam		cam(*(m.glfw));
+	Cam		cam(m.glfw->getWidth(), m.glfw->getHeight());
 	cam.speed = 40;
 	cam.printProperties();
 	cam.lockedMovement = false;
@@ -1884,7 +1885,7 @@ void	scene_octree() {
 	//uint8_t* dataOctree = new uint8_t[w * h * 3];
 
 #ifndef BASE_OBJ3D
-	Obj3d		cubeo(cubebp, *renderer.meshProgram);
+	Obj3d		cubeo(cubebp, *rendererObj3d.program);
 	//Obj3d		cubeo(cubebp, obj3d_prog);
 	cubeo.local.setPos(0, 0, 0);
 	cubeo.local.setScale(1, 1, 1);
@@ -1919,8 +1920,8 @@ void	scene_octree() {
 
 	list<Obj3d*>	octreeDisplay;
 	list<Obj3d*>	gridDisplay;
-	buildObjectFromGenerator(generator, m, cubebp, obj3d_prog, gridDisplay, octreeDisplay, tex_lena);
-	
+	buildObjectFromGenerator(generator, m, cubebp, *rendererObj3d.program, tex_lena);
+
 	if (0) {
 		int start = -10;
 		int	step = 3;
@@ -1929,7 +1930,7 @@ void	scene_octree() {
 		for (int k = 0; k < amount; k++) {
 			for (int j = 0; j < amount; j++) {
 				for (int i = 0; i < amount; i++) {
-					Obj3d* cube = new Obj3d(cubebp, obj3d_prog);
+					Obj3d* cube = new Obj3d(cubebp, *rendererObj3d.program);
 					cube->setColor(127, 127, 127);
 					cube->local.setPos(start + i * step, start + j * step, start + k * step);
 					cube->local.setScale(1, 1, 1);
@@ -1941,9 +1942,9 @@ void	scene_octree() {
 		}
 		float	thickness = 0.2f;
 		float	len = 100.0f;
-		Obj3d	xdim(cubebp, obj3d_prog);
-		Obj3d	ydim(cubebp, obj3d_prog);
-		Obj3d	zdim(cubebp, obj3d_prog);
+		Obj3d	xdim(cubebp, *rendererObj3d.program);
+		Obj3d	ydim(cubebp, *rendererObj3d.program);
+		Obj3d	zdim(cubebp, *rendererObj3d.program);
 		xdim.setColor(255, 0, 0);
 		ydim.setColor(0, 255, 0);
 		zdim.setColor(0, 0, 255);
@@ -1965,8 +1966,7 @@ void	scene_octree() {
 	std::cout << "Begin while loop" << endl;
 	while (!glfwWindowShouldClose(m.glfw->_window)) {
 		if (defaultFps->wait_for_next_frame()) {
-
-			//defaultFps->printFps();
+			m.glfw->setTitle(std::to_string(defaultFps->getFps()) + " fps");
 
 			glfwPollEvents();
 			m.glfw->updateMouse();//to do before cam's events
@@ -2002,22 +2002,22 @@ void	scene_octree() {
 		#endif
 
 			if (1 && generator.updateGrid(cam.local.getPos())) {
-				buildObjectFromGenerator(generator, m, cubebp, obj3d_prog, gridDisplay, octreeDisplay, tex_lena);
+				buildObjectFromGenerator(generator, m, cubebp, *rendererObj3d.program, tex_lena);
 				std::cout << "Total Objects: " << m.renderlist.size() << std::endl;
 			}
 
 			//GLuint	mode = m.polygon_mode;
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 			//std::cout << "renderlist\n";
-			renderer.renderObj3d(m.renderlist, cam);
+			rendererObj3d.renderObjects(m.renderlist, cam);
 			//std::cout << "octreeDisplay\n";
-			renderer.renderObj3d(octreeDisplay, cam);
+			rendererObj3d.renderObjects(m.renderlistOctree, cam);
 			glDisable(GL_CULL_FACE);
 			//std::cout << "gridDisplay\n";
-			renderer.renderObj3d(gridDisplay, cam, FORCE_DRAW);
+			rendererObj3d.renderObjects(m.renderlistGrid, cam, FORCE_DRAW);
 			glEnable(GL_CULL_FACE);
 
-			renderer.renderSkybox(skybox, cam);
+			rendererSkybox.renderObjects(m.renderlistSkybox, cam);
 			glfwSwapBuffers(m.glfw->_window);
 
 			if (GLFW_PRESS == glfwGetKey(m.glfw->_window, GLFW_KEY_ESCAPE))
@@ -2029,7 +2029,19 @@ void	scene_octree() {
 	std::cout << "deleting textures..." << endl;
 }
 
+void	maxUniforms() {
+	std::cout << "GL_MAX_VERTEX_UNIFORM_COMPONENTS\t" << GL_MAX_VERTEX_UNIFORM_COMPONENTS << std::endl;
+	std::cout << "GL_MAX_GEOMETRY_UNIFORM_COMPONENTS\t" << GL_MAX_GEOMETRY_UNIFORM_COMPONENTS << std::endl;
+	std::cout << "GL_MAX_FRAGMENT_UNIFORM_COMPONENTS\t" << GL_MAX_FRAGMENT_UNIFORM_COMPONENTS << std::endl;
+	std::cout << "GL_MAX_TESS_CONTROL_UNIFORM_COMPONENTS\t" << GL_MAX_TESS_CONTROL_UNIFORM_COMPONENTS << std::endl;
+	std::cout << "GL_MAX_TESS_EVALUATION_UNIFORM_COMPONENTS\t" << GL_MAX_TESS_EVALUATION_UNIFORM_COMPONENTS << std::endl;
+	std::cout << "GL_MAX_COMPUTE_UNIFORM_COMPONENTS\t" << GL_MAX_COMPUTE_UNIFORM_COMPONENTS << std::endl;
+	std::cout << "GL_MAX_UNIFORM_LOCATIONS\t" << GL_MAX_UNIFORM_LOCATIONS << std::endl;
+	exit(0);
+}
+
 int		main(void) {
+	//maxUniforms();
 	//check_paddings();
 	// test_behaviors();
 	//test_mult_mat4(); exit(0);
