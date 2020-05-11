@@ -11,46 +11,49 @@
 /* ************************************************************************** */
 
 #include "simplegl.h"
+#include "trees.h"
 
-#include "program.hpp"
-#include "object.hpp"
-#include "obj3dPG.hpp"
-#include "obj3dBP.hpp"
-#include "obj3d.hpp"
-#include "misc.hpp"
-#include "cam.hpp"
-#include "texture.hpp"
-#include "skyboxPG.hpp"
-#include "skybox.hpp"
-#include "glfw.hpp"
-#include "transformBH.hpp"
-#include "fps.hpp"
-#include "gamemanager.hpp"
-#include "framebuffer.hpp"
-#include "uipanel.hpp"
-#include "quadtree.hpp"
-#include "octree.hpp"
-#include "chunk.hpp"
-#include "chunkgenerator.hpp"
-#include "perlin.hpp"
-#include "renderer.hpp"
+void	blitToWindow(FrameBuffer* readFramebuffer, GLenum attachmentPoint, UIPanel* panel) {
+	GLuint fbo;
+	if (readFramebuffer) {
+		fbo = readFramebuffer->fbo;
+	}
+	else {
+		fbo = panel->getFbo();
+	}
+	// glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
 
-#include <thread>
-#include <cmath>
-#include <string>
-#include <cstdio>
-#include <vector>
-#include <list>
-#include <algorithm>
-#include <cassert>
+	//glViewport(0, 0, manager->glfw->getWidth(), manager->glfw->getHeight());//size of the window/image or panel width ?
+	glReadBuffer(attachmentPoint);
+	GLenum drawBuffers[1] = { GL_COLOR_ATTACHMENT0 };
+	glDrawBuffers(1, drawBuffers);
 
-#ifdef _WIN32
-#include <direct.h>
-#else
-#include <unistd.h>
-#endif
+	int w;
+	int h;
+	if (readFramebuffer) {
+		w = readFramebuffer->getWidth();
+		h = readFramebuffer->getHeight();
+	}
+	else if (panel->getTexture()) {
+		w = panel->getTexture()->getWidth();
+		h = panel->getTexture()->getHeight();
+	}
+	else {
+		std::cout << "FUCK " << __PRETTY_FUNCTION__ << std::endl;
+		exit(2);
+	}
+	if (0) {
+		std::cout << "copy " << w << "x" << h << "\tresized\t" << panel->_width << "x" << panel->_height \
+			<< "\tat pos\t" << panel->_posX << ":" << panel->_posY << std::endl;
+		// << " -> " << (panel->posX + panel->width) << "x" << (panel->posY + panel->height) << std::endl;
+	}
+	glBlitFramebuffer(0, 0, w, h, \
+		panel->_posX, panel->_posY, panel->_posX2, panel->_posY2, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 
-#define WIN32_VS_FOLDER string("")
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+}
 
 void	check_paddings() {
 	//	cout << sizeof(BITMAPINFOHEADER) << " = " << sizeof(BMPINFOHEADER) << endl;
@@ -153,25 +156,31 @@ void	scene1() {
 
 #ifndef BLUEPRINTS
 	//Create Obj3dBP from .obj files
-	Obj3dBP			the42BP("obj3d/42.obj", true);
-	Obj3dBP			cubeBP("obj3d/cube.obj", true);
-	Obj3dBP			teapotBP("obj3d/teapot2.obj", true);
-	// Obj3dBP			rocketBP("obj3d/Rocket_Phoenix/AIM-54_Phoenix_OBJ/Aim-54_Phoenix.obj", true);
-	Obj3dBP			rocketBP("obj3d/ARSENAL_VG33/Arsenal_VG33.obj", true);
-	// Obj3dBP			lamboBP("obj3d/lambo/Lamborginhi_Aventador_OBJ/Lamborghini_Aventador.obj", true);
-	Obj3dBP			lamboBP("obj3d/lambo/Lamborginhi_Aventador_OBJ/Lamborghini_Aventador_no_collider.obj", true);
+	//Blueprint global settings
+	Obj3dBP::defaultSize = 1;
+	Obj3dBP::dataMode = BP_VERTEX_ARRAY;
+	Obj3dBP::rescale = true;
+	Obj3dBP::center = true;
+
+	Obj3dBP			the42BP("obj3d/42.obj");
+	Obj3dBP			cubeBP("obj3d/cube.obj");
+	Obj3dBP			teapotBP("obj3d/teapot2.obj");
+	// Obj3dBP			rocketBP("obj3d/Rocket_Phoenix/AIM-54_Phoenix_OBJ/Aim-54_Phoenix.obj");
+	Obj3dBP			rocketBP("obj3d/ARSENAL_VG33/Arsenal_VG33.obj");
+	// Obj3dBP			lamboBP("obj3d/lambo/Lamborginhi_Aventador_OBJ/Lamborghini_Aventador.obj");
+	Obj3dBP			lamboBP("obj3d/lambo/Lamborginhi_Aventador_OBJ/Lamborghini_Aventador_no_collider.obj");
 	cout << "======" << endl;
 #endif
 #ifndef TEXTURES
-		Texture*	texture1 = new Texture("images/lena.bmp");
-		Texture*	texture2 = new Texture("images/skybox2.bmp");
-		Texture*	texture3 = new Texture("images/skyboxfuck.bmp");
+	Texture* texture1 = new Texture("images/lena.bmp");
+	Texture* texture2 = new Texture("images/skybox2.bmp");
+	Texture* texture3 = new Texture("images/skyboxfuck.bmp");
 	//	Texture*	texture4 = new Texture("images/skybox4096.bmp");
-		Texture*	texture5 = new Texture("images/skytest.bmp");
-		// Texture*	texture6 = new Texture("obj3d/Rocket_Phoenix/AIM-54_Phoenix_OBJ/Phoenix.bmp");
-		// Texture*	texture6 = new Texture("obj3d/ARSENAL_VG33/Arsenal_VG33.bmp");
-	//	Texture*	texture7 = new Texture("obj3d/lambo/Lamborginhi_Aventador_OBJ/Lamborginhi_Aventador_diffuse.bmp");
-		Texture		texture8 = *texture1;
+	Texture* texture5 = new Texture("images/skytest.bmp");
+	// Texture*	texture6 = new Texture("obj3d/Rocket_Phoenix/AIM-54_Phoenix_OBJ/Phoenix.bmp");
+	// Texture*	texture6 = new Texture("obj3d/ARSENAL_VG33/Arsenal_VG33.bmp");
+//	Texture*	texture7 = new Texture("obj3d/lambo/Lamborginhi_Aventador_OBJ/Lamborginhi_Aventador_diffuse.bmp");
+	Texture		texture8 = *texture1;
 #endif
 #ifndef OBJ3D
 	list<Obj3d*>	obj3dList;
@@ -179,114 +188,114 @@ void	scene1() {
 	float s = 1.0f;//scale
 	//Create Obj3d with the blueprint & by copy
 	Obj3d			the42_1(cubeBP, obj3d_prog);//the42BP !
-		the42_1.local.setPos(0, 0, 0);
-		the42_1.setTexture(texture1);
-		the42_1.displayTexture = true;
-		the42_1.setPolygonMode(GL_FILL);
-		the42_1.local.setScale(1, 1, 1);
+	the42_1.local.setPos(0, 0, 0);
+	the42_1.setTexture(texture1);
+	the42_1.displayTexture = true;
+	the42_1.setPolygonMode(GL_FILL);
+	the42_1.local.setScale(1, 1, 1);
 
 	Obj3d			the42_2(the42_1);
-		//the42_2.local.setPos(0, 3, -5);
-		the42_2.local.setPos(-4, -2, -2);
-		the42_2.setTexture(texture2);
-		the42_2.displayTexture = false;
-		// the42_2.setScale(3.0f, 0.75f, 0.3f);
-		the42_2.setPolygonMode(GL_LINE);
+	//the42_2.local.setPos(0, 3, -5);
+	the42_2.local.setPos(-4, -2, -2);
+	the42_2.setTexture(texture2);
+	the42_2.displayTexture = false;
+	// the42_2.setScale(3.0f, 0.75f, 0.3f);
+	the42_2.setPolygonMode(GL_LINE);
 
 	Obj3d			teapot1(teapotBP, obj3d_prog);
-		teapot1.local.setPos(0, 0, 2);
-		teapot1.local.getMatrix().setOrder(ROW_MAJOR);
-		// teapot1.setRot(0, 90, 0);
-		teapot1.setTexture(texture1);
-		teapot1.displayTexture = false;
-		teapot1.setPolygonMode(GL_LINE);
-		// teapot1.setScale(1.5, 2, 0.75);
+	teapot1.local.setPos(0, 0, 2);
+	teapot1.local.getMatrix().setOrder(ROW_MAJOR);
+	// teapot1.setRot(0, 90, 0);
+	teapot1.setTexture(texture1);
+	teapot1.displayTexture = false;
+	teapot1.setPolygonMode(GL_LINE);
+	// teapot1.setScale(1.5, 2, 0.75);
 
 	Obj3d			cube1(cubeBP, obj3d_prog);
-		cube1.local.setPos(0, -2, 3);
-		cube1.setTexture(texture1);
-		cube1.displayTexture = false;
+	cube1.local.setPos(0, -2, 3);
+	cube1.setTexture(texture1);
+	cube1.displayTexture = false;
 
 	Object			empty1;
-		empty1.local.setScale(1,1,1);
+	empty1.local.setScale(1, 1, 1);
 
 	Obj3d			rocket1(rocketBP, obj3d_prog);
-		// rocket1.local.setPos(-10, -20, -2000);
-		rocket1.local.setPos(0, -300, 0);
-		rocket1.local.rotate(0, 180, 0);
-		rocket1.setTexture(texture5);
-		rocket1.displayTexture = true;
-		// rocket1.setPolygonMode(GL_LINE);
-		s = 10.0f;
-		rocket1.local.setScale(s,s,s);
-		rocket1.setParent(&empty1);
+	// rocket1.local.setPos(-10, -20, -2000);
+	rocket1.local.setPos(0, -300, 0);
+	rocket1.local.rotate(0, 180, 0);
+	rocket1.setTexture(texture5);
+	rocket1.displayTexture = true;
+	// rocket1.setPolygonMode(GL_LINE);
+	s = 10.0f;
+	rocket1.local.setScale(s, s, s);
+	rocket1.setParent(&empty1);
 
 
 	// Properties::defaultSize = 13.0f;
 	Obj3d			lambo1(lamboBP, obj3d_prog);
-		lambo1.local.setPos(-20, 0, 0);
-		// lambo1.local.setScale(1, 1, 1);
-		lambo1.local.setPos(0, -5, 7);
-		lambo1.setTexture(texture1);
-		lambo1.displayTexture = true;
-		lambo1.setPolygonMode(GL_LINE);
-		s = 0.025f;
-		// lambo1.setScale(s, s, s);
+	lambo1.local.setPos(-20, 0, 0);
+	// lambo1.local.setScale(1, 1, 1);
+	lambo1.local.setPos(0, -5, 7);
+	lambo1.setTexture(texture1);
+	lambo1.displayTexture = true;
+	lambo1.setPolygonMode(GL_LINE);
+	s = 0.025f;
+	// lambo1.setScale(s, s, s);
 
 	Obj3d			lambo2(lamboBP, obj3d_prog);
-		// lambo2.local.setPos(0, -1.9f, 0);
-		lambo2.local.setPos(0, -6.0f, 0);
-		// lambo2.local.setScale(1, 5, 1);
-		lambo2.local.setRot(0, 180.0f, 0);
-		lambo2.setTexture(texture1);
-		lambo2.displayTexture = true;
-		// lambo2.setPolygonMode(GL_LINE);
-		s = 0.4f;
-		// lambo2.local.setScale(s, s, s);
-		// lambo2.setParent(&the42_1);
-		lambo2.setParent(&rocket1);
+	// lambo2.local.setPos(0, -1.9f, 0);
+	lambo2.local.setPos(0, -6.0f, 0);
+	// lambo2.local.setScale(1, 5, 1);
+	lambo2.local.setRot(0, 180.0f, 0);
+	lambo2.setTexture(texture1);
+	lambo2.displayTexture = true;
+	// lambo2.setPolygonMode(GL_LINE);
+	s = 0.4f;
+	// lambo2.local.setScale(s, s, s);
+	// lambo2.setParent(&the42_1);
+	lambo2.setParent(&rocket1);
 
 	Obj3d			lambo3(lamboBP, obj3d_prog);
-		lambo3.local.setPos(0, -4, 0);
-		lambo3.local.setRot(0, 0.0f, 180);
-		lambo3.setTexture(&texture8);
-		lambo3.displayTexture = true;
-		// lambo3.setPolygonMode(GL_LINE);
-		s = 30.0f;
-		// lambo3.local.setScale(s, s, s);
-		// lambo3.setParent(&the42_1);
-		lambo3.setParent(&lambo2);
+	lambo3.local.setPos(0, -4, 0);
+	lambo3.local.setRot(0, 0.0f, 180);
+	lambo3.setTexture(&texture8);
+	lambo3.displayTexture = true;
+	// lambo3.setPolygonMode(GL_LINE);
+	s = 30.0f;
+	// lambo3.local.setScale(s, s, s);
+	// lambo3.setParent(&the42_1);
+	lambo3.setParent(&lambo2);
 
-		obj3dList.push_back(&the42_1);
-		// obj3dList.push_back(&the42_2);
-		obj3dList.push_back(&teapot1);
-		// obj3dList.push_back(&cube1);
-		obj3dList.push_back(&rocket1);
-		obj3dList.push_back(&lambo1);
-		obj3dList.push_back(&lambo2);
-		obj3dList.push_back(&lambo3);
+	obj3dList.push_back(&the42_1);
+	// obj3dList.push_back(&the42_2);
+	obj3dList.push_back(&teapot1);
+	// obj3dList.push_back(&cube1);
+	obj3dList.push_back(&rocket1);
+	obj3dList.push_back(&lambo1);
+	obj3dList.push_back(&lambo2);
+	obj3dList.push_back(&lambo3);
 
-		if (true) {//spiral
-			// Obj3d*	backObj = &lambo3;
-			for (int i = 0; i < 20; i++) {
-				Obj3d* lamboPlus = new Obj3d(lamboBP, obj3d_prog);
-				lamboPlus->setParent(&lambo3);
-				lamboPlus->displayTexture = (i % 2) ? true : false;
-				lamboPlus->setTexture(&texture8);
-				lamboPlus->setColor(i * 45 % 255, i * 10 % 255, i * 73 % 255);
-				float maxScale = 3;
-				float scale = (float)((i % (int)maxScale) - (maxScale / 2));
-				lamboPlus->local.enlarge(scale, scale, scale);
-				float	val = cosf(Math::toRadian(i * 10)) * 10;
-				float	coef = 1.0f;
-				lamboPlus->local.setPos(lambo3.local.getPos());
-				lamboPlus->local.translate(float(i) / coef, val / coef, val / coef);
-				lamboPlus->local.rotate(Math::Rotation(i * 5, i * 5, i * 5));
+	if (true) {//spiral
+		// Obj3d*	backObj = &lambo3;
+		for (int i = 0; i < 20; i++) {
+			Obj3d* lamboPlus = new Obj3d(lamboBP, obj3d_prog);
+			lamboPlus->setParent(&lambo3);
+			lamboPlus->displayTexture = (i % 2) ? true : false;
+			lamboPlus->setTexture(&texture8);
+			lamboPlus->setColor(i * 45 % 255, i * 10 % 255, i * 73 % 255);
+			float maxScale = 3;
+			float scale = (float)((i % (int)maxScale) - (maxScale / 2));
+			lamboPlus->local.enlarge(scale, scale, scale);
+			float	val = cosf(Math::toRadian(i * 10)) * 10;
+			float	coef = 1.0f;
+			lamboPlus->local.setPos(lambo3.local.getPos());
+			lamboPlus->local.translate(float(i) / coef, val / coef, val / coef);
+			lamboPlus->local.rotate(Math::Rotation(i * 5, i * 5, i * 5));
 
-				obj3dList.push_back(lamboPlus);
-				// backObj = lamboPlus;
-			}
+			obj3dList.push_back(lamboPlus);
+			// backObj = lamboPlus;
 		}
+	}
 #endif
 
 
@@ -312,7 +321,7 @@ void	scene1() {
 	cam.lockedOrientation = false;
 
 	glfw.setMouseAngle(45);
-	std::cout << "MouseAngle: " <<  glfw.getMouseAngle() << std::endl;
+	std::cout << "MouseAngle: " << glfw.getMouseAngle() << std::endl;
 	//exit(0);
 
 	if (false) {//cam anchor to rocket1, bugged with Z rot
@@ -334,46 +343,46 @@ void	scene1() {
 #ifndef BEHAVIORS
 	cout << "behavior:" << endl;
 	TransformBH		b1;
-		b1.transform.rot.setUnit(ROT_DEG);
-		b1.transform.rot.z = 10 * defaultFps->getTick();
-		b1.modeRot = ADDITIVE;
-		float ss = 1.0f + 0.1f * defaultFps->getTick();
-		//b1.transform.scale = Math::Vector3(ss, ss, ss);
-	//	b1.modeScale = MULTIPLICATIVE;
-		cout << "___ adding rocket1: " << &rocket1 << endl;
-		b1.addTarget(&rocket1);
-		b1.addTarget(&lambo1);
-		b1.removeTarget(&lambo1);
-		b1.setTargetStatus(&rocket1, false);
-		std::cout << "rocket1 status: " << b1.getTargetStatus(&rocket1) << std::endl;
-		b1.setTargetStatus(&rocket1, true);
-		std::cout << "rocket1 status: " << b1.getTargetStatus(&rocket1) << std::endl;
+	b1.transform.rot.setUnit(ROT_DEG);
+	b1.transform.rot.z = 10 * defaultFps->getTick();
+	b1.modeRot = ADDITIVE;
+	float ss = 1.0f + 0.1f * defaultFps->getTick();
+	//b1.transform.scale = Math::Vector3(ss, ss, ss);
+//	b1.modeScale = MULTIPLICATIVE;
+	cout << "___ adding rocket1: " << &rocket1 << endl;
+	b1.addTarget(&rocket1);
+	b1.addTarget(&lambo1);
+	b1.removeTarget(&lambo1);
+	b1.setTargetStatus(&rocket1, false);
+	std::cout << "rocket1 status: " << b1.getTargetStatus(&rocket1) << std::endl;
+	b1.setTargetStatus(&rocket1, true);
+	std::cout << "rocket1 status: " << b1.getTargetStatus(&rocket1) << std::endl;
 
 	TransformBH		b2;// = b1;//bug
-		b2.transform.scale = Math::Vector3(0,0,0);
-		b2.modeScale = ADDITIVE;
-		// b2.transform.rot.z = 0.0f;
-		b2.transform.rot.x = -45.0f * defaultFps->getTick();
-		// b2.removeTarget(&rocket1);
-		b2.addTarget(&empty1);
-		//bug if i do:
-		b2.addTarget(&empty1);
-		b2.removeTarget(&rocket1);
-	
-	TransformBH		b3;// = b1;//bug
-		b3.transform.scale = Math::Vector3(0,0,0);
-		b3.modeScale = ADDITIVE;
-		b3.transform.rot.y = 102.0f * defaultFps->getTick();
-		b3.addTarget(&lambo2);
+	b2.transform.scale = Math::Vector3(0, 0, 0);
+	b2.modeScale = ADDITIVE;
+	// b2.transform.rot.z = 0.0f;
+	b2.transform.rot.x = -45.0f * defaultFps->getTick();
+	// b2.removeTarget(&rocket1);
+	b2.addTarget(&empty1);
+	//bug if i do:
+	b2.addTarget(&empty1);
+	b2.removeTarget(&rocket1);
 
-		cout << "b1: " << b1.getTargetList().size() << endl;
-		cout << "b2: " << b2.getTargetList().size() << endl;
+	TransformBH		b3;// = b1;//bug
+	b3.transform.scale = Math::Vector3(0, 0, 0);
+	b3.modeScale = ADDITIVE;
+	b3.transform.rot.y = 102.0f * defaultFps->getTick();
+	b3.addTarget(&lambo2);
+
+	cout << "b1: " << b1.getTargetList().size() << endl;
+	cout << "b2: " << b2.getTargetList().size() << endl;
 
 	TransformBH		b4;// = b1;//bug
-		b4.transform.scale = Math::Vector3(0,0,0);
-		b4.modeScale = ADDITIVE;
-		b4.transform.rot.y = 720.0f * defaultFps->getTick();
-		b4.addTarget(&teapot1);
+	b4.transform.scale = Math::Vector3(0, 0, 0);
+	b4.modeScale = ADDITIVE;
+	b4.transform.rot.y = 720.0f * defaultFps->getTick();
+	b4.addTarget(&teapot1);
 	// exit(0);
 
 	if (false) {// check behavior target, add remove
@@ -404,7 +413,7 @@ void	scene1() {
 		cout << "b2:    \t" << b2.getTargetList().size() << endl;
 	}
 #endif
-// exit(0);
+	// exit(0);
 
 #ifndef GAMEMANAGER
 	GameManager	manager;
@@ -457,7 +466,8 @@ void	scene1() {
 					float r = 180 * defaultFps->getTick();
 					p.rotateAround(cam.local.getPos(), Math::Rotation(r, 0, 0));
 					teapot1.local.setPos(p);
-				} else if (true) {
+				}
+				else if (true) {
 					float r = 180 * defaultFps->getTick();
 					teapot1.local.rotateAround(cam.local.getPos(), Math::Rotation(r, 0, 0));
 				}
@@ -486,10 +496,10 @@ void	scene1() {
 	delete texture1;
 	delete texture2;
 	delete texture3;
-//	delete texture4;
+	//	delete texture4;
 	delete texture5;
-//	delete texture6;
-	//delete texture7;
+	//	delete texture6;
+		//delete texture7;
 }
 
 void scene2() {
@@ -500,7 +510,12 @@ void scene2() {
 	Obj3dPG			obj3d_prog(OBJ3D_VS_FILE, OBJ3D_FS_FILE);
 	SkyboxPG		sky_pg(CUBEMAP_VS_FILE, CUBEMAP_FS_FILE);
 
-	Obj3dBP			rocketBP("obj3d/ARSENAL_VG33/Arsenal_VG33.obj", true);
+	//Blueprint global settings
+	Obj3dBP::defaultSize = 1;
+	Obj3dBP::dataMode = BP_VERTEX_ARRAY;
+	Obj3dBP::rescale = true;
+	Obj3dBP::center = true;
+	Obj3dBP			rocketBP("obj3d/ARSENAL_VG33/Arsenal_VG33.obj");
 
 	Texture* texture3 = new Texture("images/skyboxfuck.bmp");
 	Texture* texture5 = new Texture("images/skytest.bmp");
@@ -590,19 +605,19 @@ void scene2() {
 			cam.events(glfw, float(defaultFps->getTick()));
 			if (true) {
 				if (GLFW_PRESS == glfwGetKey(glfw._window, GLFW_KEY_LEFT))
-					rocket.local.rotate(0,		mvt,	0);
+					rocket.local.rotate(0, mvt, 0);
 				if (GLFW_PRESS == glfwGetKey(glfw._window, GLFW_KEY_RIGHT))
-					rocket.local.rotate(0,		-mvt,	0);
+					rocket.local.rotate(0, -mvt, 0);
 				if (GLFW_PRESS == glfwGetKey(glfw._window, GLFW_KEY_DOWN))
-					rocket.local.rotate(mvt,	0,		0);
+					rocket.local.rotate(mvt, 0, 0);
 				if (GLFW_PRESS == glfwGetKey(glfw._window, GLFW_KEY_UP))
-					rocket.local.rotate(-mvt,	0,		0);
+					rocket.local.rotate(-mvt, 0, 0);
 				if (GLFW_PRESS == glfwGetKey(glfw._window, GLFW_KEY_KP_1))
-					rocket.local.rotate(0,		0,		mvt);
+					rocket.local.rotate(0, 0, mvt);
 				if (GLFW_PRESS == glfwGetKey(glfw._window, GLFW_KEY_KP_2))
-					rocket.local.rotate(0,		0,		-mvt);
+					rocket.local.rotate(0, 0, -mvt);
 				if (GLFW_PRESS == glfwGetKey(glfw._window, GLFW_KEY_KP_0))
-					rocket.local.setRot(0,		0,		0);
+					rocket.local.setRot(0, 0, 0);
 
 				Math::Vector3	pos = rocket.local.getPos();
 				if (GLFW_PRESS == glfwGetKey(glfw._window, GLFW_KEY_KP_8))
@@ -620,10 +635,10 @@ void scene2() {
 				rocket.local.setPos(pos);
 
 
-			//#define 	GLFW_KEY_RIGHT   262
-			//#define 	GLFW_KEY_LEFT   263
-			//#define 	GLFW_KEY_DOWN   264
-			//#define 	GLFW_KEY_UP   265
+				//#define 	GLFW_KEY_RIGHT   262
+				//#define 	GLFW_KEY_LEFT   263
+				//#define 	GLFW_KEY_DOWN   264
+				//#define 	GLFW_KEY_UP   265
 			}
 
 			// printFps();
@@ -671,12 +686,14 @@ void	fillData(uint8_t* dst, QuadNode* node, int* leafAmount, int baseWidth, bool
 					dst[index + 0] = 0;
 					dst[index + 1] = 0;
 					dst[index + 2] = 0;
-				} else {
+				}
+				else {
 					if (1 && (posx == 0 || posy == 0)) {
 						dst[index + 0] = color.x;
 						dst[index + 1] = color.y;
 						dst[index + 2] = color.z;
-					} else {
+					}
+					else {
 						dst[index + 0] = node->pixel.r;
 						dst[index + 1] = node->pixel.g;
 						dst[index + 2] = node->pixel.b;
@@ -734,7 +751,8 @@ static void		keyCallback_quadTree(GLFWwindow* window, int key, int scancode, int
 		QuadTreeManager* manager = static_cast<QuadTreeManager*>(glfwGetWindowUserPointer(window));
 		if (!manager) {
 			std::cout << "static_cast failed" << std::endl;
-		} else if (manager->glfw) {
+		}
+		else if (manager->glfw) {
 			if (key == GLFW_KEY_EQUAL) {
 				manager->threshold++;
 				manager->glfw->setTitle(std::to_string(manager->threshold).c_str());
@@ -795,7 +813,7 @@ void	scene_4Tree() {
 			//glfw.updateMouse();//to do before cam's events
 			//cam.events(glfw, float(defaultFps->tick));
 
-			fillData(dataOctree, root, &leafAmount, w, manager.draw_borders, manager.threshold, Math::Vector3(0,0,0));
+			fillData(dataOctree, root, &leafAmount, w, manager.draw_borders, manager.threshold, Math::Vector3(0, 0, 0));
 			leafAmount = -1;
 			//std::cout << "leafs: " << leafAmount << std::endl;
 			//std::cout << "w * h * 3 = " << w << " * " << h << " * 3 = " << w * h * 3 << std::endl;
@@ -879,11 +897,11 @@ public:
 	int				areaHeight;
 	double			island;
 	//vox
-	Obj3d*			player;
+	Obj3d* player;
 	int	playerChunkX;
 	int	playerChunkY;
 	std::list<Obj3d*>	renderlist;
-	Cam*			cam;
+	Cam* cam;
 	int				range_chunk_display;
 	int				range_chunk_memory;
 	int				chunk_size;
@@ -950,7 +968,7 @@ Math::Vector3	genColor(uint8_t elevation) {
 	return color;
 }
 
-void	th_buildData(uint8_t* data, ProceduralManager & manager, int yStart, int yEnd) {
+void	th_buildData(uint8_t* data, ProceduralManager& manager, int yStart, int yEnd) {
 	const siv::PerlinNoise perlin(manager.seed);
 	double playerPosX, playerPosY;
 	playerPosX = manager.mouseX - (WINX / 2);//center of screen is 0:0
@@ -1025,7 +1043,7 @@ void	scene_procedural() {
 	manager.areaWidth = screenSize;
 	manager.areaHeight = screenSize;
 	manager.frequency = double(screenSize) / 75;
-	uint8_t*	data = new uint8_t[manager.areaWidth * manager.areaHeight * 3];
+	uint8_t* data = new uint8_t[manager.areaWidth * manager.areaHeight * 3];
 	Texture* image = new Texture(data, manager.areaWidth, manager.areaHeight);
 
 	int repeatX = WINX / manager.areaWidth;
@@ -1060,7 +1078,7 @@ void	scene_procedural() {
 			int playerPosX = manager.mouseX - (WINX / 2);//center of screen is 0:0
 			int playerPosY = WINY - manager.mouseY - (WINY / 2);//center of screen is 0:0   //invert glfw Y to match opengl image
 			Math::Vector3	vec(playerPosX, playerPosY, 0);
-			double dist = (double(vec.magnitude()) / double(WINY*2));
+			double dist = (double(vec.magnitude()) / double(WINY * 2));
 			std::cout << playerPosX << ":" << playerPosY << "  \t" << dist << std::endl;
 
 			for (size_t i = 0; i < thread_amount; i++) {//compute data with threads
@@ -1147,13 +1165,13 @@ void		buildChunk(ProceduralManager& manager, QuadNode* node, int chunkI, int chu
 			std::cout << "Display new leaf: " << node->width << "x" << node->height << " at " << node->x << ":" << node->y << "\t";
 			std::cout << (int)node->pixel.r << "  \t" << (int)node->pixel.g << "  \t" << (int)node->pixel.b << std::endl;
 		}
-	#ifndef RENDER_WORLD // make a special render func for that (or change buildChunk)
+#ifndef RENDER_WORLD // make a special render func for that (or change buildChunk)
 		Obj3d* cube = manager.renderlist.front();
 		int polmode = cube->getPolygonMode();
 		uint8_t	elevation = node->pixel.r;
 		Math::Vector3	color = genColor(elevation);
 		if (0 && (node->x == 0 || node->y == 0))
-			cube->setColor(0,0,0);
+			cube->setColor(0, 0, 0);
 		else
 			cube->setColor(color.x, color.y, color.z);
 
@@ -1167,7 +1185,7 @@ void		buildChunk(ProceduralManager& manager, QuadNode* node, int chunkI, int chu
 		cube->setPolygonMode(manager.polygon_mode);
 		//renderObj3d(manager.renderlist, *manager.cam);
 		cube->setPolygonMode(polmode);
-	#endif
+#endif
 	}
 	else if (node->children) {
 		buildChunk(manager, node->children[0], chunkI, chunkJ, threshold);
@@ -1177,7 +1195,7 @@ void		buildChunk(ProceduralManager& manager, QuadNode* node, int chunkI, int chu
 	}
 }
 
-void		buildWorld(ProceduralManager & manager, QuadNode*** memory4Tree) {
+void		buildWorld(ProceduralManager& manager, QuadNode*** memory4Tree) {
 	//std::cout << "building world...\n";
 
 	int longTreshold = 12;
@@ -1202,7 +1220,7 @@ void		buildWorld(ProceduralManager & manager, QuadNode*** memory4Tree) {
 	}
 }
 
-uint8_t*	generatePerlinNoise(ProceduralManager& manager, int posX, int posY, int width, int height) {
+uint8_t* generatePerlinNoise(ProceduralManager& manager, int posX, int posY, int width, int height) {
 	uint8_t* data = new uint8_t[width * height * 3];
 	for (int y = 0; y < height; ++y) {
 		for (int x = 0; x < width; ++x) {
@@ -1211,8 +1229,8 @@ uint8_t*	generatePerlinNoise(ProceduralManager& manager, int posX, int posY, int
 			double ny = double(posY + y) / double(500);
 
 			value = manager.perlin->accumulatedOctaveNoise2D_0_1(nx * manager.frequency,
-																ny * manager.frequency,
-																manager.octaves);
+				ny * manager.frequency,
+				manager.octaves);
 
 			value = std::pow(value, manager.flattering);
 			Math::Vector3	vec(x, y, 0);
@@ -1428,13 +1446,18 @@ void	scene_vox() {
 	Obj3dPG		obj3d_prog(OBJ3D_VS_FILE, OBJ3D_FS_FILE);
 	SkyboxPG	sky_pg(CUBEMAP_VS_FILE, CUBEMAP_FS_FILE);
 
-	Obj3dBP		cubebp("obj3d/cube.obj", true, false);
+	//Blueprint global settings
+	Obj3dBP::defaultSize = 1;
+	Obj3dBP::dataMode = BP_VERTEX_ARRAY;
+	Obj3dBP::rescale = true;
+	Obj3dBP::center = false;
+	Obj3dBP		cubebp("obj3d/cube.obj");
 
-	Texture*	tex_skybox = new Texture("images/skybox4.bmp");
+	Texture* tex_skybox = new Texture("images/skybox4.bmp");
 	Skybox		skybox(*tex_skybox, sky_pg);
 
 	Cam		cam(manager.glfw->getWidth(), manager.glfw->getHeight());
-	cam.speed = 4*15;
+	cam.speed = 4 * 15;
 	cam.local.setPos(0, 30, 0);
 	cam.printProperties();
 	cam.lockedMovement = false;
@@ -1477,16 +1500,16 @@ void	scene_vox() {
 	std::cout << "manager.range_chunk_memory " << manager.range_chunk_memory << std::endl;
 	std::cout << "manager.range_chunk_display " << manager.range_chunk_display << std::endl;
 
-	uint8_t*** chunkMemory = new uint8_t**[manager.range_chunk_memory];
-	QuadNode*** chunkMemory4Tree = new QuadNode**[manager.range_chunk_memory];
+	uint8_t*** chunkMemory = new uint8_t * *[manager.range_chunk_memory];
+	QuadNode*** chunkMemory4Tree = new QuadNode * *[manager.range_chunk_memory];
 	Math::Vector3	playerPos = player1.local.getPos();
 	int	playerChunkX = (int)playerPos.x / manager.chunk_size;
 	int	playerChunkY = (int)playerPos.z / manager.chunk_size;//opengl y is height, so we use opengl z here
 	int startX = playerChunkX * manager.chunk_size - (manager.chunk_size * manager.range_chunk_memory / 2);
 	int startY = playerChunkY * manager.chunk_size - (manager.chunk_size * manager.range_chunk_memory / 2);
 	for (size_t j = 0; j < manager.range_chunk_memory; j++) {
-		chunkMemory[j] = new uint8_t*[manager.range_chunk_memory];
-		chunkMemory4Tree[j] = new QuadNode*[manager.range_chunk_memory];
+		chunkMemory[j] = new uint8_t * [manager.range_chunk_memory];
+		chunkMemory4Tree[j] = new QuadNode * [manager.range_chunk_memory];
 		for (size_t i = 0; i < manager.range_chunk_memory; i++) {
 			//std::cout << i << ":" << j << std::endl;
 			chunkMemory[j][i] = nullptr;
@@ -1506,19 +1529,19 @@ void	scene_vox() {
 	uint8_t* dataChunkMemory = new uint8_t[3 * memoryTotalRange * memoryTotalRange];
 	for (size_t j = 0; j < manager.range_chunk_memory; j++) {
 		for (size_t i = 0; i < manager.range_chunk_memory; i++) {
-				int leafamount = 0;
-				Math::Vector3 color(0, 0, 0);
-				if ((i >= startDisplay && i < endDisplay) && (j >= startDisplay && j < endDisplay))
-					color = Math::Vector3(255, 0, 0);
-				fillData(dataChunkMemory + 3 * (j * memoryTotalRange*manager.chunk_size + i*manager.chunk_size),
-					chunkMemory4Tree[j][i], &leafamount, memoryTotalRange, false, THRESHOLD, color);
+			int leafamount = 0;
+			Math::Vector3 color(0, 0, 0);
+			if ((i >= startDisplay && i < endDisplay) && (j >= startDisplay && j < endDisplay))
+				color = Math::Vector3(255, 0, 0);
+			fillData(dataChunkMemory + 3 * (j * memoryTotalRange * manager.chunk_size + i * manager.chunk_size),
+				chunkMemory4Tree[j][i], &leafamount, memoryTotalRange, false, THRESHOLD, color);
 		}
 	}
 
-	Texture*	grid = new Texture(dataChunkMemory, memoryTotalRange, memoryTotalRange);
+	Texture* grid = new Texture(dataChunkMemory, memoryTotalRange, memoryTotalRange);
 	UIImage		gridPanel(grid);
 	gridPanel.setPos((WINX / 2) + manager.playerChunkX * manager.chunk_size - (manager.range_chunk_memory / 2 * manager.chunk_size),
-					(WINY / 2) + manager.playerChunkY * manager.chunk_size - (manager.range_chunk_memory / 2 * manager.chunk_size));//z cauz opengl
+		(WINY / 2) + manager.playerChunkY * manager.chunk_size - (manager.range_chunk_memory / 2 * manager.chunk_size));//z cauz opengl
 	gridPanel.setSize(memoryTotalRange, memoryTotalRange);
 #endif // CHUNKS
 
@@ -1630,7 +1653,7 @@ void	scene_vox() {
 				gridPanel.getTexture()->updateData(dataChunkMemory, memoryTotalRange, memoryTotalRange);
 				playerPos = player1.local.getPos();
 				gridPanel.setPos((WINX / 2) + manager.playerChunkX * manager.chunk_size - (manager.range_chunk_memory / 2 * manager.chunk_size),
-								(WINY / 2) + manager.playerChunkY * manager.chunk_size - (manager.range_chunk_memory / 2 * manager.chunk_size));//z cauz opengl
+					(WINY / 2) + manager.playerChunkY * manager.chunk_size - (manager.range_chunk_memory / 2 * manager.chunk_size));//z cauz opengl
 				gridPanel.setSize(memoryTotalRange, memoryTotalRange);
 			}
 			if (currentchunkY != manager.playerChunkY) {
@@ -1651,7 +1674,7 @@ void	scene_vox() {
 				gridPanel.getTexture()->updateData(dataChunkMemory, memoryTotalRange, memoryTotalRange);
 				playerPos = player1.local.getPos();
 				gridPanel.setPos((WINX / 2) + manager.playerChunkX * manager.chunk_size - (manager.range_chunk_memory / 2 * manager.chunk_size),
-								(WINY / 2) + manager.playerChunkY * manager.chunk_size - (manager.range_chunk_memory / 2 * manager.chunk_size));//z cauz opengl
+					(WINY / 2) + manager.playerChunkY * manager.chunk_size - (manager.range_chunk_memory / 2 * manager.chunk_size));//z cauz opengl
 				gridPanel.setSize(memoryTotalRange, memoryTotalRange);
 			}
 
@@ -1676,7 +1699,7 @@ public:
 		this->octaves = std::clamp(this->octaves, 1, 16);
 
 		this->player = nullptr;
-		this->chunk_size = 96;
+		this->chunk_size = 160;
 		this->chunk_display = 1;
 		this->polygon_mode = GL_POINT;
 		this->polygon_mode = GL_LINE;
@@ -1686,19 +1709,21 @@ public:
 	~OctreeManager() {}
 
 	unsigned int		seed;
-	siv::PerlinNoise*	perlin;
+	siv::PerlinNoise* perlin;
 	double				frequency;
 	int					octaves;
 	std::list<Object*>	renderlist;
 	std::list<Object*>	renderlistOctree;
 	std::list<Object*>	renderlistGrid;
+	std::list<Object*>	renderlistVoxels;
 	std::list<Object*>	renderlistSkybox;
 	GLuint				polygon_mode;
-	Obj3d*				player;
+	Obj3d* player;
 	unsigned int		chunk_size;
 	int					chunk_display;
 	unsigned int		threshold;
 };
+
 #define M_PERLIN_GENERATION		1
 #define M_OCTREE_OPTIMISATION	1
 #define M_DISPLAY_BLACK			1
@@ -1721,16 +1746,19 @@ static void		keyCallback_ocTree(GLFWwindow* window, int key, int scancode, int a
 			if (key == GLFW_KEY_EQUAL) {
 				manager->threshold++;
 				manager->glfw->setTitle(std::to_string(manager->threshold).c_str());
-			} else if (key == GLFW_KEY_MINUS && manager->threshold > 0) {
+			}
+			else if (key == GLFW_KEY_MINUS && manager->threshold > 0) {
 				manager->threshold--;
 				manager->glfw->setTitle(std::to_string(manager->threshold).c_str());
-			} else if (key == GLFW_KEY_ENTER) {
+			}
+			else if (key == GLFW_KEY_ENTER) {
 				manager->polygon_mode++;
 				manager->polygon_mode = GL_POINT + (manager->polygon_mode % 3);
 				for (std::list<Object*>::iterator it = manager->renderlist.begin(); it != manager->renderlist.end(); ++it) {
 					((Obj3d*)(*it))->setPolygonMode(manager->polygon_mode);
 				}
-			} else if (key == GLFW_KEY_X) {
+			}
+			else if (key == GLFW_KEY_X) {
 				manager->cam->local.translate(move, 0, 0);
 			}
 			else if (key == GLFW_KEY_Y) {
@@ -1743,7 +1771,7 @@ static void		keyCallback_ocTree(GLFWwindow* window, int key, int scancode, int a
 	}
 }
 
-void	buildObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager, Obj3dBP& cubebp, Obj3dPG& obj3d_prog, Texture* tex_lena) {
+void	buildObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager, Obj3dBP& cubebp, Obj3dPG& obj3d_prog, Obj3dIPG& voxels_prog, Texture* tex_lena) {
 	std::cout << "_ " << __PRETTY_FUNCTION__ << std::endl;
 	for (auto i : manager.renderlist)
 		delete i;
@@ -1787,7 +1815,7 @@ void	buildObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager,
 					cubeGrid->displayTexture = false;
 					manager.renderlistGrid.push_back(cubeGrid);
 				}
-				chunkPtr->root->browse(0, [&manager, &cubebp, &obj3d_prog, scale_coef, scale_coe2, chunkPtr, tex_lena, &hiddenBlocks](Octree* node) {
+				chunkPtr->root->browse(0, [&manager, &cubebp, &obj3d_prog, &voxels_prog, scale_coef, scale_coe2, chunkPtr, tex_lena, &hiddenBlocks](Octree* node) {
 					if (M_DISPLAY_BLACK || (node->pixel.r != 0 && node->pixel.g != 0 && node->pixel.b != 0)) {
 						Math::Vector3	worldPos(chunkPtr->pos);
 						worldPos.add(node->pos);
@@ -1817,18 +1845,19 @@ void	buildObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager,
 								cube->setPolygonMode(GL_FILL);
 								hiddenBlocks++;
 								manager.renderlist.push_back(cube);
-							} else {
-								// push only the faces next to an EMPTY_VOXEL in an allin buffer
+							}
+							else {
+								// push only the faces next to an EMPTY_VOXEL in an all-in buffer
 								manager.renderlist.push_back(cube);
 							}
 							if (M_DISPLAY_BLACK) {
-									Obj3d* cube2 = new Obj3d(cubebp, obj3d_prog);
-									cube2->setColor(0, 0, 0);
-									cube2->local.setPos(worldPos);
-									cube2->local.setScale(node->size.x * scale_coe2, node->size.y * scale_coe2, node->size.z * scale_coe2);
-									cube2->setPolygonMode(GL_LINE);
-									cube2->displayTexture = false;
-									manager.renderlistOctree.push_back(cube2);
+								Obj3d* cube2 = new Obj3d(cubebp, voxels_prog);
+								cube2->setColor(0, 0, 0);
+								cube2->local.setPos(worldPos);
+								cube2->local.setScale(node->size.x * scale_coe2, node->size.y * scale_coe2, node->size.z * scale_coe2);
+								cube2->setPolygonMode(GL_LINE);
+								cube2->displayTexture = false;
+								manager.renderlistOctree.push_back(cube2);
 							}
 						}
 					}
@@ -1839,10 +1868,125 @@ void	buildObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager,
 	std::cout << "hiddenBlocks:\t" << hiddenBlocks << std::endl;
 }
 
+void	scene_test() {
+	OctreeManager	m;
+	m.glfw = new Glfw(WINX, WINY);
+	std::string	pathPrefix("SimpleGL/");
+	Texture* tex_skybox = new Texture(pathPrefix + "images/skybox4.bmp");
+	Texture* tex_lena = new Texture(pathPrefix + "images/lena.bmp");
+
+	//Blueprint global settings
+	Obj3dBP::defaultSize = 1;
+	Obj3dBP::dataMode = BP_INDICES;
+	//Obj3dBP::dataMode = BP_VERTEX_ARRAY;
+	Obj3dBP::rescale = true;
+	Obj3dBP::center = false;
+	Obj3dBP		cubebp(pathPrefix + "obj3d/cube.obj");
+	Obj3dBP		lambobp(pathPrefix + "obj3d/lambo/Lamborginhi_Aventador_OBJ/Lamborghini_Aventador_no_collider.obj");
+	Texture*	lambotex = new Texture(pathPrefix + "obj3d/lambo/Lamborginhi_Aventador_OBJ/Lamborginhi_Aventador_diffuse.bmp");
+
+	Obj3dPG			rendererObj3d(pathPrefix + OBJ3D_VS_FILE, pathPrefix + OBJ3D_FS_FILE);
+	rendererObj3d.getLocations();
+	Obj3dIPG		rendererObj3dInstanced(pathPrefix + OBJ3D_INSTANCED_VS_FILE, pathPrefix + OBJ3D_FS_FILE);
+	rendererObj3dInstanced.getLocations();
+	SkyboxPG		rendererSkybox(pathPrefix + CUBEMAP_VS_FILE, pathPrefix + CUBEMAP_FS_FILE);
+
+	Skybox			skybox(*tex_skybox, rendererSkybox);
+	m.renderlistSkybox.push_back(&skybox);
+
+	Cam		cam(m.glfw->getWidth(), m.glfw->getHeight());
+	cam.speed = 5;
+	cam.printProperties();
+	cam.lockedMovement = false;
+	cam.lockedOrientation = false;
+	//m.glfw->setMouseAngle(-1);//?
+	m.cam = &cam;
+
+	if (0) {
+		for (size_t i = 0; i < 10; i++) {
+			Obj3d* cube = new Obj3d(cubebp, rendererObj3d);
+			cube->local.setPos(i, 0, 0);
+			cube->local.setScale(1, 1, 1);
+			cube->setColor(25 * i, 0, 0);
+			cube->displayTexture = false;
+			cube->setPolygonMode(GL_LINE);
+			m.renderlist.push_back(cube);
+		}
+	}
+	if (1) {
+		for (size_t k = 0; k < 1; k++) {
+			for (size_t j = 0; j < 50; j++) {
+				for (size_t i = 0; i < 50; i++) {
+					Obj3d* lambo = new Obj3d(lambobp, rendererObj3d);
+					lambo->local.setPos(i, j, k);
+					lambo->local.enlarge(5, 5, 5);
+					lambo->setColor(222, 0, 222);
+					lambo->setTexture(lambotex);
+					lambo->displayTexture = true;
+					lambo->setPolygonMode(GL_FILL);
+					m.renderlist.push_back(lambo);
+				}
+			}
+		}
+	}
+	/*
+		50x50=2500 lambo		|		FPS
+						frustum	|	in		out
+		---------------------------------------
+		glDrawArrays			|	25		37
+		glDrawElements			|	22		22
+		---------------------------------------
+		glDrawArraysInstanced	|	8		33
+		glDrawElementsInstanced	|	8		40
+	*/
+
+	Fps	fps144(144);
+	Fps	fps60(60);
+	//Fps* defaultFps = &fps60;
+	Fps* defaultFps = &fps144;
+
+	Obj3dPG* renderer = &rendererObj3d;
+	//renderer = &rendererObj3dInstanced;
+
+	glDisable(GL_CULL_FACE);
+	std::cout << "Begin while loop" << endl;
+	while (!glfwWindowShouldClose(m.glfw->_window)) {
+		if (defaultFps->wait_for_next_frame()) {
+			m.glfw->setTitle(std::to_string(defaultFps->getFps()) + " fps");
+
+			glfwPollEvents();
+			m.glfw->updateMouse();//to do before cam's events
+			m.cam->events(*m.glfw, float(defaultFps->getTick()));
+
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			renderer->renderObjects(m.renderlist, cam, FORCE_DRAW);
+			rendererSkybox.renderObjects(m.renderlistSkybox, cam, FORCE_DRAW);
+			glfwSwapBuffers(m.glfw->_window);
+
+			if (GLFW_PRESS == glfwGetKey(m.glfw->_window, GLFW_KEY_ESCAPE))
+				glfwSetWindowShouldClose(m.glfw->_window, GLFW_TRUE);
+		}
+	}
+
+	std::cout << "End while loop" << endl;
+	std::cout << "deleting textures..." << endl;
+}
+
 void	scene_octree() {
 #ifndef INIT_GLFW
 	OctreeManager	m;
 	m.glfw = new Glfw(WINX, WINY);
+
+	GLint n = 0;
+	glGetIntegerv(GL_NUM_EXTENSIONS, &n);
+	for (GLint i = 0; i < n; i++) {
+		const char* extension = (const char*)glGetStringi(GL_EXTENSIONS, i);
+		std::cout << extension << std::endl;
+	}
+
+	//exit(0);
+
+	glfwSwapInterval(0);//0 = disable vsynx
 	//glDisable(GL_CULL_FACE);
 	//glEnable(GL_BLEND);
 	//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -1860,16 +2004,24 @@ void	scene_octree() {
 	m.perlin = &perlin;
 
 	std::string	pathPrefix("SimpleGL/");
-	Texture*	tex_skybox = new Texture(pathPrefix + "images/skybox4.bmp");
-	Texture*	tex_lena = new Texture(pathPrefix + "images/lena.bmp");
+	Texture* tex_skybox = new Texture(pathPrefix + "images/skybox4.bmp");
+	Texture* tex_lena = new Texture(pathPrefix + "images/lena.bmp");
 
+	//Blueprint global settings
 	Obj3dBP::defaultSize = 1;
-	Obj3dBP		cubebp(pathPrefix + "obj3d/cube.obj", true, false);
+	Obj3dBP::dataMode = BP_INDICES;
+	//Obj3dBP::dataMode = BP_VERTEX_ARRAY;
+	Obj3dBP::rescale = true;
+	Obj3dBP::center = false;
+	Obj3dBP		cubebp(pathPrefix + "obj3d/cube.obj");
 
 
-	MeshRenderer	rendererObj3d(pathPrefix + OBJ3D_VS_FILE, pathPrefix + OBJ3D_FS_FILE);
-	SkyboxRenderer	rendererSkybox(pathPrefix + CUBEMAP_VS_FILE, pathPrefix + CUBEMAP_FS_FILE);
-	Skybox			skybox(*tex_skybox, *rendererSkybox.program);
+	Obj3dPG			rendererObj3d(pathPrefix + OBJ3D_VS_FILE, pathPrefix + OBJ3D_FS_FILE);
+	rendererObj3d.getLocations();
+	Obj3dIPG		rendererObj3dInstanced(pathPrefix + OBJ3D_INSTANCED_VS_FILE, pathPrefix + OBJ3D_FS_FILE);
+	rendererObj3dInstanced.getLocations();
+	SkyboxPG		rendererSkybox(pathPrefix + CUBEMAP_VS_FILE, pathPrefix + CUBEMAP_FS_FILE);
+	Skybox			skybox(*tex_skybox, rendererSkybox);
 	m.renderlistSkybox.push_back(&skybox);
 
 	Cam		cam(m.glfw->getWidth(), m.glfw->getHeight());
@@ -1885,8 +2037,7 @@ void	scene_octree() {
 	//uint8_t* dataOctree = new uint8_t[w * h * 3];
 
 #ifndef BASE_OBJ3D
-	Obj3d		cubeo(cubebp, *rendererObj3d.program);
-	//Obj3d		cubeo(cubebp, obj3d_prog);
+	Obj3d		cubeo(cubebp, rendererObj3d);
 	cubeo.local.setPos(0, 0, 0);
 	cubeo.local.setScale(1, 1, 1);
 	cubeo.setColor(255, 0, 0);
@@ -1894,7 +2045,7 @@ void	scene_octree() {
 	cubeo.setPolygonMode(GL_LINE);
 	//m.renderlist.push_back(&cubeo);
 
-	//Obj3d		player1(cubebp, obj3d_prog);
+	//Obj3d		player1(cubebp, *rendererObj3d.program);
 	//player1.local.setPos(0, 35, 0);
 	//player1.local.setScale(1, 2, 1);
 	//player1.local.enlarge(5, 5, 5);
@@ -1918,9 +2069,7 @@ void	scene_octree() {
 	ChunkGenerator	generator(playerPos, ps, m.chunk_size, \
 							Math::Vector3(m.chunk_display, m.chunk_display, m.chunk_display));
 
-	list<Obj3d*>	octreeDisplay;
-	list<Obj3d*>	gridDisplay;
-	buildObjectFromGenerator(generator, m, cubebp, *rendererObj3d.program, tex_lena);
+	buildObjectFromGenerator(generator, m, cubebp, rendererObj3d, rendererObj3dInstanced, tex_lena);
 
 	if (0) {
 		int start = -10;
@@ -1930,7 +2079,7 @@ void	scene_octree() {
 		for (int k = 0; k < amount; k++) {
 			for (int j = 0; j < amount; j++) {
 				for (int i = 0; i < amount; i++) {
-					Obj3d* cube = new Obj3d(cubebp, *rendererObj3d.program);
+					Obj3d* cube = new Obj3d(cubebp, rendererObj3d);
 					cube->setColor(127, 127, 127);
 					cube->local.setPos(start + i * step, start + j * step, start + k * step);
 					cube->local.setScale(1, 1, 1);
@@ -1942,9 +2091,9 @@ void	scene_octree() {
 		}
 		float	thickness = 0.2f;
 		float	len = 100.0f;
-		Obj3d	xdim(cubebp, *rendererObj3d.program);
-		Obj3d	ydim(cubebp, *rendererObj3d.program);
-		Obj3d	zdim(cubebp, *rendererObj3d.program);
+		Obj3d	xdim(cubebp, rendererObj3d);
+		Obj3d	ydim(cubebp, rendererObj3d);
+		Obj3d	zdim(cubebp, rendererObj3d);
 		xdim.setColor(255, 0, 0);
 		ydim.setColor(0, 255, 0);
 		zdim.setColor(0, 0, 255);
@@ -1959,10 +2108,15 @@ void	scene_octree() {
 #endif
 	Fps	fps144(144);
 	Fps	fps60(60);
-	Fps* defaultFps = &fps60;
+	//Fps* defaultFps = &fps60;
+	Fps* defaultFps = &fps144;
+
+	Obj3dPG* renderer = &rendererObj3d;
+	renderer = &rendererObj3dInstanced;
 
 	//generator.printData();
 
+	glDisable(GL_CULL_FACE);
 	std::cout << "Begin while loop" << endl;
 	while (!glfwWindowShouldClose(m.glfw->_window)) {
 		if (defaultFps->wait_for_next_frame()) {
@@ -1972,7 +2126,7 @@ void	scene_octree() {
 			m.glfw->updateMouse();//to do before cam's events
 			m.cam->events(*m.glfw, float(defaultFps->getTick()));
 
-		#ifndef LONETREE
+		#ifdef LONETREE
 			//89 220 102
 			int ind = generator.size.x / 2;
 			Chunk* mainChunk = generator.grid[ind][ind][ind];
@@ -2002,22 +2156,21 @@ void	scene_octree() {
 		#endif
 
 			if (1 && generator.updateGrid(cam.local.getPos())) {
-				buildObjectFromGenerator(generator, m, cubebp, *rendererObj3d.program, tex_lena);
-				std::cout << "Total Objects: " << m.renderlist.size() << std::endl;
+				buildObjectFromGenerator(generator, m, cubebp, rendererObj3d, rendererObj3dInstanced, tex_lena);
+				std::cout << "renderlist: " << m.renderlist.size() << std::endl;
+				std::cout << "renderlistOctree: " << m.renderlistOctree.size() << std::endl;
 			}
 
 			//GLuint	mode = m.polygon_mode;
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 			//std::cout << "renderlist\n";
-			rendererObj3d.renderObjects(m.renderlist, cam);
+			renderer->renderObjects(m.renderlist, cam, FORCE_DRAW);
 			//std::cout << "octreeDisplay\n";
-			rendererObj3d.renderObjects(m.renderlistOctree, cam);
-			glDisable(GL_CULL_FACE);
+			renderer->renderObjects(m.renderlistOctree, cam, FORCE_DRAW);
 			//std::cout << "gridDisplay\n";
 			rendererObj3d.renderObjects(m.renderlistGrid, cam, FORCE_DRAW);
-			glEnable(GL_CULL_FACE);
 
-			rendererSkybox.renderObjects(m.renderlistSkybox, cam);
+			rendererSkybox.renderObjects(m.renderlistSkybox, cam, FORCE_DRAW);
 			glfwSwapBuffers(m.glfw->_window);
 
 			if (GLFW_PRESS == glfwGetKey(m.glfw->_window, GLFW_KEY_ESCAPE))
@@ -2040,20 +2193,26 @@ void	maxUniforms() {
 	exit(0);
 }
 
+void	testtype(uint8_t value) {
+	std::cout << int(value) << std::endl;
+}
+
 int		main(void) {
 	//maxUniforms();
 	//check_paddings();
 	// test_behaviors();
 	//test_mult_mat4(); exit(0);
-	std::cout << "____START____ : " << Misc::getCurrentDirectory() << std::endl;
 	//	test_obj_loader();
 
+	std::cout << "____START____ : " << Misc::getCurrentDirectory() << std::endl;
 	//scene1();
 	//scene2();
 	//scene_4Tree();
 	//scene_procedural();
 	//scene_vox();
-	scene_octree();
+	//testtype(true);	testtype(false); exit(0);
+	scene_test();
+	//scene_octree();
 	// while(1);
 
 	return (EXIT_SUCCESS);

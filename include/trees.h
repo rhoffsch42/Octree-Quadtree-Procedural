@@ -4,6 +4,7 @@
 #include "program.hpp"
 #include "object.hpp"
 #include "obj3dPG.hpp"
+#include "obj3d_ipg.hpp"
 #include "obj3dBP.hpp"
 #include "obj3d.hpp"
 #include "misc.hpp"
@@ -17,8 +18,11 @@
 #include "gamemanager.hpp"
 #include "framebuffer.hpp"
 #include "uipanel.hpp"
+#include "quadtree.hpp"
+#include "octree.hpp"
+#include "chunk.hpp"
+#include "chunkgenerator.hpp"
 #include "perlin.hpp"
-
 #include "quadtree.hpp"
 
 #include <cmath>
@@ -27,7 +31,16 @@
 #include <list>
 #include <algorithm>
 #include <thread>
+#include <cassert>
+
+
+#ifdef _WIN32
+#include <direct.h>
+#else
+#include <unistd.h>
+#endif
 
 #define WINX 1600
 #define WINY 900
 #define SIMPLEGL_FOLDER		std::string("SimpleGL/")
+#define WIN32_VS_FOLDER		string("")
