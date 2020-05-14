@@ -1728,7 +1728,6 @@ public:
 #define M_OCTREE_OPTIMISATION	1
 #define M_DISPLAY_BLACK			1
 #define M_DRAW_GRID_CHUNK		1
-#define FORCE_DRAW				true
 
 static void		keyCallback_ocTree(GLFWwindow* window, int key, int scancode, int action, int mods) {
 	(void)window; (void)key; (void)scancode; (void)action; (void)mods;
@@ -1869,16 +1868,24 @@ void	buildObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager,
 }
 
 void	scene_test() {
+	char input[100];
+	std::cout << "Choose:\n\t";
+	std::cout << "1 - glDrawArrays\n\t";
+	std::cout << "2 - glDrawElements\n\t";
+	std::cout << "3 - glDrawArraysInstanced\n\t";
+	std::cout << "4 - glDrawElementsInstanced\n";
+	input[0] = '1';	input[1] = 0;
+	std::cin >> input;
 	OctreeManager	m;
 	m.glfw = new Glfw(WINX, WINY);
 	std::string	pathPrefix("SimpleGL/");
 	Texture* tex_skybox = new Texture(pathPrefix + "images/skybox4.bmp");
-	Texture* tex_lena = new Texture(pathPrefix + "images/lena.bmp");
 
 	//Blueprint global settings
 	Obj3dBP::defaultSize = 1;
 	Obj3dBP::dataMode = BP_INDICES;
-	//Obj3dBP::dataMode = BP_VERTEX_ARRAY;
+	if (input[0] % 2 == 1)
+		Obj3dBP::dataMode = BP_VERTEX_ARRAY;
 	Obj3dBP::rescale = true;
 	Obj3dBP::center = false;
 	Obj3dBP		cubebp(pathPrefix + "obj3d/cube.obj");
@@ -1886,15 +1893,14 @@ void	scene_test() {
 	Texture*	lambotex = new Texture(pathPrefix + "obj3d/lambo/Lamborginhi_Aventador_OBJ/Lamborginhi_Aventador_diffuse.bmp");
 
 	Obj3dPG			rendererObj3d(pathPrefix + OBJ3D_VS_FILE, pathPrefix + OBJ3D_FS_FILE);
-	rendererObj3d.getLocations();
 	Obj3dIPG		rendererObj3dInstanced(pathPrefix + OBJ3D_INSTANCED_VS_FILE, pathPrefix + OBJ3D_FS_FILE);
-	rendererObj3dInstanced.getLocations();
 	SkyboxPG		rendererSkybox(pathPrefix + CUBEMAP_VS_FILE, pathPrefix + CUBEMAP_FS_FILE);
 
 	Skybox			skybox(*tex_skybox, rendererSkybox);
 	m.renderlistSkybox.push_back(&skybox);
 
 	Cam		cam(m.glfw->getWidth(), m.glfw->getHeight());
+	cam.local.setPos(-5, -5, -5);
 	cam.speed = 5;
 	cam.printProperties();
 	cam.lockedMovement = false;
@@ -1902,7 +1908,7 @@ void	scene_test() {
 	//m.glfw->setMouseAngle(-1);//?
 	m.cam = &cam;
 
-	if (0) {
+	if (0) {//test 10 cubes
 		for (size_t i = 0; i < 10; i++) {
 			Obj3d* cube = new Obj3d(cubebp, rendererObj3d);
 			cube->local.setPos(i, 0, 0);
@@ -1913,7 +1919,7 @@ void	scene_test() {
 			m.renderlist.push_back(cube);
 		}
 	}
-	if (1) {
+	if (1) {//lambos
 		for (size_t k = 0; k < 1; k++) {
 			for (size_t j = 0; j < 50; j++) {
 				for (size_t i = 0; i < 50; i++) {
@@ -1928,17 +1934,26 @@ void	scene_test() {
 				}
 			}
 		}
-	}
-	/*
-		50x50=2500 lambo		|		FPS
-						frustum	|	in		out
-		---------------------------------------
-		glDrawArrays			|	25		37
-		glDrawElements			|	22		22
-		---------------------------------------
-		glDrawArraysInstanced	|	8		33
-		glDrawElementsInstanced	|	8		40
-	*/
+	}		
+/*
+
+2500 Models * 10252 polygons = 25 630 000 polygons
+PC-1      Intel Core i7 2600 @ 3.40GHz Sandy Bridge 32nm Technology    4095MB NVIDIA GeForce GTX 1050 Ti (MSI)
+PC-2      Intel Core i7 @ 3.70GHz Coffee Lake 14nm Technology          4095MB NVIDIA GeForce GTX 1080
+Shadow15  Intel Xeon E5 v3 @ 3.20GHz Haswell-E/EP 22nm Technology      3071MB NVIDIA Quadro P5000 (NVIDIA)
+                                         FPS                                         
+------------------------+-----------+-----------+-----------|
+                     PC |  PC-1     |  Shadow15 |  PC-2     |
+                frustum |  in  out  |  in  out  |  in  out  |
+------------------------+-----------+-----------+-----------|
+glDrawArrays            |  25   37  | 112  112  | 126  132  |   1
+glDrawArraysInstanced   |  25   33  |  98  102  | 102  110  |   3
+------------------------+-----------+-----------+-----------|
+glDrawElements          |  22   22  |  33   33  |  29   29  |   2
+glDrawElementsInstanced |  36   40  |  40   40  |  58   60  |   4
+------------------------+-----------+-----------+-----------|
+
+*/
 
 	Fps	fps144(144);
 	Fps	fps60(60);
@@ -1946,8 +1961,34 @@ void	scene_test() {
 	Fps* defaultFps = &fps144;
 
 	Obj3dPG* renderer = &rendererObj3d;
-	//renderer = &rendererObj3dInstanced;
+	if (input[0] >= '3') {
+		renderer = &rendererObj3dInstanced;
+		std::cout << "Instanced rendering enabled" << std::endl;
+	}
 
+#ifndef SHADER_INIT
+	for (auto o : m.renderlist)
+		o->update();
+	glUseProgram(renderer->_program);
+	glUniform1i(renderer->_dismod, 1);// 1 = display plain_color, 0 = vertex_color
+	//plain_color should not be used, check shader
+	glUniform3f(renderer->_plain_color, 200, 0, 200);
+
+	glUniform1f(renderer->_tex_coef, 1.0f);
+	glBindVertexArray(lambobp.getVao());
+	glBindTexture(GL_TEXTURE_2D, lambotex->getId());
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	/*
+	if (bp.dataMode == BP_VERTEX_ARRAY)
+		glDrawArrays(GL_TRIANGLES, 0, bp.getFaceAmount() * 3);
+	else
+		glDrawElements(GL_TRIANGLES, bp.elem_count, GL_UNSIGNED_INT, bp.getIndicesData());
+	*/
+	//glBindVertexArray(0);
+	//glBindTexture(GL_TEXTURE_2D, 0);
+#endif
+
+	glfwSwapInterval(0);//0 = disable vsynx
 	glDisable(GL_CULL_FACE);
 	std::cout << "Begin while loop" << endl;
 	while (!glfwWindowShouldClose(m.glfw->_window)) {
@@ -1959,8 +2000,23 @@ void	scene_test() {
 			m.cam->events(*m.glfw, float(defaultFps->getTick()));
 
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-			renderer->renderObjects(m.renderlist, cam, FORCE_DRAW);
-			rendererSkybox.renderObjects(m.renderlistSkybox, cam, FORCE_DRAW);
+			if (1 || input[0] >= '3') {//instanced
+				renderer->renderObjects(m.renderlist, cam, PG_FORCE_DRAW);
+			} else {//optimized mass renderer (non instanced)
+				Math::Matrix4	VPmatrix(cam.getProjectionMatrix());
+				VPmatrix.mult(cam.getViewMatrix());// do it in shader ? NO cauz shader will do it for every vertix
+
+				for (auto o : m.renderlist) {
+					Math::Matrix4	MVPmatrix(VPmatrix);
+					MVPmatrix.mult(o->getWorldMatrix());
+					glUniformMatrix4fv(renderer->_mat4_mvp, 1, GL_FALSE, MVPmatrix.getData());
+					if (lambobp.dataMode == BP_VERTEX_ARRAY)
+						glDrawArrays(GL_TRIANGLES, 0, lambobp.getFaceAmount() * 3);
+					else
+						glDrawElements(GL_TRIANGLES, lambobp.elem_count, GL_UNSIGNED_INT, lambobp.getIndicesData());
+				}
+			}
+			rendererSkybox.renderObjects(m.renderlistSkybox, cam, PG_FORCE_DRAW);
 			glfwSwapBuffers(m.glfw->_window);
 
 			if (GLFW_PRESS == glfwGetKey(m.glfw->_window, GLFW_KEY_ESCAPE))
@@ -1969,7 +2025,6 @@ void	scene_test() {
 	}
 
 	std::cout << "End while loop" << endl;
-	std::cout << "deleting textures..." << endl;
 }
 
 void	scene_octree() {
@@ -2017,9 +2072,7 @@ void	scene_octree() {
 
 
 	Obj3dPG			rendererObj3d(pathPrefix + OBJ3D_VS_FILE, pathPrefix + OBJ3D_FS_FILE);
-	rendererObj3d.getLocations();
 	Obj3dIPG		rendererObj3dInstanced(pathPrefix + OBJ3D_INSTANCED_VS_FILE, pathPrefix + OBJ3D_FS_FILE);
-	rendererObj3dInstanced.getLocations();
 	SkyboxPG		rendererSkybox(pathPrefix + CUBEMAP_VS_FILE, pathPrefix + CUBEMAP_FS_FILE);
 	Skybox			skybox(*tex_skybox, rendererSkybox);
 	m.renderlistSkybox.push_back(&skybox);
@@ -2111,7 +2164,7 @@ void	scene_octree() {
 	//Fps* defaultFps = &fps60;
 	Fps* defaultFps = &fps144;
 
-	Obj3dPG* renderer = &rendererObj3d;
+	Program* renderer = &rendererObj3d;
 	renderer = &rendererObj3dInstanced;
 
 	//generator.printData();
@@ -2164,13 +2217,13 @@ void	scene_octree() {
 			//GLuint	mode = m.polygon_mode;
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 			//std::cout << "renderlist\n";
-			renderer->renderObjects(m.renderlist, cam, FORCE_DRAW);
+			renderer->renderObjects(m.renderlist, cam, PG_FORCE_DRAW);
 			//std::cout << "octreeDisplay\n";
-			renderer->renderObjects(m.renderlistOctree, cam, FORCE_DRAW);
+			renderer->renderObjects(m.renderlistOctree, cam, PG_FORCE_DRAW);
 			//std::cout << "gridDisplay\n";
-			rendererObj3d.renderObjects(m.renderlistGrid, cam, FORCE_DRAW);
+			rendererObj3d.renderObjects(m.renderlistGrid, cam, PG_FORCE_DRAW);
 
-			rendererSkybox.renderObjects(m.renderlistSkybox, cam, FORCE_DRAW);
+			rendererSkybox.renderObjects(m.renderlistSkybox, cam, PG_FORCE_DRAW);
 			glfwSwapBuffers(m.glfw->_window);
 
 			if (GLFW_PRESS == glfwGetKey(m.glfw->_window, GLFW_KEY_ESCAPE))
@@ -2197,7 +2250,7 @@ void	testtype(uint8_t value) {
 	std::cout << int(value) << std::endl;
 }
 
-int		main(void) {
+int		main(int ac, char **av) {
 	//maxUniforms();
 	//check_paddings();
 	// test_behaviors();
