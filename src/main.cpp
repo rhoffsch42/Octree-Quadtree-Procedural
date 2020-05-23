@@ -158,7 +158,7 @@ void	scene1() {
 	//Create Obj3dBP from .obj files
 	//Blueprint global settings
 	Obj3dBP::defaultSize = 1;
-	Obj3dBP::dataMode = BP_VERTEX_ARRAY;
+	Obj3dBP::defaultDataMode = BP_LINEAR;
 	Obj3dBP::rescale = true;
 	Obj3dBP::center = true;
 
@@ -512,7 +512,7 @@ void scene2() {
 
 	//Blueprint global settings
 	Obj3dBP::defaultSize = 1;
-	Obj3dBP::dataMode = BP_VERTEX_ARRAY;
+	Obj3dBP::defaultDataMode = BP_LINEAR;
 	Obj3dBP::rescale = true;
 	Obj3dBP::center = true;
 	Obj3dBP			rocketBP("obj3d/ARSENAL_VG33/Arsenal_VG33.obj");
@@ -1448,7 +1448,7 @@ void	scene_vox() {
 
 	//Blueprint global settings
 	Obj3dBP::defaultSize = 1;
-	Obj3dBP::dataMode = BP_VERTEX_ARRAY;
+	Obj3dBP::defaultDataMode = BP_LINEAR;
 	Obj3dBP::rescale = true;
 	Obj3dBP::center = false;
 	Obj3dBP		cubebp("obj3d/cube.obj");
@@ -1883,20 +1883,22 @@ void	scene_test() {
 
 	//Blueprint global settings
 	Obj3dBP::defaultSize = 1;
-	Obj3dBP::dataMode = BP_INDICES;
+	Obj3dBP::defaultDataMode = BP_INDICES;
 	if (input[0] % 2 == 1)
-		Obj3dBP::dataMode = BP_VERTEX_ARRAY;
+		Obj3dBP::defaultDataMode = BP_LINEAR;
 	Obj3dBP::rescale = true;
 	Obj3dBP::center = false;
 	Obj3dBP		cubebp(pathPrefix + "obj3d/cube.obj");
 	Obj3dBP		lambobp(pathPrefix + "obj3d/lambo/Lamborginhi_Aventador_OBJ/Lamborghini_Aventador_no_collider.obj");
+
+	Texture*	lenatex = new Texture(pathPrefix + "images/lena.bmp");
 	Texture*	lambotex = new Texture(pathPrefix + "obj3d/lambo/Lamborginhi_Aventador_OBJ/Lamborginhi_Aventador_diffuse.bmp");
 
-	Obj3dPG			rendererObj3d(pathPrefix + OBJ3D_VS_FILE, pathPrefix + OBJ3D_FS_FILE);
-	Obj3dIPG		rendererObj3dInstanced(pathPrefix + OBJ3D_INSTANCED_VS_FILE, pathPrefix + OBJ3D_FS_FILE);
-	SkyboxPG		rendererSkybox(pathPrefix + CUBEMAP_VS_FILE, pathPrefix + CUBEMAP_FS_FILE);
+	Obj3dPG		rendererObj3d(pathPrefix + OBJ3D_VS_FILE, pathPrefix + OBJ3D_FS_FILE);
+	Obj3dIPG	rendererObj3dInstanced(pathPrefix + OBJ3D_INSTANCED_VS_FILE, pathPrefix + OBJ3D_FS_FILE);
+	SkyboxPG	rendererSkybox(pathPrefix + CUBEMAP_VS_FILE, pathPrefix + CUBEMAP_FS_FILE);
 
-	Skybox			skybox(*tex_skybox, rendererSkybox);
+	Skybox		skybox(*tex_skybox, rendererSkybox);
 	m.renderlistSkybox.push_back(&skybox);
 
 	Cam		cam(m.glfw->getWidth(), m.glfw->getHeight());
@@ -1911,15 +1913,16 @@ void	scene_test() {
 	if (0) {//test 10 cubes
 		for (size_t i = 0; i < 10; i++) {
 			Obj3d* cube = new Obj3d(cubebp, rendererObj3d);
-			cube->local.setPos(i, 0, 0);
+			cube->local.setPos(float(i)*1.1, 0, 0);
 			cube->local.setScale(1, 1, 1);
 			cube->setColor(25 * i, 0, 0);
 			cube->displayTexture = false;
-			cube->setPolygonMode(GL_LINE);
+			cube->setTexture(lenatex);
+			cube->setPolygonMode(GL_FILL);
 			m.renderlist.push_back(cube);
 		}
 	}
-	if (1) {//lambos
+	else if (1) {//lambos
 		for (size_t k = 0; k < 1; k++) {
 			for (size_t j = 0; j < 50; j++) {
 				for (size_t i = 0; i < 50; i++) {
@@ -1935,30 +1938,13 @@ void	scene_test() {
 			}
 		}
 	}		
-/*
 
-2500 Models * 10252 polygons = 25 630 000 polygons
-PC-1      Intel Core i7 2600 @ 3.40GHz Sandy Bridge 32nm Technology    4095MB NVIDIA GeForce GTX 1050 Ti (MSI)
-PC-2      Intel Core i7 @ 3.70GHz Coffee Lake 14nm Technology          4095MB NVIDIA GeForce GTX 1080
-Shadow15  Intel Xeon E5 v3 @ 3.20GHz Haswell-E/EP 22nm Technology      3071MB NVIDIA Quadro P5000 (NVIDIA)
-                                         FPS                                         
-------------------------+-----------+-----------+-----------|
-                     PC |  PC-1     |  Shadow15 |  PC-2     |
-                frustum |  in  out  |  in  out  |  in  out  |
-------------------------+-----------+-----------+-----------|
-glDrawArrays            |  25   37  | 112  112  | 126  132  |   1
-glDrawArraysInstanced   |  25   33  |  98  102  | 102  110  |   3
-------------------------+-----------+-----------+-----------|
-glDrawElements          |  22   22  |  33   33  |  29   29  |   2
-glDrawElementsInstanced |  36   40  |  40   40  |  58   60  |   4
-------------------------+-----------+-----------+-----------|
-
-*/
-
+	Fps	fps500(500);
 	Fps	fps144(144);
 	Fps	fps60(60);
-	//Fps* defaultFps = &fps60;
-	Fps* defaultFps = &fps144;
+	Fps* defaultFps = &fps60;
+	//Fps* defaultFps = &fps144;
+	//Fps* defaultFps = &fps500;
 
 	Obj3dPG* renderer = &rendererObj3d;
 	if (input[0] >= '3') {
@@ -1970,26 +1956,20 @@ glDrawElementsInstanced |  36   40  |  40   40  |  58   60  |   4
 	for (auto o : m.renderlist)
 		o->update();
 	glUseProgram(renderer->_program);
-	glUniform1i(renderer->_dismod, 1);// 1 = display plain_color, 0 = vertex_color
-	//plain_color should not be used, check shader
+	glUniform1i(renderer->_dismod, 0);// 1 = display plain_color, 0 = vertex_color
 	glUniform3f(renderer->_plain_color, 200, 0, 200);
 
 	glUniform1f(renderer->_tex_coef, 1.0f);
 	glBindVertexArray(lambobp.getVao());
 	glBindTexture(GL_TEXTURE_2D, lambotex->getId());
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	/*
-	if (bp.dataMode == BP_VERTEX_ARRAY)
-		glDrawArrays(GL_TRIANGLES, 0, bp.getFaceAmount() * 3);
-	else
-		glDrawElements(GL_TRIANGLES, bp.elem_count, GL_UNSIGNED_INT, bp.getIndicesData());
-	*/
-	//glBindVertexArray(0);
-	//glBindTexture(GL_TEXTURE_2D, 0);
+	int	vertices_amount = lambobp.getPolygonAmount() * 3;
+	int datamode = lambobp.getDataMode();
 #endif
 
 	glfwSwapInterval(0);//0 = disable vsynx
 	glDisable(GL_CULL_FACE);
+	std::cout << "renderlist: " << m.renderlist.size() << std::endl;
 	std::cout << "Begin while loop" << endl;
 	while (!glfwWindowShouldClose(m.glfw->_window)) {
 		if (defaultFps->wait_for_next_frame()) {
@@ -2000,23 +1980,35 @@ glDrawElementsInstanced |  36   40  |  40   40  |  58   60  |   4
 			m.cam->events(*m.glfw, float(defaultFps->getTick()));
 
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-			if (1 || input[0] >= '3') {//instanced
+			if (input[0] >= '3') {//instanced
 				renderer->renderObjects(m.renderlist, cam, PG_FORCE_DRAW);
-			} else {//optimized mass renderer (non instanced)
+			} else if (0) {
+				renderer->renderObjects(m.renderlist, cam, PG_FORCE_DRAW);
+			} else {//optimized mass renderer (non instanced) non moving objects
 				Math::Matrix4	VPmatrix(cam.getProjectionMatrix());
-				VPmatrix.mult(cam.getViewMatrix());// do it in shader ? NO cauz shader will do it for every vertix
+				Math::Matrix4	Vmatrix = cam.getViewMatrix();
+				VPmatrix.mult(Vmatrix);// do it in shader ? NO cauz shader will do it for every vertice
 
-				for (auto o : m.renderlist) {
+				glUseProgram(renderer->_program);
+				glBindTexture(GL_TEXTURE_2D, lambotex->getId());
+				glBindVertexArray(lambobp.getVao());
+				for (Object* object : m.renderlist) {
 					Math::Matrix4	MVPmatrix(VPmatrix);
-					MVPmatrix.mult(o->getWorldMatrix());
+					MVPmatrix.mult(object->getWorldMatrix());
+					MVPmatrix.setOrder(COLUMN_MAJOR);
+
 					glUniformMatrix4fv(renderer->_mat4_mvp, 1, GL_FALSE, MVPmatrix.getData());
-					if (lambobp.dataMode == BP_VERTEX_ARRAY)
-						glDrawArrays(GL_TRIANGLES, 0, lambobp.getFaceAmount() * 3);
-					else
-						glDrawElements(GL_TRIANGLES, lambobp.elem_count, GL_UNSIGNED_INT, lambobp.getIndicesData());
+					if (datamode == BP_LINEAR)
+						glDrawArrays(GL_TRIANGLES, 0, vertices_amount);
+					else // should be BP_INDICES
+						glDrawElements(GL_TRIANGLES, vertices_amount, GL_UNSIGNED_INT, 0);
+
 				}
+				glBindVertexArray(0);
+				glBindTexture(GL_TEXTURE_2D, 0);
 			}
-			rendererSkybox.renderObjects(m.renderlistSkybox, cam, PG_FORCE_DRAW);
+
+			rendererSkybox.renderObjects(m.renderlistSkybox, cam, PG_FORCE_DRAW);//this will unbind obj3d pg vao and texture
 			glfwSwapBuffers(m.glfw->_window);
 
 			if (GLFW_PRESS == glfwGetKey(m.glfw->_window, GLFW_KEY_ESCAPE))
@@ -2064,7 +2056,7 @@ void	scene_octree() {
 
 	//Blueprint global settings
 	Obj3dBP::defaultSize = 1;
-	Obj3dBP::dataMode = BP_INDICES;
+	Obj3dBP::defaultDataMode = BP_INDICES;
 	//Obj3dBP::dataMode = BP_VERTEX_ARRAY;
 	Obj3dBP::rescale = true;
 	Obj3dBP::center = false;
