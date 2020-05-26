@@ -10,14 +10,14 @@ typedef uint8_t** hmap;
 class ChunkGenerator
 {
 public:
-	ChunkGenerator(Math::Vector3 player_pos, PerlinSettings perlin_settings, unsigned int chunk_size, Math::Vector3	grid_size);
+	ChunkGenerator(Math::Vector3 player_pos, PerlinSettings perlin_settings, Math::Vector3 chunk_size, Math::Vector3 grid_size);
 	~ChunkGenerator();
 	bool	updateGrid(Math::Vector3 player_pos);
 
 	void	printData();
 
-	unsigned int	chunkSize;
-	Math::Vector3	size;//3*3*3
+	Math::Vector3	chunkSize;
+	Math::Vector3	gridSize;//3*3*3
 	Chunk****		grid;//3*3*3 Chunk*
 	PerlinSettings	settings;
 private:

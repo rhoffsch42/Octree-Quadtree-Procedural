@@ -1,39 +1,39 @@
 #include "chunkgenerator.hpp"
 
-ChunkGenerator::ChunkGenerator(Math::Vector3 player_pos, PerlinSettings perlin_settings, unsigned int chunk_size, Math::Vector3	grid_size)
-	: settings(perlin_settings)
+ChunkGenerator::ChunkGenerator(Math::Vector3 player_pos, PerlinSettings perlin_settings, Math::Vector3 chunk_size, Math::Vector3 grid_size)
+	: settings(perlin_settings),
+	chunkSize(chunk_size),
+	gridSize(grid_size)//better be odd for equal horizon on every cardinal points
 {
 	std::cout << "_ " << __PRETTY_FUNCTION__ << std::endl;
 	// current tile index
-	this->chunkSize = chunk_size;
 	this->updatePlayerPos(player_pos);
 
 	//init grid
-	this->size = grid_size;//better be odd for equal horizon on every cardinal points
-	Math::Vector3 v(this->size);
+	Math::Vector3 v(this->gridSize);
 	v.div(2);
 	Math::Vector3	smallestChunk(this->currentChunk);
 	//smallestChunk.sub(v);
 	smallestChunk.sub((int)v.x, (int)v.y, (int)v.z);//a Vector3i would be better
 
-	this->heightMaps = new hmap * [this->size.z];
-	for (unsigned int k = 0; k < this->size.z; k++) {
-		this->heightMaps[k] = new hmap[this->size.x];
-		for (unsigned int i = 0; i < this->size.x; i++) {
-			int x = (smallestChunk.x + i) * this->chunkSize;
-			int z = (smallestChunk.z + k) * this->chunkSize;
-			this->settings.genHeightMap(x, z, this->chunkSize, this->chunkSize);//this can be optimized to do it only once per Y (and even keep the generated heightmap in memory for later use)
+	this->heightMaps = new hmap * [this->gridSize.z];
+	for (unsigned int k = 0; k < this->gridSize.z; k++) {
+		this->heightMaps[k] = new hmap[this->gridSize.x];
+		for (unsigned int i = 0; i < this->gridSize.x; i++) {
+			int x = (smallestChunk.x + i) * this->chunkSize.x;
+			int z = (smallestChunk.z + k) * this->chunkSize.z;
+			this->settings.genHeightMap(x, z, this->chunkSize.x, this->chunkSize.z);//this can be optimized to do it only once per Y (and even keep the generated heightmap in memory for later use)
 			this->heightMaps[k][i] = this->settings.map;
 			this->settings.map = nullptr;
 		}
 	}
 
-	this->grid = new Chunk***[this->size.z];
-	for (unsigned int k = 0; k < this->size.z; k++) {
-		this->grid[k] = new Chunk**[this->size.y];
-		for (unsigned int j = 0; j < this->size.y; j++) {
-			this->grid[k][j] = new Chunk * [this->size.x];
-			for (unsigned int i = 0; i < this->size.x; i++) {
+	this->grid = new Chunk * **[this->gridSize.z];
+	for (unsigned int k = 0; k < this->gridSize.z; k++) {
+		this->grid[k] = new Chunk * *[this->gridSize.y];
+		for (unsigned int j = 0; j < this->gridSize.y; j++) {
+			this->grid[k][j] = new Chunk * [this->gridSize.x];
+			for (unsigned int i = 0; i < this->gridSize.x; i++) {
 				this->settings.map = this->heightMaps[k][i];
 				Math::Vector3	tileNumber(smallestChunk.x + i, smallestChunk.y + j, smallestChunk.z + k);
 				this->grid[k][j][i] = new Chunk(tileNumber, this->chunkSize, this->settings);
@@ -44,14 +44,14 @@ ChunkGenerator::ChunkGenerator(Math::Vector3 player_pos, PerlinSettings perlin_s
 }
 
 ChunkGenerator::~ChunkGenerator() {
-	for (unsigned int k = 0; k < this->size.z; k++) {
+	for (unsigned int k = 0; k < this->gridSize.z; k++) {
 		delete[] this->heightMaps[k];
 	}
 	delete[] this->heightMaps;
 
-	for (unsigned int k = 0; k < this->size.z; k++) {
-		for (unsigned int j = 0; j < this->size.y; j++) {
-			for (unsigned int i = 0; i < this->size.x; i++) {
+	for (unsigned int k = 0; k < this->gridSize.z; k++) {
+		for (unsigned int j = 0; j < this->gridSize.y; j++) {
+			for (unsigned int i = 0; i < this->gridSize.x; i++) {
 				delete this->grid[k][j][i];
 			}
 			delete[] this->grid[k][j];
@@ -66,7 +66,8 @@ void		ChunkGenerator::initValues(float diff, float& inc, float& start, float& en
 		inc = 1;
 		start = 0;//inclusive, we start here
 		end = size;//exclusive cause we will use `!=` for the comparison
-	} else {
+	}
+	else {
 		inc = -1;
 		start = size - 1;//inclusive, we start here
 		end = 0 - 1;//exclusive cause we will use `!=` for the comparison
@@ -84,20 +85,20 @@ bool	ChunkGenerator::updateGrid(Math::Vector3 player_pos) {
 		std::cout << "diff: ";
 		diff.printData();
 
-		Math::Vector3	halfGrid(int(this->size.x / 2), int(this->size.y / 2), int(this->size.z / 2));//a Vector3i would be better
+		Math::Vector3	halfGrid(int(this->gridSize.x / 2), int(this->gridSize.y / 2), int(this->gridSize.z / 2));//a Vector3i would be better
 		Math::Vector3	smallestChunk(this->currentChunk); smallestChunk.sub(halfGrid);
 
 		Math::Vector3	absdiff(std::abs(diff.x), std::abs(diff.y), std::abs(diff.z));
-		Math::Vector3	intersection(this->size);
+		Math::Vector3	intersection(this->gridSize);
 		intersection.sub(absdiff);
 
 		std::cout << "size of intersection cube dimension:\n";	intersection.printData();
 
 		//now we define the incrementers, start points and end points to shift the intersection cube and delete unused data
 		Math::Vector3	inc, start, end, endShift;
-		this->initValues(diff.x, inc.x, start.x, end.x, endShift.x, intersection.x, this->size.x);
-		this->initValues(diff.y, inc.y, start.y, end.y, endShift.y, intersection.y, this->size.y);
-		this->initValues(diff.z, inc.z, start.z, end.z, endShift.z, intersection.z, this->size.z);
+		this->initValues(diff.x, inc.x, start.x, end.x, endShift.x, intersection.x, this->gridSize.x);
+		this->initValues(diff.y, inc.y, start.y, end.y, endShift.y, intersection.y, this->gridSize.y);
+		this->initValues(diff.z, inc.z, start.z, end.z, endShift.z, intersection.z, this->gridSize.z);
 
 		//todo: generate heightmaps only once, save them, shift them the same way
 
@@ -123,12 +124,13 @@ bool	ChunkGenerator::updateGrid(Math::Vector3 player_pos) {
 							this->heightMaps[k][i] = this->heightMaps[k + int(diff.z)][i + int(diff.x)];
 							//this->heightMaps[k + int(diff.z)][i + int(diff.x)] = nullptr;//dont do that, if diff.z and .x are 0, it leek the previously created heightmap
 						}
-					} else {
+					}
+					else {
 						if (CHUNK_GEN_DEBUG) { std::cout << "gen new chunk: " << i << ":" << j << ":" << k << std::endl; }
 						if (progress.y == 0) {//do it only once, for all the Y
-							int x = (smallestChunk.x + i) * this->chunkSize;
-							int z = (smallestChunk.z + k) * this->chunkSize;
-							this->settings.genHeightMap(x, z, this->chunkSize, this->chunkSize);//this can be optimized to do it only once per Y (and even keep the generated heightmap in memory for later use)
+							int x = (smallestChunk.x + i) * this->chunkSize.x;
+							int z = (smallestChunk.z + k) * this->chunkSize.z;
+							this->settings.genHeightMap(x, z, this->chunkSize.x, this->chunkSize.z);//this can be optimized to do it only once per Y (and even keep the generated heightmap in memory for later use)
 							this->heightMaps[k][i] = this->settings.map;
 						}
 						this->settings.map = this->heightMaps[k][i];
@@ -155,9 +157,9 @@ bool	ChunkGenerator::updateGrid(Math::Vector3 player_pos) {
 
 void	ChunkGenerator::updatePlayerPos(Math::Vector3 player_pos) {
 	this->playerPos = player_pos;
-	this->currentChunk.x = int(this->playerPos.x / this->chunkSize);
-	this->currentChunk.y = int(this->playerPos.y / this->chunkSize);
-	this->currentChunk.z = int(this->playerPos.z / this->chunkSize);
+	this->currentChunk.x = int(this->playerPos.x / this->chunkSize.x);
+	this->currentChunk.y = int(this->playerPos.y / this->chunkSize.y);
+	this->currentChunk.z = int(this->playerPos.z / this->chunkSize.z);
 	if (this->playerPos.x < 0) // cauze x=-32..+32 ----> x / 32 = 0; 
 		this->currentChunk.x--;
 	if (this->playerPos.y < 0) // same
@@ -169,9 +171,9 @@ void	ChunkGenerator::updatePlayerPos(Math::Vector3 player_pos) {
 void	ChunkGenerator::printData() {
 	std::cout << "currentChunk:"; this->currentChunk.printData();
 	std::cout << std::endl;
-	for (int k = 0; k < this->size.z; k++) {
-		for (int j = 0; j < this->size.y; j++) {
-			for (int i = 0; i < this->size.x; i++) {
+	for (int k = 0; k < this->gridSize.z; k++) {
+		for (int j = 0; j < this->gridSize.y; j++) {
+			for (int i = 0; i < this->gridSize.x; i++) {
 				std::cout << "[" << k << "]";
 				std::cout << "[" << j << "]";
 				std::cout << "[" << i << "]\t";

@@ -3,6 +3,8 @@
 #include "math.hpp"
 #include "octree.hpp"
 #include "perlin.hpp"
+#include "obj3dBP.hpp"
+#include "obj3d.hpp"
 
 #include <algorithm>
 
@@ -115,17 +117,25 @@ private:
 class Chunk //could inherit from Object
 {
 public:
-	Chunk(const Math::Vector3& tile_number, unsigned int chunk_size, PerlinSettings& perlinSettings);
-	~Chunk();
+	static Obj3dBP* cubeBlueprint;
+	static Obj3dPG* renderer;
 
+	Chunk(const Math::Vector3& tile_number, Math::Vector3 chunk_size, PerlinSettings& perlinSettings);
+	~Chunk();
 	void	printData();
 
 	Math::Vector3	tile;
 	Math::Vector3	pos;
-	unsigned int	size;
+	Math::Vector3	size;
 	Octree*			root;
 	uint8_t***		data;
 
+	//opengl 
+	Obj3dBP*		meshBP;
+	Obj3d*			mesh;
+
 private:
 	Chunk();
+	// you should check for error: 0 means Chunk::cubebp is null, 1 means no error
+	int	buildVertexArrayFromOctree(Octree* root, Math::Vector3 pos_offset = Math::Vector3(0, 0, 0));
 };

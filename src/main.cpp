@@ -1436,7 +1436,7 @@ void	scene_vox() {
 	siv::PerlinNoise perlin(manager.seed);
 	manager.perlin = &perlin;
 	manager.glfw = new Glfw(WINX, WINY);
-	glDisable(GL_CULL_FACE);
+	//glDisable(GL_CULL_FACE);
 	manager.glfw->setTitle("Tests vox");
 	manager.glfw->activateDefaultCallbacks(&manager);
 	manager.glfw->func[GLFW_KEY_EQUAL] = keyCallback_vox;
@@ -1699,8 +1699,11 @@ public:
 		this->octaves = std::clamp(this->octaves, 1, 16);
 
 		this->player = nullptr;
-		this->chunk_size = 160;
-		this->chunk_display = 1;
+		int s = 128;//64
+		this->chunk_size = Math::Vector3(s * 4,
+										s * 1,
+										s * 4);
+		this->chunk_display = 3;//3
 		this->polygon_mode = GL_POINT;
 		this->polygon_mode = GL_LINE;
 		this->polygon_mode = GL_FILL;
@@ -1709,17 +1712,18 @@ public:
 	~OctreeManager() {}
 
 	unsigned int		seed;
-	siv::PerlinNoise* perlin;
+	siv::PerlinNoise*	perlin;
 	double				frequency;
 	int					octaves;
 	std::list<Object*>	renderlist;
 	std::list<Object*>	renderlistOctree;
 	std::list<Object*>	renderlistGrid;
-	std::list<Object*>	renderlistVoxels;
+	std::list<Object*>	renderlistVoxels[6];//6faces
+	std::list<Object*>	renderlistChunk;
 	std::list<Object*>	renderlistSkybox;
 	GLuint				polygon_mode;
 	Obj3d* player;
-	unsigned int		chunk_size;
+	Math::Vector3		chunk_size;
 	int					chunk_display;
 	unsigned int		threshold;
 };
@@ -1770,31 +1774,42 @@ static void		keyCallback_ocTree(GLFWwindow* window, int key, int scancode, int a
 	}
 }
 
-void	buildObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager, Obj3dBP& cubebp, Obj3dPG& obj3d_prog, Obj3dIPG& voxels_prog, Texture* tex_lena) {
+void	buildObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager, Obj3dBP& cubebp, Obj3dPG& obj3d_prog, Texture* tex_lena) {
 	std::cout << "_ " << __PRETTY_FUNCTION__ << std::endl;
+
+	//todo use smart pointers (not for renderlistVoxels)
 	for (auto i : manager.renderlist)
 		delete i;
 	for (auto i : manager.renderlistOctree)
 		delete i;
 	for (auto i : manager.renderlistGrid)
 		delete i;
+	//dont delete obj in renderlistVoxels as they're all present and already deleted in renderlist
+
 	manager.renderlist.clear();
 	manager.renderlistOctree.clear();
 	manager.renderlistGrid.clear();
+	for (size_t i = 0; i < 6; i++) {
+		manager.renderlistVoxels[i].clear();
+		std::cout << "clear: " << i << std::endl;
+	}
+	manager.renderlistChunk.clear();
 
 	int		hiddenBlocks = 0;
 
 	float	scale_coef = 0.99;
 	float	scale_coe2 = 1.0;
 	//scale_coef = 1;
-	for (unsigned int k = 0; k < generator.size.z; k++) {
-		for (unsigned int j = 0; j < generator.size.y; j++) {
-			for (unsigned int i = 0; i < generator.size.x; i++) {
+	for (unsigned int k = 0; k < generator.gridSize.z; k++) {
+		for (unsigned int j = 0; j < generator.gridSize.y; j++) {
+			for (unsigned int i = 0; i < generator.gridSize.x; i++) {
 				Chunk* chunkPtr = generator.grid[k][j][i];
+
 				if (!chunkPtr->root) {
 					std::cout << "fuck there is no root\n";
 					exit(1);
 				}
+	
 				if (0) {//coloring origin of each octree/chunk
 					Math::Vector3	siz(1, 1, 1);
 					Octree* root = chunkPtr->root->getRoot(chunkPtr->root->pos, siz);
@@ -1809,62 +1824,81 @@ void	buildObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager,
 					Obj3d* cubeGrid = new Obj3d(cubebp, obj3d_prog);
 					cubeGrid->setColor(255, 0, 0);
 					cubeGrid->local.setPos(chunkPtr->pos);
-					cubeGrid->local.setScale(chunkPtr->size * scale_coe2, chunkPtr->size * scale_coe2, chunkPtr->size * scale_coe2);
+					cubeGrid->local.setScale(chunkPtr->size.x * scale_coe2, chunkPtr->size.y * scale_coe2, chunkPtr->size.z * scale_coe2);
 					cubeGrid->setPolygonMode(GL_LINE);
 					cubeGrid->displayTexture = false;
 					manager.renderlistGrid.push_back(cubeGrid);
 				}
-				chunkPtr->root->browse(0, [&manager, &cubebp, &obj3d_prog, &voxels_prog, scale_coef, scale_coe2, chunkPtr, tex_lena, &hiddenBlocks](Octree* node) {
-					if (M_DISPLAY_BLACK || (node->pixel.r != 0 && node->pixel.g != 0 && node->pixel.b != 0)) {
-						Math::Vector3	worldPos(chunkPtr->pos);
-						worldPos.add(node->pos);
-						Math::Vector3	center(worldPos);
-						center.add(node->size.x / 2, node->size.y / 2, node->size.z / 2);
-						if ((node->pixel.r < VOXEL_EMPTY.r \
-							|| node->pixel.g < VOXEL_EMPTY.g \
-							|| node->pixel.b < VOXEL_EMPTY.b) \
-							&& node->neighbors < 64)// should be < NEIGHBOR_ALL or node->n & NEIGHBOR_ALL != 0
-						{
-							Obj3d* cube = new Obj3d(cubebp, obj3d_prog);
-							cube->setColor(node->pixel.r, node->pixel.g, node->pixel.b);
-							cube->local.setPos(worldPos);
-							cube->local.setScale(node->size.x * scale_coef, node->size.y * scale_coef, node->size.z * scale_coef);
-							cube->setPolygonMode(manager.polygon_mode);
-							cube->displayTexture = true;
-							cube->displayTexture = false;
-							cube->setTexture(tex_lena);
 
-							//if (node->neighbors == 1)// faire une texture pour chaque numero
-							//	cube->setColor(0, 127, 127);
-
-							//we can see if there is false positive on fully obstructed voxel, some are partially obstructed
-							if (node->neighbors == NEIGHBOR_ALL) {
-								cube->setColor(100, 200, 100);
+				// 1 obj3d for the entire chunk
+				if (1) {
+					if (chunkPtr->mesh) {
+						manager.renderlistChunk.push_back(chunkPtr->mesh);
+						std::cout << "chunk: " << chunkPtr->mesh->getBlueprint().getPolygonAmount() << std::endl;
+					}
+				}
+				else {// browsing to build 1 obj3d per cube
+					chunkPtr->root->browse(0, [&manager, &cubebp, &obj3d_prog, scale_coef, scale_coe2, chunkPtr, tex_lena, &hiddenBlocks](Octree* node) {
+						if (M_DISPLAY_BLACK || (node->pixel.r != 0 && node->pixel.g != 0 && node->pixel.b != 0)) {// pixel 0?
+							Math::Vector3	worldPos(chunkPtr->pos);
+							worldPos.add(node->pos);
+							Math::Vector3	center(worldPos);
+							center.add(node->size.x / 2, node->size.y / 2, node->size.z / 2);
+							if ((node->pixel.r < VOXEL_EMPTY.r \
+								|| node->pixel.g < VOXEL_EMPTY.g \
+								|| node->pixel.b < VOXEL_EMPTY.b) \
+								&& node->neighbors < NEIGHBOR_ALL)// should be < NEIGHBOR_ALL or (node->n & NEIGHBOR_ALL) != 0
+							{
+								Obj3d* cube = new Obj3d(cubebp, obj3d_prog);
+								cube->setColor(node->pixel.r, node->pixel.g, node->pixel.b);
+								cube->local.setPos(worldPos);
+								cube->local.setScale(node->size.x * scale_coef, node->size.y * scale_coef, node->size.z * scale_coef);
 								cube->setPolygonMode(manager.polygon_mode);
-								cube->setPolygonMode(GL_FILL);
-								hiddenBlocks++;
-								manager.renderlist.push_back(cube);
-							}
-							else {
-								// push only the faces next to an EMPTY_VOXEL in an all-in buffer
-								manager.renderlist.push_back(cube);
-							}
-							if (M_DISPLAY_BLACK) {
-								Obj3d* cube2 = new Obj3d(cubebp, voxels_prog);
-								cube2->setColor(0, 0, 0);
-								cube2->local.setPos(worldPos);
-								cube2->local.setScale(node->size.x * scale_coe2, node->size.y * scale_coe2, node->size.z * scale_coe2);
-								cube2->setPolygonMode(GL_LINE);
-								cube2->displayTexture = false;
-								manager.renderlistOctree.push_back(cube2);
+								cube->displayTexture = true;
+								cube->displayTexture = false;
+								cube->setTexture(tex_lena);
+
+								//if (node->neighbors == 1)// faire une texture pour chaque numero
+								//	cube->setColor(0, 127, 127);
+
+								//we can see if there is false positive on fully obstructed voxel, some are partially obstructed
+								if (node->neighbors == NEIGHBOR_ALL) {//should not be drawn
+									cube->setColor(100, 200, 100);
+									cube->setPolygonMode(manager.polygon_mode);
+									cube->setPolygonMode(GL_FILL);
+									hiddenBlocks++;
+									manager.renderlist.push_back(cube);
+								}
+								else {
+									// push only the faces next to an EMPTY_VOXEL in an all-in buffer
+									manager.renderlist.push_back(cube);
+									if ((node->neighbors & NEIGHBOR_FRONT) != NEIGHBOR_FRONT) { manager.renderlistVoxels[CUBE_FRONT_FACE].push_back(cube); }
+									if ((node->neighbors & NEIGHBOR_RIGHT) != NEIGHBOR_RIGHT) { manager.renderlistVoxels[CUBE_RIGHT_FACE].push_back(cube); }
+									if ((node->neighbors & NEIGHBOR_LEFT) != NEIGHBOR_LEFT) { manager.renderlistVoxels[CUBE_LEFT_FACE].push_back(cube); }
+									if ((node->neighbors & NEIGHBOR_BOTTOM) != NEIGHBOR_BOTTOM) { manager.renderlistVoxels[CUBE_BOTTOM_FACE].push_back(cube); }
+									if ((node->neighbors & NEIGHBOR_TOP) != NEIGHBOR_TOP) { manager.renderlistVoxels[CUBE_TOP_FACE].push_back(cube); }
+									if ((node->neighbors & NEIGHBOR_BACK) != NEIGHBOR_BACK) { manager.renderlistVoxels[CUBE_BACK_FACE].push_back(cube); }
+								}
+								if (M_DISPLAY_BLACK) {
+									Obj3d* cube2 = new Obj3d(cubebp, obj3d_prog);
+									cube2->setColor(0, 0, 0);
+									cube2->local.setPos(worldPos);
+									cube2->local.setScale(node->size.x * scale_coe2, node->size.y * scale_coe2, node->size.z * scale_coe2);
+									cube2->setPolygonMode(GL_LINE);
+									cube2->displayTexture = false;
+									manager.renderlistOctree.push_back(cube2);
+								}
 							}
 						}
-					}
-				});
+					});
+				}
 			}
 		}
 	}
 	std::cout << "hiddenBlocks:\t" << hiddenBlocks << std::endl;
+	for (auto i : manager.renderlistVoxels)
+		std::cout << "renderlistVoxels[]: " << i.size() << std::endl;
+	std::cout << "renderlistOctree: " << manager.renderlistOctree.size() << std::endl;
 }
 
 void	scene_test() {
@@ -1891,8 +1925,8 @@ void	scene_test() {
 	Obj3dBP		cubebp(pathPrefix + "obj3d/cube.obj");
 	Obj3dBP		lambobp(pathPrefix + "obj3d/lambo/Lamborginhi_Aventador_OBJ/Lamborghini_Aventador_no_collider.obj");
 
-	Texture*	lenatex = new Texture(pathPrefix + "images/lena.bmp");
-	Texture*	lambotex = new Texture(pathPrefix + "obj3d/lambo/Lamborginhi_Aventador_OBJ/Lamborginhi_Aventador_diffuse.bmp");
+	Texture* lenatex = new Texture(pathPrefix + "images/lena.bmp");
+	Texture* lambotex = new Texture(pathPrefix + "obj3d/lambo/Lamborginhi_Aventador_OBJ/Lamborginhi_Aventador_diffuse.bmp");
 
 	Obj3dPG		rendererObj3d(pathPrefix + OBJ3D_VS_FILE, pathPrefix + OBJ3D_FS_FILE);
 	Obj3dIPG	rendererObj3dInstanced(pathPrefix + OBJ3D_INSTANCED_VS_FILE, pathPrefix + OBJ3D_FS_FILE);
@@ -1910,10 +1944,16 @@ void	scene_test() {
 	//m.glfw->setMouseAngle(-1);//?
 	m.cam = &cam;
 
-	if (0) {//test 10 cubes
+	Obj3dPG* renderer = &rendererObj3d;
+	if (input[0] >= '3') {
+		renderer = &rendererObj3dInstanced;
+		std::cout << "Instanced rendering enabled" << std::endl;
+	}
+
+	if (1) {//test 10 cubes
 		for (size_t i = 0; i < 10; i++) {
-			Obj3d* cube = new Obj3d(cubebp, rendererObj3d);
-			cube->local.setPos(float(i)*1.1, 0, 0);
+			Obj3d* cube = new Obj3d(cubebp, *renderer);
+			cube->local.setPos(float(i) * 1.1, 0, 0);
 			cube->local.setScale(1, 1, 1);
 			cube->setColor(25 * i, 0, 0);
 			cube->displayTexture = false;
@@ -1926,7 +1966,7 @@ void	scene_test() {
 		for (size_t k = 0; k < 1; k++) {
 			for (size_t j = 0; j < 50; j++) {
 				for (size_t i = 0; i < 50; i++) {
-					Obj3d* lambo = new Obj3d(lambobp, rendererObj3d);
+					Obj3d* lambo = new Obj3d(lambobp, *renderer);
 					lambo->local.setPos(i, j, k);
 					lambo->local.enlarge(5, 5, 5);
 					lambo->setColor(222, 0, 222);
@@ -1937,7 +1977,7 @@ void	scene_test() {
 				}
 			}
 		}
-	}		
+	}
 
 	Fps	fps500(500);
 	Fps	fps144(144);
@@ -1946,12 +1986,9 @@ void	scene_test() {
 	//Fps* defaultFps = &fps144;
 	//Fps* defaultFps = &fps500;
 
-	Obj3dPG* renderer = &rendererObj3d;
-	if (input[0] >= '3') {
-		renderer = &rendererObj3dInstanced;
-		std::cout << "Instanced rendering enabled" << std::endl;
-	}
 
+	Obj3d* frontobj = static_cast<Obj3d*>(m.renderlist.front());
+	Obj3dBP& frontbp = frontobj->getBlueprint();
 #ifndef SHADER_INIT
 	for (auto o : m.renderlist)
 		o->update();
@@ -1960,13 +1997,12 @@ void	scene_test() {
 	glUniform3f(renderer->_plain_color, 200, 0, 200);
 
 	glUniform1f(renderer->_tex_coef, 1.0f);
-	glBindVertexArray(lambobp.getVao());
+	glBindVertexArray(frontbp.getVao());
 	glBindTexture(GL_TEXTURE_2D, lambotex->getId());
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	int	vertices_amount = lambobp.getPolygonAmount() * 3;
-	int datamode = lambobp.getDataMode();
+	int	vertices_amount = frontbp.getPolygonAmount() * 3;
 #endif
-
+#define BUFFER_OFFSET(i) ((char *)NULL + (i))
 	glfwSwapInterval(0);//0 = disable vsynx
 	glDisable(GL_CULL_FACE);
 	std::cout << "renderlist: " << m.renderlist.size() << std::endl;
@@ -1982,26 +2018,35 @@ void	scene_test() {
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 			if (input[0] >= '3') {//instanced
 				renderer->renderObjects(m.renderlist, cam, PG_FORCE_DRAW);
-			} else if (0) {
+			}
+			else if (0) {
 				renderer->renderObjects(m.renderlist, cam, PG_FORCE_DRAW);
-			} else {//optimized mass renderer (non instanced) non moving objects
+			}
+			else {//optimized mass renderer (non instanced) non moving objects
 				Math::Matrix4	VPmatrix(cam.getProjectionMatrix());
 				Math::Matrix4	Vmatrix = cam.getViewMatrix();
 				VPmatrix.mult(Vmatrix);// do it in shader ? NO cauz shader will do it for every vertice
 
 				glUseProgram(renderer->_program);
-				glBindTexture(GL_TEXTURE_2D, lambotex->getId());
-				glBindVertexArray(lambobp.getVao());
+				if (frontobj->displayTexture && frontobj->getTexture() != nullptr) {
+					glUniform1f(renderer->_tex_coef, 1.0f);
+					glActiveTexture(GL_TEXTURE0);//required for some drivers
+					glBindTexture(GL_TEXTURE_2D, frontobj->getTexture()->getId());
+				}
+				else { glUniform1f(renderer->_tex_coef, 0.0f); }
+				glBindVertexArray(frontbp.getVao());
+
 				for (Object* object : m.renderlist) {
 					Math::Matrix4	MVPmatrix(VPmatrix);
 					MVPmatrix.mult(object->getWorldMatrix());
 					MVPmatrix.setOrder(COLUMN_MAJOR);
 
 					glUniformMatrix4fv(renderer->_mat4_mvp, 1, GL_FALSE, MVPmatrix.getData());
-					if (datamode == BP_LINEAR)
+					if (Obj3dBP::defaultDataMode == BP_LINEAR)
 						glDrawArrays(GL_TRIANGLES, 0, vertices_amount);
-					else // should be BP_INDICES
+					else {// should be BP_INDICES
 						glDrawElements(GL_TRIANGLES, vertices_amount, GL_UNSIGNED_INT, 0);
+					}
 
 				}
 				glBindVertexArray(0);
@@ -2054,23 +2099,27 @@ void	scene_octree() {
 	Texture* tex_skybox = new Texture(pathPrefix + "images/skybox4.bmp");
 	Texture* tex_lena = new Texture(pathPrefix + "images/lena.bmp");
 
-	//Blueprint global settings
-	Obj3dBP::defaultSize = 1;
-	Obj3dBP::defaultDataMode = BP_INDICES;
-	//Obj3dBP::dataMode = BP_VERTEX_ARRAY;
-	Obj3dBP::rescale = true;
-	Obj3dBP::center = false;
-	Obj3dBP		cubebp(pathPrefix + "obj3d/cube.obj");
-
-
+	//programs
 	Obj3dPG			rendererObj3d(pathPrefix + OBJ3D_VS_FILE, pathPrefix + OBJ3D_FS_FILE);
 	Obj3dIPG		rendererObj3dInstanced(pathPrefix + OBJ3D_INSTANCED_VS_FILE, pathPrefix + OBJ3D_FS_FILE);
 	SkyboxPG		rendererSkybox(pathPrefix + CUBEMAP_VS_FILE, pathPrefix + CUBEMAP_FS_FILE);
 	Skybox			skybox(*tex_skybox, rendererSkybox);
 	m.renderlistSkybox.push_back(&skybox);
+	Obj3dPG* renderer = &rendererObj3d;
+	renderer = &rendererObj3dInstanced;
+	Chunk::renderer = &rendererObj3d;
+
+	//Blueprint global settings
+	Obj3dBP::defaultSize = 1;
+	Obj3dBP::defaultDataMode = BP_LINEAR;
+	Obj3dBP::rescale = true;
+	Obj3dBP::center = false;
+	Obj3dBP		cubebp(pathPrefix + "obj3d/cube.obj");
+	Chunk::cubeBlueprint = &cubebp;
+	Obj3dBP::defaultDataMode = BP_INDICES;
 
 	Cam		cam(m.glfw->getWidth(), m.glfw->getHeight());
-	cam.speed = 40;
+	cam.speed = 20;
 	cam.printProperties();
 	cam.lockedMovement = false;
 	cam.lockedOrientation = false;
@@ -2082,7 +2131,7 @@ void	scene_octree() {
 	//uint8_t* dataOctree = new uint8_t[w * h * 3];
 
 #ifndef BASE_OBJ3D
-	Obj3d		cubeo(cubebp, rendererObj3d);
+	Obj3d		cubeo(cubebp, *renderer);
 	cubeo.local.setPos(0, 0, 0);
 	cubeo.local.setScale(1, 1, 1);
 	cubeo.setColor(255, 0, 0);
@@ -2112,9 +2161,9 @@ void	scene_octree() {
 	PerlinSettings	ps(perlin);
 	Math::Vector3	playerPos = cam.local.getPos();
 	ChunkGenerator	generator(playerPos, ps, m.chunk_size, \
-							Math::Vector3(m.chunk_display, m.chunk_display, m.chunk_display));
+		Math::Vector3(m.chunk_display, m.chunk_display, m.chunk_display));
 
-	buildObjectFromGenerator(generator, m, cubebp, rendererObj3d, rendererObj3dInstanced, tex_lena);
+	buildObjectFromGenerator(generator, m, cubebp, *renderer, tex_lena);
 
 	if (0) {
 		int start = -10;
@@ -2151,17 +2200,16 @@ void	scene_octree() {
 	}
 
 #endif
+	Fps	fpsBIG(1000);
 	Fps	fps144(144);
 	Fps	fps60(60);
-	//Fps* defaultFps = &fps60;
+	//Fps* defaultFps = &fpsBIG;
 	Fps* defaultFps = &fps144;
-
-	Program* renderer = &rendererObj3d;
-	renderer = &rendererObj3dInstanced;
+	//Fps* defaultFps = &fps60;
 
 	//generator.printData();
 
-	glDisable(GL_CULL_FACE);
+	//glDisable(GL_CULL_FACE);
 	std::cout << "Begin while loop" << endl;
 	while (!glfwWindowShouldClose(m.glfw->_window)) {
 		if (defaultFps->wait_for_next_frame()) {
@@ -2171,7 +2219,7 @@ void	scene_octree() {
 			m.glfw->updateMouse();//to do before cam's events
 			m.cam->events(*m.glfw, float(defaultFps->getTick()));
 
-		#ifdef LONETREE
+#ifdef LONETREE
 			//89 220 102
 			int ind = generator.size.x / 2;
 			Chunk* mainChunk = generator.grid[ind][ind][ind];
@@ -2194,26 +2242,36 @@ void	scene_octree() {
 				if (root && root->pixel.r != VOXEL_EMPTY.r && root->pixel.g != VOXEL_EMPTY.g && root->pixel.b != VOXEL_EMPTY.b) {
 					std::wcout << "found..\n";
 					//if we found a neighbor and it is not empty
-				} else {
+				}
+				else {
 					std::wcout << "no way..\n";
 				}
 			}
-		#endif
+#endif
 
 			if (1 && generator.updateGrid(cam.local.getPos())) {
-				buildObjectFromGenerator(generator, m, cubebp, rendererObj3d, rendererObj3dInstanced, tex_lena);
-				std::cout << "renderlist: " << m.renderlist.size() << std::endl;
-				std::cout << "renderlistOctree: " << m.renderlistOctree.size() << std::endl;
+				buildObjectFromGenerator(generator, m, cubebp, *renderer, tex_lena);
 			}
 
 			//GLuint	mode = m.polygon_mode;
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 			//std::cout << "renderlist\n";
-			renderer->renderObjects(m.renderlist, cam, PG_FORCE_DRAW);
+			if (0) { // opti faces
+				float speed = cam.speed;//save
+				for (size_t i = 0; i < 6; i++) {
+					cam.speed = i;//use this as a flag for the renderer, tmp
+					renderer->renderObjects(m.renderlistVoxels[i], cam, PG_FORCE_DRAW);
+				}
+				cam.speed = speed;//restore
+			} else if (0) {//whole cube
+				renderer->renderObjects(m.renderlist, cam, PG_FORCE_DRAW);
+			} else {
+				Chunk::renderer->renderObjects(m.renderlistChunk, cam, PG_FORCE_DRAW);
+			}
 			//std::cout << "octreeDisplay\n";
-			renderer->renderObjects(m.renderlistOctree, cam, PG_FORCE_DRAW);
+			//renderer->renderObjects(m.renderlistOctree, cam, PG_FORCE_DRAW);
 			//std::cout << "gridDisplay\n";
-			rendererObj3d.renderObjects(m.renderlistGrid, cam, PG_FORCE_DRAW);
+			renderer->renderObjects(m.renderlistGrid, cam, PG_FORCE_DRAW);
 
 			rendererSkybox.renderObjects(m.renderlistSkybox, cam, PG_FORCE_DRAW);
 			glfwSwapBuffers(m.glfw->_window);
@@ -2256,8 +2314,8 @@ int		main(int ac, char **av) {
 	//scene_procedural();
 	//scene_vox();
 	//testtype(true);	testtype(false); exit(0);
-	scene_test();
-	//scene_octree();
+	//scene_test();
+	scene_octree();
 	// while(1);
 
 	return (EXIT_SUCCESS);

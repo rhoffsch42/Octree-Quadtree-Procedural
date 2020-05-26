@@ -317,8 +317,8 @@ void		Octree::verifyNeighbors(Pixel filter) {
 
 			if (!mainRoot->contain(filter, posleft, sizeXaxis)) { node->neighbors |= NEIGHBOR_LEFT; }
 			if (!mainRoot->contain(filter, posright, sizeXaxis)) { node->neighbors |= NEIGHBOR_RIGHT; }
-			if (!mainRoot->contain(filter, posdown, sizeYaxis)) { node->neighbors |= NEIGHBOR_DOWN; }
-			if (!mainRoot->contain(filter, posup, sizeYaxis)) { node->neighbors |= NEIGHBOR_UP; }
+			if (!mainRoot->contain(filter, posdown, sizeYaxis)) { node->neighbors |= NEIGHBOR_BOTTOM; }
+			if (!mainRoot->contain(filter, posup, sizeYaxis)) { node->neighbors |= NEIGHBOR_TOP; }
 			if (!mainRoot->contain(filter, posback, sizeZaxis)) { node->neighbors |= NEIGHBOR_BACK; }
 			if (!mainRoot->contain(filter, posfront, sizeZaxis)) { node->neighbors |= NEIGHBOR_FRONT; }
 
