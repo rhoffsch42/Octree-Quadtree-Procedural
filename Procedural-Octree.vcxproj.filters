@@ -1,0 +1,224 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav</Extensions>
+    </Filter>
+    <Filter Include="SimpleGL">
+      <UniqueIdentifier>{7b1081cd-6b04-4a50-b914-5d0570fa101f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="SimpleGL\Header Files">
+      <UniqueIdentifier>{c9b0c0b4-1961-44e2-a74b-08991411bc7c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="SimpleGL\Header Files\tiny">
+      <UniqueIdentifier>{a1fe7ec9-b191-4adb-9c16-0d77eebcee30}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="SimpleGL\Source Files">
+      <UniqueIdentifier>{76ff6e2b-45d6-47ec-814f-66555821330e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="SimpleGL\Shaders">
+      <UniqueIdentifier>{89be103d-ef1d-42b7-adce-e7df2f14306e}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\chunk.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\chunkgenerator.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\octree.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\quadtree.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SimpleGL\src\behavior.cpp">
+      <Filter>SimpleGL\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SimpleGL\src\behaviormanaged.cpp">
+      <Filter>SimpleGL\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SimpleGL\src\blueprint.cpp">
+      <Filter>SimpleGL\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SimpleGL\src\cam.cpp">
+      <Filter>SimpleGL\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SimpleGL\src\fps.cpp">
+      <Filter>SimpleGL\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SimpleGL\src\framebuffer.cpp">
+      <Filter>SimpleGL\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SimpleGL\src\gamemanager.cpp">
+      <Filter>SimpleGL\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SimpleGL\src\glfw.cpp">
+      <Filter>SimpleGL\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SimpleGL\src\math.cpp">
+      <Filter>SimpleGL\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SimpleGL\src\misc.cpp">
+      <Filter>SimpleGL\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SimpleGL\src\obj3d.cpp">
+      <Filter>SimpleGL\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SimpleGL\src\obj3dBP.cpp">
+      <Filter>SimpleGL\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SimpleGL\src\obj3dPG.cpp">
+      <Filter>SimpleGL\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SimpleGL\src\object.cpp">
+      <Filter>SimpleGL\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SimpleGL\src\program.cpp">
+      <Filter>SimpleGL\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SimpleGL\src\properties.cpp">
+      <Filter>SimpleGL\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SimpleGL\src\skybox.cpp">
+      <Filter>SimpleGL\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SimpleGL\src\skyboxPG.cpp">
+      <Filter>SimpleGL\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SimpleGL\src\texture.cpp">
+      <Filter>SimpleGL\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SimpleGL\src\transformBH.cpp">
+      <Filter>SimpleGL\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SimpleGL\src\uipanel.cpp">
+      <Filter>SimpleGL\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SimpleGL\src\obj3d_ipg.cpp">
+      <Filter>SimpleGL\Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="SimpleGL\include\behavior.hpp">
+      <Filter>SimpleGL\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SimpleGL\include\behaviormanaged.hpp">
+      <Filter>SimpleGL\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SimpleGL\include\blueprint.hpp">
+      <Filter>SimpleGL\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SimpleGL\include\cam.hpp">
+      <Filter>SimpleGL\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SimpleGL\include\fps.hpp">
+      <Filter>SimpleGL\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SimpleGL\include\framebuffer.hpp">
+      <Filter>SimpleGL\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SimpleGL\include\gamemanager.hpp">
+      <Filter>SimpleGL\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SimpleGL\include\glfw.hpp">
+      <Filter>SimpleGL\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SimpleGL\include\main.hpp">
+      <Filter>SimpleGL\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SimpleGL\include\math.hpp">
+      <Filter>SimpleGL\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SimpleGL\include\misc.hpp">
+      <Filter>SimpleGL\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SimpleGL\include\obj3d.hpp">
+      <Filter>SimpleGL\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SimpleGL\include\obj3dBP.hpp">
+      <Filter>SimpleGL\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SimpleGL\include\obj3dPG.hpp">
+      <Filter>SimpleGL\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SimpleGL\include\object.hpp">
+      <Filter>SimpleGL\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SimpleGL\include\program.hpp">
+      <Filter>SimpleGL\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SimpleGL\include\properties.hpp">
+      <Filter>SimpleGL\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SimpleGL\include\simplegl.h">
+      <Filter>SimpleGL\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SimpleGL\include\skybox.hpp">
+      <Filter>SimpleGL\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SimpleGL\include\skyboxPG.hpp">
+      <Filter>SimpleGL\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SimpleGL\include\texture.hpp">
+      <Filter>SimpleGL\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SimpleGL\include\transformBH.hpp">
+      <Filter>SimpleGL\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SimpleGL\include\uipanel.hpp">
+      <Filter>SimpleGL\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SimpleGL\include\tinyobjloader\tiny_obj_loader.h">
+      <Filter>SimpleGL\Header Files\tiny</Filter>
+    </ClInclude>
+    <ClInclude Include="include\chunk.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\chunkgenerator.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\octree.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\quadtree.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\trees.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SimpleGL\include\obj3d_ipg.hpp">
+      <Filter>SimpleGL\Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="SimpleGL\shaders\cubemap.fs.glsl">
+      <Filter>SimpleGL\Shaders</Filter>
+    </None>
+    <None Include="SimpleGL\shaders\cubemap.vs.glsl">
+      <Filter>SimpleGL\Shaders</Filter>
+    </None>
+    <None Include="SimpleGL\shaders\obj3d.fs.glsl">
+      <Filter>SimpleGL\Shaders</Filter>
+    </None>
+    <None Include="SimpleGL\shaders\obj3d.vs.glsl">
+      <Filter>SimpleGL\Shaders</Filter>
+    </None>
+    <None Include="SimpleGL\shaders\obj3d_instanced.vs.glsl">
+      <Filter>SimpleGL\Shaders</Filter>
+    </None>
+  </ItemGroup>
+</Project>

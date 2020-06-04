@@ -3,26 +3,32 @@
 #include "math.hpp"
 #include "chunk.hpp"
 
-#define CHUNK_GEN_DEBUG	1
+#define CHUNK_GEN_DEBUG	0
 
 typedef uint8_t** hmap;
 
 class ChunkGenerator
 {
 public:
-	ChunkGenerator(Math::Vector3 player_pos, PerlinSettings perlin_settings, Math::Vector3 chunk_size, Math::Vector3 grid_size);
+	//grid_size_displayed will be clamped between 1 -> grid_size
+	ChunkGenerator(Math::Vector3 player_pos, const PerlinSettings& perlin_settings, Math::Vector3 chunk_size, Math::Vector3 grid_size, Math::Vector3 grid_size_displayed);
 	~ChunkGenerator();
 	bool	updateGrid(Math::Vector3 player_pos);
 
 	void	printData();
 
 	Math::Vector3	chunkSize;
-	Math::Vector3	gridSize;//3*3*3
-	Chunk****		grid;//3*3*3 Chunk*
+
+	Math::Vector3	gridSize;
+	Math::Vector3	gridPos;//the center of the grid in game world coo
+	Math::Vector3	gridSizeDisplay;
+	Math::Vector3	gridDisplayIndex;
+
+	Chunk****		grid;
 	PerlinSettings	settings;
+	Math::Vector3	currentChunk;
 private:
 	Math::Vector3	playerPos;
-	Math::Vector3	currentChunk;
 	hmap**			heightMaps;
 
 	void	updatePlayerPos(Math::Vector3 player_pos);

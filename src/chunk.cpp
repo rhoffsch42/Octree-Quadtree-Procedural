@@ -88,6 +88,7 @@ int	Chunk::buildVertexArrayFromOctree(Octree* root, Math::Vector3 pos_offset) {
 	});
 	if (mesh_array.size()) {//if there are some voxels in the chunk
 		this->meshBP = new Obj3dBP(mesh_array);
+		this->meshBP->freeData(BP_FREE_ALL);
 		this->mesh = new Obj3d(*this->meshBP, *Chunk::renderer);
 		this->mesh->local.setPos(this->pos);
 	}
@@ -178,11 +179,13 @@ Chunk::Chunk(const Math::Vector3& tile_number, Math::Vector3 chunk_size, PerlinS
 		delete[] pix[k];
 	}
 	delete[] pix;
-	//delete root? no cauz we will edit it to destroy some voxels
+	//delete root? not when we will edit it to destroy some voxels
+	delete this->root;
 }
 
 Chunk::~Chunk() {
-	delete this->root;
+	//delete root? when we will edit it to destroy some voxels we will need to do it here
+	//delete this->root;
 	if (this->meshBP) { delete this->meshBP; }
 	if (this->mesh) { delete this->mesh; }
 }

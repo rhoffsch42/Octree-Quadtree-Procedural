@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>16.0</VCProjectVersion>
+    <ProjectGuid>{B3C2BA9E-C4E2-4616-B505-B4309EED606B}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>ClangCL</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>ClangCL</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>ClangCL</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <PreprocessorDefinitions>GLEW_STATIC;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(SolutionDir)SimpleGL\dependencies\assimp\include;$(SolutionDir)SimpleGL\dependencies\GLEW\include;$(SolutionDir)SimpleGL\dependencies\GLFW\include;$(SolutionDir)SimpleGL\include\tinyobjloader;$(SolutionDir)SimpleGL\include;$(SolutionDir)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <Optimization>Disabled</Optimization>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <TargetMachine>MachineX86</TargetMachine>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Console</SubSystem>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories);$(SolutionDir)SimpleGL\dependencies\GLFW\lib-vc2019;$(SolutionDir)SimpleGL\dependencies\assimp\lib;$(SolutionDir)SimpleGL\dependencies\GLEW\lib\Release\Win32</AdditionalLibraryDirectories>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);glfw3.lib;glew32s.lib;opengl32.lib;assimp-vc142-mtd.lib</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <PreprocessorDefinitions>GLEW_STATIC;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(SolutionDir)SimpleGL\dependencies\assimp\include;$(SolutionDir)SimpleGL\dependencies\GLEW\include;$(SolutionDir)SimpleGL\dependencies\GLFW\include;$(SolutionDir)SimpleGL\include\tinyobjloader;$(SolutionDir)SimpleGL\include;$(SolutionDir)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <WarningLevel>Level1</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <Optimization>Disabled</Optimization>
+    </ClCompile>
+    <Link>
+      <TargetMachine>MachineX86</TargetMachine>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories);$(SolutionDir)SimpleGL\dependencies\GLFW\lib-vc2019;$(SolutionDir)SimpleGL\dependencies\assimp\lib;$(SolutionDir)SimpleGL\dependencies\GLEW\lib\Release\Win32</AdditionalLibraryDirectories>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);glfw3.lib;glew32s.lib;opengl32.lib;assimp.lib</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <PreprocessorDefinitions>GLEW_STATIC;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <WarningLevel>Level3</WarningLevel>
+      <AdditionalIncludeDirectories>$(SolutionDir)SimpleGL\dependencies\assimp\include;$(SolutionDir)SimpleGL\dependencies\GLEW\include;$(SolutionDir)SimpleGL\dependencies\GLFW\include;$(SolutionDir)SimpleGL\include\tinyobjloader;$(SolutionDir)SimpleGL\include;$(SolutionDir)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories);$(SolutionDir)SimpleGL\dependencies\GLFW\lib-vc2019;$(SolutionDir)SimpleGL\dependencies\assimp\lib;$(SolutionDir)SimpleGL\dependencies\GLEW\lib\Release\x64</AdditionalLibraryDirectories>
+      <AdditionalDependencies>glfw3.lib;glew32s.lib;opengl32.lib;assimp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <SubSystem>Console</SubSystem>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="SimpleGL\src\behavior.cpp" />
+    <ClCompile Include="SimpleGL\src\behaviormanaged.cpp" />
+    <ClCompile Include="SimpleGL\src\blueprint.cpp" />
+    <ClCompile Include="SimpleGL\src\cam.cpp" />
+    <ClCompile Include="SimpleGL\src\fps.cpp" />
+    <ClCompile Include="SimpleGL\src\framebuffer.cpp" />
+    <ClCompile Include="SimpleGL\src\gamemanager.cpp" />
+    <ClCompile Include="SimpleGL\src\glfw.cpp" />
+    <ClCompile Include="SimpleGL\src\math.cpp" />
+    <ClCompile Include="SimpleGL\src\misc.cpp" />
+    <ClCompile Include="SimpleGL\src\obj3d.cpp" />
+    <ClCompile Include="SimpleGL\src\obj3dBP.cpp" />
+    <ClCompile Include="SimpleGL\src\obj3dPG.cpp" />
+    <ClCompile Include="SimpleGL\src\obj3d_ipg.cpp" />
+    <ClCompile Include="SimpleGL\src\object.cpp" />
+    <ClCompile Include="SimpleGL\src\program.cpp" />
+    <ClCompile Include="SimpleGL\src\properties.cpp" />
+    <ClCompile Include="SimpleGL\src\skybox.cpp" />
+    <ClCompile Include="SimpleGL\src\skyboxPG.cpp" />
+    <ClCompile Include="SimpleGL\src\texture.cpp" />
+    <ClCompile Include="SimpleGL\src\transformBH.cpp" />
+    <ClCompile Include="SimpleGL\src\uipanel.cpp" />
+    <ClCompile Include="src\chunk.cpp" />
+    <ClCompile Include="src\chunkgenerator.cpp" />
+    <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\octree.cpp" />
+    <ClCompile Include="src\quadtree.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include\chunk.hpp" />
+    <ClInclude Include="include\chunkgenerator.hpp" />
+    <ClInclude Include="include\octree.hpp" />
+    <ClInclude Include="include\quadtree.hpp" />
+    <ClInclude Include="include\trees.h" />
+    <ClInclude Include="SimpleGL\include\behavior.hpp" />
+    <ClInclude Include="SimpleGL\include\behaviormanaged.hpp" />
+    <ClInclude Include="SimpleGL\include\blueprint.hpp" />
+    <ClInclude Include="SimpleGL\include\cam.hpp" />
+    <ClInclude Include="SimpleGL\include\fps.hpp" />
+    <ClInclude Include="SimpleGL\include\framebuffer.hpp" />
+    <ClInclude Include="SimpleGL\include\gamemanager.hpp" />
+    <ClInclude Include="SimpleGL\include\glfw.hpp" />
+    <ClInclude Include="SimpleGL\include\main.hpp" />
+    <ClInclude Include="SimpleGL\include\math.hpp" />
+    <ClInclude Include="SimpleGL\include\misc.hpp" />
+    <ClInclude Include="SimpleGL\include\obj3d.hpp" />
+    <ClInclude Include="SimpleGL\include\obj3dBP.hpp" />
+    <ClInclude Include="SimpleGL\include\obj3dPG.hpp" />
+    <ClInclude Include="SimpleGL\include\obj3d_ipg.hpp" />
+    <ClInclude Include="SimpleGL\include\object.hpp" />
+    <ClInclude Include="SimpleGL\include\program.hpp" />
+    <ClInclude Include="SimpleGL\include\properties.hpp" />
+    <ClInclude Include="SimpleGL\include\simplegl.h" />
+    <ClInclude Include="SimpleGL\include\skybox.hpp" />
+    <ClInclude Include="SimpleGL\include\skyboxPG.hpp" />
+    <ClInclude Include="SimpleGL\include\texture.hpp" />
+    <ClInclude Include="SimpleGL\include\tinyobjloader\tiny_obj_loader.h" />
+    <ClInclude Include="SimpleGL\include\transformBH.hpp" />
+    <ClInclude Include="SimpleGL\include\uipanel.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="SimpleGL\shaders\cubemap.fs.glsl" />
+    <None Include="SimpleGL\shaders\cubemap.vs.glsl" />
+    <None Include="SimpleGL\shaders\obj3d.fs.glsl" />
+    <None Include="SimpleGL\shaders\obj3d.vs.glsl" />
+    <None Include="SimpleGL\shaders\obj3d_instanced.vs.glsl" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

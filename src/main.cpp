@@ -1,14 +1,3 @@
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   main.cpp                                           :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: rhoffsch <rhoffsch@student.42.fr>          +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2018/09/18 22:45:30 by rhoffsch          #+#    #+#             */
-/*   Updated: 2019/04/03 14:58:50 by rhoffsch         ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
 
 #include "simplegl.h"
 #include "trees.h"
@@ -1693,17 +1682,32 @@ public:
 	OctreeManager() : QuadTreeManager() {
 		this->seed = 777;
 		std::srand(this->seed);
-		this->frequency = 8;
-		this->frequency = std::clamp(this->frequency, 0.1, 64.0);
-		this->octaves = 12;
-		this->octaves = std::clamp(this->octaves, 1, 16);
+		this->perlin = new siv::PerlinNoise(this->seed);
+		this->ps = new PerlinSettings(*this->perlin);
+
+		this->ps->frequency = 6;
+		this->ps->octaves = 6;
+		this->ps->flattering = 0.6;//1 for no impact
+		this->ps->island = 0;// 0 for no impact
+		this->ps->heightCoef = 0.5;
+
+		//default
+		this->ps->flattering = PERLIN_DEF_FLATTERING;
+		this->ps->island = PERLIN_DEF_ISLAND;
+
+		this->ps->frequency = std::clamp(this->ps->frequency, 0.1, 64.0);
+		this->ps->octaves = std::clamp((int)this->ps->octaves, 1, 16);
+		this->ps->flattering = std::clamp(this->ps->flattering, 0.1, 5.0);
+		this->ps->island = std::clamp(this->ps->island, 0.1, 5.0);
 
 		this->player = nullptr;
-		int s = 128;//64
-		this->chunk_size = Math::Vector3(s * 4,
-										s * 1,
-										s * 4);
-		this->chunk_display = 3;//3
+		int s = 32;
+		this->chunk_size = Math::Vector3(s * 2,
+										s * 2,
+										s * 2);
+		this->gridSize = Math::Vector3(7, 7, 7);
+		this->gridSizeDisplayed = Math::Vector3(3, 3, 3); //7 - 3 = 4 // 2 each side
+
 		this->polygon_mode = GL_POINT;
 		this->polygon_mode = GL_LINE;
 		this->polygon_mode = GL_FILL;
@@ -1713,8 +1717,7 @@ public:
 
 	unsigned int		seed;
 	siv::PerlinNoise*	perlin;
-	double				frequency;
-	int					octaves;
+	PerlinSettings*		ps;
 	std::list<Object*>	renderlist;
 	std::list<Object*>	renderlistOctree;
 	std::list<Object*>	renderlistGrid;
@@ -1724,7 +1727,8 @@ public:
 	GLuint				polygon_mode;
 	Obj3d* player;
 	Math::Vector3		chunk_size;
-	int					chunk_display;
+	Math::Vector3		gridSize;
+	Math::Vector3		gridSizeDisplayed;
 	unsigned int		threshold;
 };
 
@@ -1796,13 +1800,30 @@ void	buildObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager,
 	manager.renderlistChunk.clear();
 
 	int		hiddenBlocks = 0;
+	int		total_polygons = 0;
 
 	float	scale_coef = 0.99;
 	float	scale_coe2 = 1.0;
 	//scale_coef = 1;
+	std::cout << "chunks polygons: ";
+
+#if 1
+	Math::Vector3	startDisplay(
+		generator.gridDisplayIndex.x - int(generator.gridSizeDisplay.x / 2),
+		generator.gridDisplayIndex.y - int(generator.gridSizeDisplay.y / 2),
+		generator.gridDisplayIndex.z - int(generator.gridSizeDisplay.z / 2));
+	Math::Vector3	endDisplay(
+		startDisplay.x + generator.gridSizeDisplay.x,
+		startDisplay.y + generator.gridSizeDisplay.y,
+		startDisplay.z + generator.gridSizeDisplay.z);
+	for (unsigned int k = startDisplay.z; k < endDisplay.z; k++) {
+		for (unsigned int j = startDisplay.y; j < endDisplay.y; j++) {
+			for (unsigned int i = startDisplay.x; i < endDisplay.x; i++) {
+#else
 	for (unsigned int k = 0; k < generator.gridSize.z; k++) {
 		for (unsigned int j = 0; j < generator.gridSize.y; j++) {
 			for (unsigned int i = 0; i < generator.gridSize.x; i++) {
+#endif
 				Chunk* chunkPtr = generator.grid[k][j][i];
 
 				if (!chunkPtr->root) {
@@ -1834,7 +1855,11 @@ void	buildObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager,
 				if (1) {
 					if (chunkPtr->mesh) {
 						manager.renderlistChunk.push_back(chunkPtr->mesh);
-						std::cout << "chunk: " << chunkPtr->mesh->getBlueprint().getPolygonAmount() << std::endl;
+						int pol = chunkPtr->mesh->getBlueprint().getPolygonAmount();
+						chunkPtr->mesh->setTexture(tex_lena);
+						chunkPtr->mesh->displayTexture = false;
+						total_polygons += pol;
+						std::cout << pol << " ";
 					}
 				}
 				else {// browsing to build 1 obj3d per cube
@@ -1895,6 +1920,8 @@ void	buildObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager,
 			}
 		}
 	}
+	std::cout << std::endl;
+	std::cout << "total polygons:\t" << total_polygons << std::endl;
 	std::cout << "hiddenBlocks:\t" << hiddenBlocks << std::endl;
 	for (auto i : manager.renderlistVoxels)
 		std::cout << "renderlistVoxels[]: " << i.size() << std::endl;
@@ -2069,13 +2096,14 @@ void	scene_octree() {
 	OctreeManager	m;
 	m.glfw = new Glfw(WINX, WINY);
 
+#if 0
 	GLint n = 0;
 	glGetIntegerv(GL_NUM_EXTENSIONS, &n);
 	for (GLint i = 0; i < n; i++) {
 		const char* extension = (const char*)glGetStringi(GL_EXTENSIONS, i);
 		std::cout << extension << std::endl;
 	}
-
+#endif
 	//exit(0);
 
 	glfwSwapInterval(0);//0 = disable vsynx
@@ -2091,9 +2119,6 @@ void	scene_octree() {
 	m.glfw->func[GLFW_KEY_X] = keyCallback_ocTree;
 	m.glfw->func[GLFW_KEY_Y] = keyCallback_ocTree;
 	m.glfw->func[GLFW_KEY_Z] = keyCallback_ocTree;
-
-	siv::PerlinNoise perlin(m.seed);
-	m.perlin = &perlin;
 
 	std::string	pathPrefix("SimpleGL/");
 	Texture* tex_skybox = new Texture(pathPrefix + "images/skybox4.bmp");
@@ -2119,7 +2144,7 @@ void	scene_octree() {
 	Obj3dBP::defaultDataMode = BP_INDICES;
 
 	Cam		cam(m.glfw->getWidth(), m.glfw->getHeight());
-	cam.speed = 20;
+	cam.speed = 50;
 	cam.printProperties();
 	cam.lockedMovement = false;
 	cam.lockedOrientation = false;
@@ -2158,10 +2183,8 @@ void	scene_octree() {
 	//cam.local.setPos(85, 222, 100);//last obj:89 220 102
 	//cam.local.setPos(-180, 40, -110);
 	//chunk generator
-	PerlinSettings	ps(perlin);
 	Math::Vector3	playerPos = cam.local.getPos();
-	ChunkGenerator	generator(playerPos, ps, m.chunk_size, \
-		Math::Vector3(m.chunk_display, m.chunk_display, m.chunk_display));
+	ChunkGenerator	generator(playerPos, *m.ps, m.chunk_size, m.gridSize, m.gridSizeDisplayed);
 
 	buildObjectFromGenerator(generator, m, cubebp, *renderer, tex_lena);
 
@@ -2271,8 +2294,11 @@ void	scene_octree() {
 			//std::cout << "octreeDisplay\n";
 			//renderer->renderObjects(m.renderlistOctree, cam, PG_FORCE_DRAW);
 			//std::cout << "gridDisplay\n";
+#if true
+			glDisable(GL_CULL_FACE);
 			renderer->renderObjects(m.renderlistGrid, cam, PG_FORCE_DRAW);
-
+			glEnable(GL_CULL_FACE);
+#endif
 			rendererSkybox.renderObjects(m.renderlistSkybox, cam, PG_FORCE_DRAW);
 			glfwSwapBuffers(m.glfw->_window);
 

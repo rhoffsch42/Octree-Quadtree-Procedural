@@ -17,7 +17,7 @@
 #define PERLIN_DEF_FREQUENCY	8
 #define PERLIN_DEF_FLATTERING	1
 #define PERLIN_DEF_HEIGHTCOEF	1
-#define PERLIN_DEF_ISLAND		1
+#define PERLIN_DEF_ISLAND		0
 #define	CHUNK_DEF_SIZE			32
 #define VOXEL_EMPTY				Pixel(255, 255, 255)
 
@@ -47,9 +47,13 @@ public:
 					double(currentPos.z) / double(PERLIN_NORMALIZER) * this->frequency,
 					this->octaves);
 				value = std::pow(value, this->flattering);
-				double dist = (double(currentPos.magnitude()) / double(PERLIN_NORMALIZER / 2));//normalized 0..1
-				value = std::clamp(value + this->island * (0.5 - dist), 0.0, 1.0);
+				//double dist = (double(currentPos.magnitude()) / double(PERLIN_NORMALIZER / 2));//normalized 0..1
+				//value = std::clamp(value + this->island * (0.5 - dist), 0.0, 1.0);
 				value *= this->heightCoef;
+
+				//manual
+				value = std::clamp(value, 0.15, 1.0);
+				//final value
 				this->map[z][x] = uint8_t(value * 255.0);
 			}
 		}
