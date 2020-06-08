@@ -203,6 +203,9 @@
     <ClInclude Include="SimpleGL\include\obj3d_ipg.hpp">
       <Filter>SimpleGL\Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="SimpleGL\include\compiler_settings.h">
+      <Filter>SimpleGL\Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="SimpleGL\shaders\cubemap.fs.glsl">

@@ -108,8 +108,10 @@ Chunk::Chunk(const Math::Vector3& tile_number, Math::Vector3 chunk_size, PerlinS
 	this->meshBP = nullptr;
 	this->mesh = nullptr;
 
-	if (perlinSettings.map == nullptr) {//can this happen?
-		perlinSettings.genHeightMap(this->pos.x, this->pos.z, this->size.z, this->size.x);
+	bool	delmap = false;
+	if (perlinSettings.map == nullptr) {//when we didnt pregenerate the heightmap
+		perlinSettings.genHeightMap(this->pos.x, this->pos.z, this->size.x, this->size.z);
+		delmap = true;//to delete it after
 	}
 
 	this->data = new uint8_t**[this->size.z];
@@ -119,14 +121,14 @@ Chunk::Chunk(const Math::Vector3& tile_number, Math::Vector3 chunk_size, PerlinS
 			this->data[k][j] = new uint8_t[this->size.x];
 			for (unsigned int i = 0; i < this->size.x; i++) {
 				//std::cout << "pos.y + j = " << (pos.y + j) << "  is > to " << int(perlinSettings.map[k][i]) << "\t?" << std::endl;
-				if (pos.y + j > int(perlinSettings.map[k][i])) {
+				if (pos.y + j > int(perlinSettings.map[k][i])) {//procedural: dirt or air
 					this->data[k][j][i] = VOXEL_EMPTY.r;
 				} else {
-					if (0) {
+					if (0) {//procedural: which dirt
 						double value = perlinSettings.perlin.accumulatedOctaveNoise3D_0_1(
-							double(pos.x + i) / double(PERLIN_NORMALIZER) * perlinSettings.frequency,
-							double(pos.y + j) / double(PERLIN_NORMALIZER) * perlinSettings.frequency,
-							double(pos.z + k) / double(PERLIN_NORMALIZER) * perlinSettings.frequency,
+							double(pos.x + double(i)) / double(PERLIN_NORMALIZER) * perlinSettings.frequency,
+							double(pos.y + double(j)) / double(PERLIN_NORMALIZER) * perlinSettings.frequency,
+							double(pos.z + double(k)) / double(PERLIN_NORMALIZER) * perlinSettings.frequency,
 							perlinSettings.octaves);
 						uint8_t v = uint8_t(double(255.0) * value);
 						//v = v / 128 * 128;
@@ -141,6 +143,9 @@ Chunk::Chunk(const Math::Vector3& tile_number, Math::Vector3 chunk_size, PerlinS
 			}
 		}
 	}
+
+	if (delmap)
+		perlinSettings.deleteMap();
 
 	//tmp
 	Pixel*** pix = new Pixel**[this->size.z];

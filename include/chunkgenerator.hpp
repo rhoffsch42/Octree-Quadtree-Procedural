@@ -2,10 +2,48 @@
 
 #include "math.hpp"
 #include "chunk.hpp"
+#include "uipanel.hpp"
 
 #define CHUNK_GEN_DEBUG	0
 
-typedef uint8_t** hmap;
+//make a class for that
+typedef uint8_t**	hmap;
+typedef UIImage*	minimapTile;
+
+class HeightMap//2D
+{
+public:
+	HeightMap(PerlinSettings& perlin_settings, int posx, int posz, int sizex, int sizez)
+		: posX(posx), posZ(posz), sizeX(sizex), sizeZ(sizez)
+	{
+		perlin_settings.genHeightMap(posx, posz, sizex, sizez);//this can be optimized to do it only once per Y (and even keep the generated heightmap in memory for later use)
+		this->map = perlin_settings.map;
+		perlin_settings.map = nullptr;
+
+		//build map tiles
+		this->texture = PerlinSettings::HeightmapToTexture(map, sizex, sizez);
+		this->panel = new UIImage(this->texture);
+		this->panel->setPos(0, 0);
+		this->panel->setSize(sizex, sizez);
+	}
+	~HeightMap() {
+		delete this->texture;
+		delete this->panel;
+		for (int k = 0; k < this->sizeZ; k++) {
+			delete[] this->map[k];
+		}
+		delete[] this->map;
+	}
+
+	int			posX;
+	int			posZ;
+	int			sizeX;
+	int			sizeZ;
+	uint8_t**	map;
+	Texture*	texture;
+	UIImage*	panel;
+private:
+};
 
 class ChunkGenerator
 {
@@ -24,12 +62,13 @@ public:
 	Math::Vector3	gridSizeDisplay;
 	Math::Vector3	gridDisplayIndex;
 
-	Chunk****		grid;
+	Chunk* ***		grid;
 	PerlinSettings	settings;
 	Math::Vector3	currentChunk;
-private:
+
+	HeightMap* **	heightMaps;
 	Math::Vector3	playerPos;
-	hmap**			heightMaps;
+private:
 
 	void	updatePlayerPos(Math::Vector3 player_pos);
 	void	initValues(float diff, float& inc, float& start, float& end, float& endShift, float intersectionDimension, float size);

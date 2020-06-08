@@ -5,6 +5,7 @@
 #include "perlin.hpp"
 #include "obj3dBP.hpp"
 #include "obj3d.hpp"
+#include "texture.hpp"
 
 #include <algorithm>
 
@@ -22,9 +23,26 @@
 #define VOXEL_EMPTY				Pixel(255, 255, 255)
 
 
+#include "compiler_settings.h"
 class PerlinSettings
 {
 public:
+	static Texture* HeightmapToTexture(uint8_t** map, int sizex, int sizez) {
+		uint8_t* data = new uint8_t[sizex * sizez * 3];
+		for (int z = 0; z < sizez; z++) {
+			for (int x = 0; x < sizex; x++) {
+				int index = 3 * (z * sizex + x);
+				data[index + 0] = map[z][x];
+				data[index + 1] = map[z][x];
+				data[index + 2] = map[z][x];
+			}
+		}
+		//std::cout << "_ generating Texture for mapTile" << std::endl;
+		Texture* tex = new Texture(data, sizex, sizez);
+		delete[] data;
+		return tex;
+	}
+
 	void	genHeightMap(int posx, int posz, int sizex, int sizez) {
 		//std::cout << "_ " << __PRETTY_FUNCTION__ << std::endl;
 		//std::cout << posx << ":" << posz << std::endl;
@@ -93,18 +111,21 @@ public:
 		this->sizeZ = src.sizeZ;
 		return *this;
 	}
-	~PerlinSettings() {
-		std::cout << "_ " << __PRETTY_FUNCTION__ << std::endl;
+	void	deleteMap() {
 		if (this->map) {
-			std::cout << "delete map" << std::endl;
-			for (unsigned int j = 0; j < this->sizeZ; j++) {
+			for (int j = 0; j < this->sizeZ; j++) {
 				delete[] this->map[j];
 			}
 			delete[] this->map;
 		}
+		this->map = nullptr;
+	}
+	~PerlinSettings() {
+		std::cout << "_ " << __PRETTY_FUNCTION__ << std::endl;
+		this->deleteMap();
 	}
 
-	siv::PerlinNoise& perlin;
+	siv::PerlinNoise&	perlin;
 	unsigned int		octaves;
 	double				frequency;
 	double				flattering;

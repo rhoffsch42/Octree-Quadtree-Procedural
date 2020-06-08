@@ -43,7 +43,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>ClangCL</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -162,6 +162,7 @@
     <ClInclude Include="SimpleGL\include\behaviormanaged.hpp" />
     <ClInclude Include="SimpleGL\include\blueprint.hpp" />
     <ClInclude Include="SimpleGL\include\cam.hpp" />
+    <ClInclude Include="SimpleGL\include\compiler_settings.h" />
     <ClInclude Include="SimpleGL\include\fps.hpp" />
     <ClInclude Include="SimpleGL\include\framebuffer.hpp" />
     <ClInclude Include="SimpleGL\include\gamemanager.hpp" />

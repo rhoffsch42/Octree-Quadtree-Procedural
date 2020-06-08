@@ -1,4 +1,5 @@
-
+#include <compiler_settings.h>
+#if 1
 #include "simplegl.h"
 #include "trees.h"
 
@@ -6,8 +7,7 @@ void	blitToWindow(FrameBuffer* readFramebuffer, GLenum attachmentPoint, UIPanel*
 	GLuint fbo;
 	if (readFramebuffer) {
 		fbo = readFramebuffer->fbo;
-	}
-	else {
+	} else {
 		fbo = panel->getFbo();
 	}
 	// glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -24,12 +24,10 @@ void	blitToWindow(FrameBuffer* readFramebuffer, GLenum attachmentPoint, UIPanel*
 	if (readFramebuffer) {
 		w = readFramebuffer->getWidth();
 		h = readFramebuffer->getHeight();
-	}
-	else if (panel->getTexture()) {
+	} else if (panel->getTexture()) {
 		w = panel->getTexture()->getWidth();
 		h = panel->getTexture()->getHeight();
-	}
-	else {
+	} else {
 		std::cout << "FUCK " << __PRETTY_FUNCTION__ << std::endl;
 		exit(2);
 	}
@@ -1700,6 +1698,9 @@ public:
 		this->ps->flattering = std::clamp(this->ps->flattering, 0.1, 5.0);
 		this->ps->island = std::clamp(this->ps->island, 0.1, 5.0);
 
+		this->minimapPanels = nullptr;
+		this->playerMinimap = nullptr;
+		this->minimapCoef = 1.0f;
 		this->player = nullptr;
 		int s = 32;
 		this->chunk_size = Math::Vector3(s * 2,
@@ -1707,6 +1708,9 @@ public:
 										s * 2);
 		this->gridSize = Math::Vector3(7, 7, 7);
 		this->gridSizeDisplayed = Math::Vector3(3, 3, 3); //7 - 3 = 4 // 2 each side
+
+		this->minimapCenterX = this->chunk_size.x * this->gridSize.x * 0.5f * this->minimapCoef;
+		this->minimapCenterZ = this->chunk_size.z * this->gridSize.z * 0.5f * this->minimapCoef;
 
 		this->polygon_mode = GL_POINT;
 		this->polygon_mode = GL_LINE;
@@ -1724,8 +1728,13 @@ public:
 	std::list<Object*>	renderlistVoxels[6];//6faces
 	std::list<Object*>	renderlistChunk;
 	std::list<Object*>	renderlistSkybox;
+	UIPanel* **			minimapPanels;
+	UIImage*			playerMinimap;
+	float				minimapCoef;
+	int					minimapCenterX;
+	int					minimapCenterZ;
 	GLuint				polygon_mode;
-	Obj3d* player;
+	Obj3d*				player;
 	Math::Vector3		chunk_size;
 	Math::Vector3		gridSize;
 	Math::Vector3		gridSizeDisplayed;
@@ -1781,6 +1790,21 @@ static void		keyCallback_ocTree(GLFWwindow* window, int key, int scancode, int a
 void	buildObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager, Obj3dBP& cubebp, Obj3dPG& obj3d_prog, Texture* tex_lena) {
 	std::cout << "_ " << __PRETTY_FUNCTION__ << std::endl;
 
+
+	//build minimap (currently inverted on the Y axis
+	float	zmax = generator.gridSize.z * generator.chunkSize.z;//for gl convertion
+	for (unsigned int k = 0; k < generator.gridSize.z; k++) {
+		for (unsigned int i = 0; i < generator.gridSize.x; i++) {
+			float posx = i * generator.chunkSize.x + 0;
+			float posz = k * generator.chunkSize.z + 0;
+			float posx2 = posx + generator.chunkSize.x;
+			float posz2 = posz + generator.chunkSize.z;
+			generator.heightMaps[k][i]->panel->setPos(posx * manager.minimapCoef, (zmax - posz) * manager.minimapCoef);//top left corner
+			generator.heightMaps[k][i]->panel->setPos2(posx2 * manager.minimapCoef, (zmax - posz2) * manager.minimapCoef);//bot right corner
+		}
+	}
+	//blitToWindow(nullptr, GL_COLOR_ATTACHMENT0, &uiBaseImage);
+
 	//todo use smart pointers (not for renderlistVoxels)
 	for (auto i : manager.renderlist)
 		delete i;
@@ -1807,7 +1831,7 @@ void	buildObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager,
 	//scale_coef = 1;
 	std::cout << "chunks polygons: ";
 
-#if 1
+#if 1// display box
 	Math::Vector3	startDisplay(
 		generator.gridDisplayIndex.x - int(generator.gridSizeDisplay.x / 2),
 		generator.gridDisplayIndex.y - int(generator.gridSizeDisplay.y / 2),
@@ -1819,7 +1843,7 @@ void	buildObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager,
 	for (unsigned int k = startDisplay.z; k < endDisplay.z; k++) {
 		for (unsigned int j = startDisplay.y; j < endDisplay.y; j++) {
 			for (unsigned int i = startDisplay.x; i < endDisplay.x; i++) {
-#else
+#else // all the grid
 	for (unsigned int k = 0; k < generator.gridSize.z; k++) {
 		for (unsigned int j = 0; j < generator.gridSize.y; j++) {
 			for (unsigned int i = 0; i < generator.gridSize.x; i++) {
@@ -1928,7 +1952,7 @@ void	buildObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager,
 	std::cout << "renderlistOctree: " << manager.renderlistOctree.size() << std::endl;
 }
 
-void	scene_test() {
+void	scene_benchmarks() {
 	char input[100];
 	std::cout << "Choose:\n\t";
 	std::cout << "1 - glDrawArrays\n\t";
@@ -1941,6 +1965,8 @@ void	scene_test() {
 	m.glfw = new Glfw(WINX, WINY);
 	std::string	pathPrefix("SimpleGL/");
 	Texture* tex_skybox = new Texture(pathPrefix + "images/skybox4.bmp");
+
+	uint32_t	var = 15;
 
 	//Blueprint global settings
 	Obj3dBP::defaultSize = 1;
@@ -2123,6 +2149,9 @@ void	scene_octree() {
 	std::string	pathPrefix("SimpleGL/");
 	Texture* tex_skybox = new Texture(pathPrefix + "images/skybox4.bmp");
 	Texture* tex_lena = new Texture(pathPrefix + "images/lena.bmp");
+	Texture* tex_player = new Texture(pathPrefix + "images/player_icon.bmp");
+
+	m.playerMinimap = new UIImage(tex_player);
 
 	//programs
 	Obj3dPG			rendererObj3d(pathPrefix + OBJ3D_VS_FILE, pathPrefix + OBJ3D_FS_FILE);
@@ -2231,7 +2260,6 @@ void	scene_octree() {
 	//Fps* defaultFps = &fps60;
 
 	//generator.printData();
-
 	//glDisable(GL_CULL_FACE);
 	std::cout << "Begin while loop" << endl;
 	while (!glfwWindowShouldClose(m.glfw->_window)) {
@@ -2300,6 +2328,23 @@ void	scene_octree() {
 			glEnable(GL_CULL_FACE);
 #endif
 			rendererSkybox.renderObjects(m.renderlistSkybox, cam, PG_FORCE_DRAW);
+
+			//build minimap
+			for (unsigned int k = 0; k < generator.gridSize.z; k++) {
+				for (unsigned int i = 0; i < generator.gridSize.x; i++) {
+					blitToWindow(nullptr, GL_COLOR_ATTACHMENT0, generator.heightMaps[k][i]->panel);
+				}
+			}
+			Math::Vector3	playerPos = cam.local.getPos();
+			float	px = int(playerPos.x) - (int(playerPos.x) / int(generator.chunkSize.x) * int(generator.chunkSize.x));// prend pas en compte la display box, calculs approximatifs aussi
+			float	pz = int(playerPos.z) - (int(playerPos.z) / int(generator.chunkSize.z) * int(generator.chunkSize.z));
+			px = m.minimapCenterX + (px * m.minimapCoef);
+			pz = m.minimapCenterZ - (pz * m.minimapCoef);
+			m.playerMinimap->setPos(px, pz);
+			m.playerMinimap->setPos2(	px + m.playerMinimap->getTexture()->getWidth() * m.minimapCoef,
+										pz - m.playerMinimap->getTexture()->getHeight() * m.minimapCoef	);
+			blitToWindow(nullptr, GL_COLOR_ATTACHMENT0, m.playerMinimap);
+
 			glfwSwapBuffers(m.glfw->_window);
 
 			if (GLFW_PRESS == glfwGetKey(m.glfw->_window, GLFW_KEY_ESCAPE))
@@ -2326,7 +2371,9 @@ void	testtype(uint8_t value) {
 	std::cout << int(value) << std::endl;
 }
 
+#endif
 int		main(int ac, char **av) {
+
 	//maxUniforms();
 	//check_paddings();
 	// test_behaviors();
@@ -2340,7 +2387,7 @@ int		main(int ac, char **av) {
 	//scene_procedural();
 	//scene_vox();
 	//testtype(true);	testtype(false); exit(0);
-	//scene_test();
+	//scene_benchmarks();
 	scene_octree();
 	// while(1);
 

@@ -1,4 +1,5 @@
 #include "chunkgenerator.hpp"
+#include "compiler_settings.h"
 #include <algorithm>
 
 ChunkGenerator::ChunkGenerator(Math::Vector3 player_pos, const PerlinSettings& perlin_settings, Math::Vector3 chunk_size, Math::Vector3 grid_size, Math::Vector3 grid_size_displayed)
@@ -27,15 +28,13 @@ ChunkGenerator::ChunkGenerator(Math::Vector3 player_pos, const PerlinSettings& p
 	//smallestChunk.sub(v);
 	smallestChunk.sub((int)v.x, (int)v.y, (int)v.z);//a Vector3i would be better
 
-	this->heightMaps = new hmap * [this->gridSize.z];
+	this->heightMaps = new HeightMap**[this->gridSize.z];
 	for (unsigned int k = 0; k < this->gridSize.z; k++) {
-		this->heightMaps[k] = new hmap[this->gridSize.x];
+		this->heightMaps[k] = new HeightMap*[this->gridSize.x];
 		for (unsigned int i = 0; i < this->gridSize.x; i++) {
-			int x = (smallestChunk.x + i) * this->chunkSize.x;
-			int z = (smallestChunk.z + k) * this->chunkSize.z;
-			this->settings.genHeightMap(x, z, this->chunkSize.x, this->chunkSize.z);//this can be optimized to do it only once per Y (and even keep the generated heightmap in memory for later use)
-			this->heightMaps[k][i] = this->settings.map;
-			this->settings.map = nullptr;
+			this->heightMaps[k][i] = new HeightMap(this->settings,
+				(smallestChunk.x + i) * this->chunkSize.x, (smallestChunk.z + k) * this->chunkSize.z,
+				this->chunkSize.x, this->chunkSize.z);
 		}
 	}
 
@@ -45,7 +44,7 @@ ChunkGenerator::ChunkGenerator(Math::Vector3 player_pos, const PerlinSettings& p
 		for (unsigned int j = 0; j < this->gridSize.y; j++) {
 			this->grid[k][j] = new Chunk * [this->gridSize.x];
 			for (unsigned int i = 0; i < this->gridSize.x; i++) {
-				this->settings.map = this->heightMaps[k][i];
+				this->settings.map = this->heightMaps[k][i]->map;
 				Math::Vector3	tileNumber(smallestChunk.x + i, smallestChunk.y + j, smallestChunk.z + k);
 				this->grid[k][j][i] = new Chunk(tileNumber, this->chunkSize, this->settings);
 				this->settings.map = nullptr;
@@ -56,6 +55,9 @@ ChunkGenerator::ChunkGenerator(Math::Vector3 player_pos, const PerlinSettings& p
 
 ChunkGenerator::~ChunkGenerator() {
 	for (unsigned int k = 0; k < this->gridSize.z; k++) {
+		for (unsigned int i = 0; i < this->gridSize.z; i++) {
+			delete this->heightMaps[k][i];
+		}
 		delete[] this->heightMaps[k];
 	}
 	delete[] this->heightMaps;
@@ -72,6 +74,21 @@ ChunkGenerator::~ChunkGenerator() {
 	delete[] this->grid;
 }
 
+#if 0
+void		ChunkGenerator::buildHeightMapData(const Math::Vector3& smallestChunk, int i, int k) {
+	int x = (smallestChunk.x + i) * this->chunkSize.x;
+	int z = (smallestChunk.z + k) * this->chunkSize.z;
+	this->settings.genHeightMap(x, z, this->chunkSize.x, this->chunkSize.z);//this can be optimized to do it only once per Y (and even keep the generated heightmap in memory for later use)
+	this->heightMaps[k][i] = this->settings.map;
+	this->settings.map = nullptr;
+
+	//build map tiles
+	Texture* tex = PerlinSettings::HeightmapToTexture(this->heightMaps[k][i], this->chunkSize.x, this->chunkSize.z);
+	this->minimapTiles[k][i] = new UIImage(tex);
+	this->minimapTiles[k][i]->setPos(i * this->chunkSize.x, k * this->chunkSize.z);
+	this->minimapTiles[k][i]->setSize(this->chunkSize.x, this->chunkSize.z);
+}
+#endif
 void		ChunkGenerator::initValues(float diff, float& inc, float& start, float& end, float& endShift, float intersection, float size) {
 	if (diff >= 0) {
 		inc = 1;
@@ -168,18 +185,17 @@ bool	ChunkGenerator::updateGrid(Math::Vector3 player_pos) {
 							this->grid[k + int(diffGrid.z)][j + int(diffGrid.y)][i + int(diffGrid.x)] = nullptr;//useless but cleaner, it will become another chunk on next pass (generated or shifted)
 							if (progress.y == 0) {//do it only once, for all the Y
 								this->heightMaps[k][i] = this->heightMaps[k + int(diffGrid.z)][i + int(diffGrid.x)];
-								//this->heightMaps[k + int(diff.z)][i + int(diff.x)] = nullptr;//dont do that, if diff.z and .x are 0, it leek the previously created heightmap
+								//this->heightMaps[k + int(diff.z)][i + int(diff.x)] = nullptr;//dont do that, if diff.z and .x are 0, it leeks the previously created heightmap
 							}
 						}
 						else {
 							if (CHUNK_GEN_DEBUG) { std::cout << "gen new chunk: " << i << ":" << j << ":" << k << std::endl; }
 							if (progress.y == 0) {//do it only once, for all the Y
-								int x = (smallestChunk.x + i) * this->chunkSize.x;
-								int z = (smallestChunk.z + k) * this->chunkSize.z;
-								this->settings.genHeightMap(x, z, this->chunkSize.x, this->chunkSize.z);//this can be optimized to do it only once per Y (and even keep the generated heightmap in memory for later use)
-								this->heightMaps[k][i] = this->settings.map;
+								this->heightMaps[k][i] = new HeightMap(this->settings,
+									(smallestChunk.x + i) * this->chunkSize.x, (smallestChunk.z + k) * this->chunkSize.z,
+									this->chunkSize.x, this->chunkSize.z);
 							}
-							this->settings.map = this->heightMaps[k][i];
+							this->settings.map = this->heightMaps[k][i]->map;
 							this->grid[k][j][i] = new Chunk(
 								Math::Vector3(smallestChunk.x + i, smallestChunk.y + j, smallestChunk.z + k),//what happen when we send that to a ref?
 								this->chunkSize, this->settings);

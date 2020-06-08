@@ -1,4 +1,5 @@
 #include "octree.hpp"
+#include "compiler_settings.h"
 
 Pixel   getAverage(Pixel*** arr, Math::Vector3 pos, Math::Vector3 size) {
 	//std::cout << "__getA.. " << width << "x" << height << " at " << x << ":" << y << std::endl;
