@@ -1700,14 +1700,16 @@ public:
 
 		this->minimapPanels = nullptr;
 		this->playerMinimap = nullptr;
-		this->minimapCoef = 1.0f;
+		this->minimapCoef = 0.5f;
 		this->player = nullptr;
 		int s = 32;
 		this->chunk_size = Math::Vector3(s * 2,
 										s * 2,
 										s * 2);
-		this->gridSize = Math::Vector3(7, 7, 7);
-		this->gridSizeDisplayed = Math::Vector3(3, 3, 3); //7 - 3 = 4 // 2 each side
+		int	g = 3;
+		int	d = 3;
+		this->gridSize = Math::Vector3(g, g, g);
+		this->gridSizeDisplayed = Math::Vector3(d, d, d); //7 - 3 = 4 // 2 each side
 
 		this->minimapCenterX = this->chunk_size.x * this->gridSize.x * 0.5f * this->minimapCoef;
 		this->minimapCenterZ = this->chunk_size.z * this->gridSize.z * 0.5f * this->minimapCoef;
@@ -1964,9 +1966,6 @@ void	scene_benchmarks() {
 	OctreeManager	m;
 	m.glfw = new Glfw(WINX, WINY);
 	std::string	pathPrefix("SimpleGL/");
-	Texture* tex_skybox = new Texture(pathPrefix + "images/skybox4.bmp");
-
-	uint32_t	var = 15;
 
 	//Blueprint global settings
 	Obj3dBP::defaultSize = 1;
@@ -1980,6 +1979,7 @@ void	scene_benchmarks() {
 
 	Texture* lenatex = new Texture(pathPrefix + "images/lena.bmp");
 	Texture* lambotex = new Texture(pathPrefix + "obj3d/lambo/Lamborginhi_Aventador_OBJ/Lamborginhi_Aventador_diffuse.bmp");
+	Texture* tex_skybox = new Texture(pathPrefix + "images/skybox4.bmp");
 
 	Obj3dPG		rendererObj3d(pathPrefix + OBJ3D_VS_FILE, pathPrefix + OBJ3D_FS_FILE);
 	Obj3dIPG	rendererObj3dInstanced(pathPrefix + OBJ3D_INSTANCED_VS_FILE, pathPrefix + OBJ3D_FS_FILE);
@@ -2003,13 +2003,25 @@ void	scene_benchmarks() {
 		std::cout << "Instanced rendering enabled" << std::endl;
 	}
 
+	//texture edit
+	uint8_t* tex_data = lenatex->getData();
+	unsigned int w = lenatex->getWidth();
+	unsigned int h = lenatex->getHeight();
+	int	maxs = w * h * 3;
+	for (int i = 0; i < maxs; i++) {
+		if (i % 3 == 0)
+			tex_data[i] = 255;
+	}
+	lenatex->updateData(tex_data, w, h);
+
+
 	if (1) {//test 10 cubes
 		for (size_t i = 0; i < 10; i++) {
 			Obj3d* cube = new Obj3d(cubebp, *renderer);
 			cube->local.setPos(float(i) * 1.1, 0, 0);
 			cube->local.setScale(1, 1, 1);
 			cube->setColor(25 * i, 0, 0);
-			cube->displayTexture = false;
+			cube->displayTexture = true;
 			cube->setTexture(lenatex);
 			cube->setPolygonMode(GL_FILL);
 			m.renderlist.push_back(cube);
@@ -2336,13 +2348,14 @@ void	scene_octree() {
 				}
 			}
 			Math::Vector3	playerPos = cam.local.getPos();
-			float	px = int(playerPos.x) - (int(playerPos.x) / int(generator.chunkSize.x) * int(generator.chunkSize.x));// prend pas en compte la display box, calculs approximatifs aussi
-			float	pz = int(playerPos.z) - (int(playerPos.z) / int(generator.chunkSize.z) * int(generator.chunkSize.z));
-			px = m.minimapCenterX + (px * m.minimapCoef);
-			pz = m.minimapCenterZ - (pz * m.minimapCoef);
+			float	zmax = generator.gridSize.z * generator.chunkSize.z;//for gl convertion
+			float	px_topleftChunk = generator.grid[0][0][0]->pos.x;
+			float	pz_topleftChunk = generator.grid[0][0][0]->pos.z;
+			float	px = (playerPos.x - px_topleftChunk) * m.minimapCoef;
+			float	pz = (zmax - (playerPos.z - pz_topleftChunk)) * m.minimapCoef;
 			m.playerMinimap->setPos(px, pz);
-			m.playerMinimap->setPos2(	px + m.playerMinimap->getTexture()->getWidth() * m.minimapCoef,
-										pz - m.playerMinimap->getTexture()->getHeight() * m.minimapCoef	);
+			m.playerMinimap->setPos2(px + m.playerMinimap->getTexture()->getWidth() * m.minimapCoef,
+									pz + m.playerMinimap->getTexture()->getHeight() * m.minimapCoef);
 			blitToWindow(nullptr, GL_COLOR_ATTACHMENT0, m.playerMinimap);
 
 			glfwSwapBuffers(m.glfw->_window);
@@ -2371,8 +2384,62 @@ void	testtype(uint8_t value) {
 	std::cout << int(value) << std::endl;
 }
 
+void	scene_checkMemory() {
+	char input[100];
+	Glfw* glfw = new Glfw(WINX, WINY);
+	std::string	pathPrefix("SimpleGL/");
+
+	std::cout << "Texture build... ENTER" << std::endl;
+	std::cin >> input;
+	Texture* tex_bigass = new Texture(pathPrefix + "images/skybox4096.bmp");
+	std::cout << ">> Texture loaded" << std::endl;
+//Textrues
+#if 0
+	std::cout << "Texture unload load loop... ENTER" << std::endl;
+	std::cin >> input;
+
+	for (size_t i = 0; i < 100; i++) {
+		//unload
+		tex_bigass->unloadTexture();
+		glfwSwapBuffers(glfw->_window);
+		std::cout << ">> Texture unloaded" << std::endl;
+
+		//load
+		tex_bigass->loadTexture();
+		glfwSwapBuffers(glfw->_window);
+		std::cout << ">> Texture loaded" << std::endl;
+	}
 #endif
+//Skybox
+#if 1
+	SkyboxPG	rendererSkybox(pathPrefix + CUBEMAP_VS_FILE, pathPrefix + CUBEMAP_FS_FILE);
+
+	for (size_t i = 0; i < 100; i++) {
+		Skybox* sky = new Skybox(*tex_bigass, rendererSkybox);
+		delete sky;
+	}
+#endif
+//framebuffer
+#if 1
+#endif
+	//exit
+	std::cout << "end... ENTER" << std::endl;
+	std::cin >> input;
+	exit(0);
+
+}
+#endif
+#define _CRTDBG_MAP_ALLOC
+#include <stdlib.h>
+#include <crtdbg.h>
 int		main(int ac, char **av) {
+	//_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
+	//_CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_DEBUG);
+
+	_CrtMemState sOld;
+	_CrtMemState sNew;
+	_CrtMemState sDiff;
+	_CrtMemCheckpoint(&sOld); //take a snapchot
 
 	//maxUniforms();
 	//check_paddings();
@@ -2388,8 +2455,22 @@ int		main(int ac, char **av) {
 	//scene_vox();
 	//testtype(true);	testtype(false); exit(0);
 	//scene_benchmarks();
+	//scene_checkMemory();
 	scene_octree();
 	// while(1);
 
+	std::cout << "____END____ : " << std::endl;
+	_CrtMemCheckpoint(&sNew); //take a snapchot 
+	if (_CrtMemDifference(&sDiff, &sOld, &sNew)) // if there is a difference
+	{
+		OutputDebugString("-----------_CrtMemDumpStatistics ---------");
+		_CrtMemDumpStatistics(&sDiff);
+		OutputDebugString("-----------_CrtMemDumpAllObjectsSince ---------");
+		_CrtMemDumpAllObjectsSince(&sOld);
+		OutputDebugString("-----------_CrtDumpMemoryLeaks ---------");
+		_CrtDumpMemoryLeaks();
+	} else {
+		std::cout << "no diff for memory check" << std::endl;
+	}
 	return (EXIT_SUCCESS);
 }
