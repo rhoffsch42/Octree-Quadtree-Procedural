@@ -1,4 +1,6 @@
 # Voxel engine using octrees, 2d and 3d perlin noise
+video: https://www.youtube.com/watch?v=7nj2OTwm5g4
+
 <img src="/assets/8tree500.gif" width="500" height="300" />
 
 ## 
