@@ -40,7 +40,7 @@
 #include <unistd.h>
 #endif
 
-#define WINX 1600
-#define WINY 900
+#define WINX 1920
+#define WINY 1080
 #define SIMPLEGL_FOLDER		std::string("SimpleGL/")
 #define WIN32_VS_FOLDER		string("")

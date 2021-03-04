@@ -2,6 +2,7 @@
 #if 1
 #include "simplegl.h"
 #include "trees.h"
+#include <mutex>
 
 void	blitToWindow(FrameBuffer* readFramebuffer, GLenum attachmentPoint, UIPanel* panel) {
 	GLuint fbo;
@@ -29,7 +30,7 @@ void	blitToWindow(FrameBuffer* readFramebuffer, GLenum attachmentPoint, UIPanel*
 		h = panel->getTexture()->getHeight();
 	} else {
 		std::cout << "FUCK " << __PRETTY_FUNCTION__ << std::endl;
-		exit(2);
+		std::exit(2);
 	}
 	if (0) {
 		std::cout << "copy " << w << "x" << h << "\tresized\t" << panel->_width << "x" << panel->_height \
@@ -1700,14 +1701,16 @@ public:
 
 		this->minimapPanels = nullptr;
 		this->playerMinimap = nullptr;
-		this->minimapCoef = 0.5f;
+		this->minimapCoef = 0.8f;
 		this->player = nullptr;
+		this->playerSpeed = 20;//unit/s
+		this->shiftPressed = false;
 		int s = 32;
 		this->chunk_size = Math::Vector3(s * 2,
 										s * 2,
 										s * 2);
-		int	g = 3;
-		int	d = 3;
+		int	g = 9;
+		int	d = 5;
 		this->gridSize = Math::Vector3(g, g, g);
 		this->gridSizeDisplayed = Math::Vector3(d, d, d); //7 - 3 = 4 // 2 each side
 
@@ -1718,6 +1721,8 @@ public:
 		this->polygon_mode = GL_LINE;
 		this->polygon_mode = GL_FILL;
 		this->threshold = 0;
+
+		this->cpu_coreAmount = std::thread::hardware_concurrency();
 	}
 	~OctreeManager() {}
 
@@ -1737,53 +1742,64 @@ public:
 	int					minimapCenterZ;
 	GLuint				polygon_mode;
 	Obj3d*				player;
+	float				playerSpeed;
+	bool				shiftPressed;
 	Math::Vector3		chunk_size;
 	Math::Vector3		gridSize;
 	Math::Vector3		gridSizeDisplayed;
 	unsigned int		threshold;
+
+	unsigned int		cpu_coreAmount;
 };
 
 #define M_PERLIN_GENERATION		1
 #define M_OCTREE_OPTIMISATION	1
 #define M_DISPLAY_BLACK			1
-#define M_DRAW_GRID_CHUNK		1
+#define M_DRAW_GRID_CHUNK		0
 
 static void		keyCallback_ocTree(GLFWwindow* window, int key, int scancode, int action, int mods) {
 	(void)window; (void)key; (void)scancode; (void)action; (void)mods;
 	//std::cout << __PRETTY_FUNCTION__ << std::endl;
 
 	float	move = 150;
-
+	OctreeManager* manager = static_cast<OctreeManager*>(glfwGetWindowUserPointer(window));
+	if (!manager) {
+		std::cout << "static_cast failed" << std::endl;
+		return;
+	}
 	if (action == GLFW_PRESS) {
-		//std::cout << "GLFW_PRESS" << std::endl;
-		OctreeManager* manager = static_cast<OctreeManager*>(glfwGetWindowUserPointer(window));
-		if (!manager) {
-			std::cout << "static_cast failed" << std::endl;
-		}
-		else if (manager->glfw) {
+		std::cout << "GLFW_PRESS:" << key << std::endl;
+		if (manager->glfw) {
 			if (key == GLFW_KEY_EQUAL) {
 				manager->threshold++;
 				manager->glfw->setTitle(std::to_string(manager->threshold).c_str());
-			}
-			else if (key == GLFW_KEY_MINUS && manager->threshold > 0) {
+			} else if (key == GLFW_KEY_MINUS && manager->threshold > 0) {
 				manager->threshold--;
 				manager->glfw->setTitle(std::to_string(manager->threshold).c_str());
-			}
-			else if (key == GLFW_KEY_ENTER) {
+			} else if (key == GLFW_KEY_ENTER) {
 				manager->polygon_mode++;
 				manager->polygon_mode = GL_POINT + (manager->polygon_mode % 3);
 				for (std::list<Object*>::iterator it = manager->renderlist.begin(); it != manager->renderlist.end(); ++it) {
 					((Obj3d*)(*it))->setPolygonMode(manager->polygon_mode);
 				}
-			}
-			else if (key == GLFW_KEY_X) {
+			} else if (key == GLFW_KEY_X) {
 				manager->cam->local.translate(move, 0, 0);
-			}
-			else if (key == GLFW_KEY_Y) {
+			} else if (key == GLFW_KEY_Y) {
 				manager->cam->local.translate(0, move, 0);
-			}
-			else if (key == GLFW_KEY_Z) {
+			} else if (key == GLFW_KEY_Z) {
 				manager->cam->local.translate(0, 0, move);
+			}  else if (key == GLFW_KEY_LEFT_SHIFT) {
+				manager->shiftPressed = true;
+				manager->cam->speed = manager->playerSpeed * 3;
+			}
+		}
+	} else if (action == GLFW_RELEASE) {
+		std::cout << "GLFW_RELEASE:" << key << std::endl;
+		if (manager->glfw) {
+			if (key == GLFW_KEY_LEFT_SHIFT) {
+				std::cout << "GLFW_KEY_LEFT_SHIFT" << std::endl;
+				manager->shiftPressed = false;
+				manager->cam->speed = manager->playerSpeed;
 			}
 		}
 	}
@@ -1793,7 +1809,7 @@ void	buildObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager,
 	std::cout << "_ " << __PRETTY_FUNCTION__ << std::endl;
 
 
-	//build minimap (currently inverted on the Y axis
+	//build minimap (currently inverted on the Y axis)
 	float	zmax = generator.gridSize.z * generator.chunkSize.z;//for gl convertion
 	for (unsigned int k = 0; k < generator.gridSize.z; k++) {
 		for (unsigned int i = 0; i < generator.gridSize.x; i++) {
@@ -1854,7 +1870,7 @@ void	buildObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager,
 
 				if (!chunkPtr->root) {
 					std::cout << "fuck there is no root\n";
-					exit(1);
+					std::exit(1);
 				}
 	
 				if (0) {//coloring origin of each octree/chunk
@@ -1877,7 +1893,7 @@ void	buildObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager,
 					manager.renderlistGrid.push_back(cubeGrid);
 				}
 
-				// 1 obj3d for the entire chunk
+				// one obj3d for the entire chunk
 				if (1) {
 					if (chunkPtr->mesh) {
 						manager.renderlistChunk.push_back(chunkPtr->mesh);
@@ -1888,7 +1904,7 @@ void	buildObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager,
 						std::cout << pol << " ";
 					}
 				}
-				else {// browsing to build 1 obj3d per cube
+				else {// oldcode, browsing to build 1 obj3d per cube (not chunk)
 					chunkPtr->root->browse(0, [&manager, &cubebp, &obj3d_prog, scale_coef, scale_coe2, chunkPtr, tex_lena, &hiddenBlocks](Octree* node) {
 						if (M_DISPLAY_BLACK || (node->pixel.r != 0 && node->pixel.g != 0 && node->pixel.b != 0)) {// pixel 0?
 							Math::Vector3	worldPos(chunkPtr->pos);
@@ -2129,10 +2145,23 @@ void	scene_benchmarks() {
 	std::cout << "End while loop" << endl;
 }
 
+void	th1_mapGeneration(ChunkGenerator& generator, OctreeManager& manager, Obj3dBP& cubebp, Obj3dPG& renderer, Texture* tex_lena) {
+	while (1) {
+		if (!generator.playerChangedChunk && generator.updateGrid(manager.cam->local.getPos())) {
+			//buildObjectFromGenerator(generator, manager, cubebp, renderer, tex_lena);
+			//parts are interacting with opengl, should be done in main thread
+		}
+	}
+}
+
 void	scene_octree() {
 #ifndef INIT_GLFW
 	OctreeManager	m;
-	m.glfw = new Glfw(WINX, WINY);
+	std::cout << "threads: " << m.cpu_coreAmount << std::endl;
+	std::this_thread::sleep_for(1s);
+	//m.glfw = new Glfw(WINX, WINY);
+	m.glfw = new Glfw(1600, 900);
+	glfwSetWindowPos(m.glfw->_window, 100, 50);
 
 #if 0
 	GLint n = 0;
@@ -2157,6 +2186,7 @@ void	scene_octree() {
 	m.glfw->func[GLFW_KEY_X] = keyCallback_ocTree;
 	m.glfw->func[GLFW_KEY_Y] = keyCallback_ocTree;
 	m.glfw->func[GLFW_KEY_Z] = keyCallback_ocTree;
+	m.glfw->func[GLFW_KEY_LEFT_SHIFT] = keyCallback_ocTree;
 
 	std::string	pathPrefix("SimpleGL/");
 	Texture* tex_skybox = new Texture(pathPrefix + "images/skybox4.bmp");
@@ -2185,7 +2215,7 @@ void	scene_octree() {
 	Obj3dBP::defaultDataMode = BP_INDICES;
 
 	Cam		cam(m.glfw->getWidth(), m.glfw->getHeight());
-	cam.speed = 50;
+	cam.speed = m.playerSpeed;
 	cam.printProperties();
 	cam.lockedMovement = false;
 	cam.lockedOrientation = false;
@@ -2226,42 +2256,8 @@ void	scene_octree() {
 	//chunk generator
 	Math::Vector3	playerPos = cam.local.getPos();
 	ChunkGenerator	generator(playerPos, *m.ps, m.chunk_size, m.gridSize, m.gridSizeDisplayed);
-
-	buildObjectFromGenerator(generator, m, cubebp, *renderer, tex_lena);
-
-	if (0) {
-		int start = -10;
-		int	step = 3;
-		int amount = 15;
-		m.renderlist.clear();
-		for (int k = 0; k < amount; k++) {
-			for (int j = 0; j < amount; j++) {
-				for (int i = 0; i < amount; i++) {
-					Obj3d* cube = new Obj3d(cubebp, rendererObj3d);
-					cube->setColor(127, 127, 127);
-					cube->local.setPos(start + i * step, start + j * step, start + k * step);
-					cube->local.setScale(1, 1, 1);
-					cube->setPolygonMode(m.polygon_mode);
-					cube->displayTexture = false;
-					m.renderlist.push_back(cube);
-				}
-			}
-		}
-		float	thickness = 0.2f;
-		float	len = 100.0f;
-		Obj3d	xdim(cubebp, rendererObj3d);
-		Obj3d	ydim(cubebp, rendererObj3d);
-		Obj3d	zdim(cubebp, rendererObj3d);
-		xdim.setColor(255, 0, 0);
-		ydim.setColor(0, 255, 0);
-		zdim.setColor(0, 0, 255);
-		xdim.local.setScale(len, thickness, thickness);
-		ydim.local.setScale(thickness, len, thickness);
-		zdim.local.setScale(thickness, thickness, len);
-		m.renderlist.push_back(&xdim);
-		m.renderlist.push_back(&ydim);
-		m.renderlist.push_back(&zdim);
-	}
+//	generator.buildMeshesAndMapTiles();
+	//buildObjectFromGenerator(generator, m, cubebp, *renderer, tex_lena);
 
 #endif
 	Fps	fpsBIG(1000);
@@ -2271,8 +2267,12 @@ void	scene_octree() {
 	Fps* defaultFps = &fps144;
 	//Fps* defaultFps = &fps60;
 
-	//generator.printData();
-	//glDisable(GL_CULL_FACE);
+	//threads
+#define USE_THREADS
+#ifdef USE_THREADS
+	//void	th1_mapGeneration(ChunkGenerator& generator, OctreeManager& manager, Obj3dBP& cubebp, Obj3dPG& renderer, Texture* tex_lena, Cam& cam, ) {
+	std::thread helper1(th1_mapGeneration, std::ref(generator), std::ref(m), std::ref(cubebp), std::ref(*renderer), tex_lena);
+#endif
 	std::cout << "Begin while loop" << endl;
 	while (!glfwWindowShouldClose(m.glfw->_window)) {
 		if (defaultFps->wait_for_next_frame()) {
@@ -2280,46 +2280,36 @@ void	scene_octree() {
 
 			glfwPollEvents();
 			m.glfw->updateMouse();//to do before cam's events
-			m.cam->events(*m.glfw, float(defaultFps->getTick()));
-
-#ifdef LONETREE
-			//89 220 102
-			int ind = generator.size.x / 2;
-			Chunk* mainChunk = generator.grid[ind][ind][ind];
-			Math::Vector3	lone(89, 220, 102);
-			lone.sub(mainChunk->pos);
-			Octree* loneTree = mainChunk->root->getRoot(lone, Math::Vector3(1, 1, 1));
-			if (loneTree) {
-				std::cout << "lone tree neighbors: " << int(loneTree->neighbors) << std::endl;
-				std::cout << "lone tree pos: "; loneTree->pos.printData();
-				std::cout << "main chunk pos: "; mainChunk->pos.printData();
-				/*
-				lone tree neighbors: 0
-				lone tree pos: 25 28 6
-				main chunk pos: 64 192 96
-				last obj:89 220 102
-				*/
-
-				Math::Vector3	down(loneTree->pos); down.sub(0, loneTree->size.y, 0);
-				Octree* root = mainChunk->root->getRoot(down, loneTree->size);
-				if (root && root->pixel.r != VOXEL_EMPTY.r && root->pixel.g != VOXEL_EMPTY.g && root->pixel.b != VOXEL_EMPTY.b) {
-					std::wcout << "found..\n";
-					//if we found a neighbor and it is not empty
-				}
-				else {
-					std::wcout << "no way..\n";
-				}
+			{
+				std::lock_guard<std::mutex> guard(generator.mutex1);
+				m.cam->events(*m.glfw, float(defaultFps->getTick()));
 			}
-#endif
-
-			if (1 && generator.updateGrid(cam.local.getPos())) {
+#ifndef USE_THREADS
+			if (1 && generator.updateGrid(m.cam->local.getPos())) {
+				generator.buildMeshesAndMapTiles();
 				buildObjectFromGenerator(generator, m, cubebp, *renderer, tex_lena);
 			}
+#else
+			if (generator.chunks_mutex.try_lock()) {
+				if (generator.playerChangedChunk) {
+
+					//double start = glfwGetTime(); std::cout << "building meshes...";
+					generator.buildMeshesAndMapTiles();
+					//start = glfwGetTime() - start; std::cout << " built in " << start << " seconds\n";
+
+					double start = glfwGetTime(); std::cout << "grabing meshes...";
+					buildObjectFromGenerator(generator, m, cubebp, *renderer, tex_lena);
+					start = glfwGetTime() - start; std::cout << " grabed in " << start << " seconds\n";
+					//generator.playerChangedChunk = false;//not yet
+				}
+				generator.chunks_mutex.unlock();
+			}
+#endif
 
 			//GLuint	mode = m.polygon_mode;
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 			//std::cout << "renderlist\n";
-			if (0) { // opti faces
+			if (0) { // opti faces, not converted to mesh
 				float speed = cam.speed;//save
 				for (size_t i = 0; i < 6; i++) {
 					cam.speed = i;//use this as a flag for the renderer, tmp
@@ -2328,7 +2318,7 @@ void	scene_octree() {
 				cam.speed = speed;//restore
 			} else if (0) {//whole cube
 				renderer->renderObjects(m.renderlist, cam, PG_FORCE_DRAW);
-			} else {
+			} else { // converted to mesh
 				Chunk::renderer->renderObjects(m.renderlistChunk, cam, PG_FORCE_DRAW);
 			}
 			//std::cout << "octreeDisplay\n";
@@ -2341,23 +2331,35 @@ void	scene_octree() {
 #endif
 			rendererSkybox.renderObjects(m.renderlistSkybox, cam, PG_FORCE_DRAW);
 
-			//build minimap
-			for (unsigned int k = 0; k < generator.gridSize.z; k++) {
-				for (unsigned int i = 0; i < generator.gridSize.x; i++) {
-					blitToWindow(nullptr, GL_COLOR_ATTACHMENT0, generator.heightMaps[k][i]->panel);
-				}
-			}
-			Math::Vector3	playerPos = cam.local.getPos();
-			float	zmax = generator.gridSize.z * generator.chunkSize.z;//for gl convertion
-			float	px_topleftChunk = generator.grid[0][0][0]->pos.x;
-			float	pz_topleftChunk = generator.grid[0][0][0]->pos.z;
-			float	px = (playerPos.x - px_topleftChunk) * m.minimapCoef;
-			float	pz = (zmax - (playerPos.z - pz_topleftChunk)) * m.minimapCoef;
-			m.playerMinimap->setPos(px, pz);
-			m.playerMinimap->setPos2(px + m.playerMinimap->getTexture()->getWidth() * m.minimapCoef,
-									pz + m.playerMinimap->getTexture()->getHeight() * m.minimapCoef);
-			blitToWindow(nullptr, GL_COLOR_ATTACHMENT0, m.playerMinimap);
 
+			if (generator.chunks_mutex.try_lock()) {
+				//build minimap
+				for (unsigned int k = 0; k < generator.gridSize.z; k++) {
+					for (unsigned int i = 0; i < generator.gridSize.x; i++) {
+						blitToWindow(nullptr, GL_COLOR_ATTACHMENT0, generator.heightMaps[k][i]->panel);
+					}
+				}
+				if (true || generator.playerChangedChunk) {//why?
+					//thread player management?
+
+					// coo in 3d world
+					playerPos = cam.local.getPos();
+					float	zmax = generator.gridSize.z * generator.chunkSize.z;//for gl convertion
+					float	px_topleftChunk = generator.grid[0][0][0]->pos.x;//need to setup a mutex or it will crash
+					float	pz_topleftChunk = generator.grid[0][0][0]->pos.z;
+
+					// coo on 2d screen
+					float	px = (playerPos.x - px_topleftChunk) * m.minimapCoef;
+					float	pz = (zmax - (playerPos.z - pz_topleftChunk)) * m.minimapCoef;
+					m.playerMinimap->setPos(px, pz);
+					m.playerMinimap->setPos2(px + m.playerMinimap->getTexture()->getWidth() * m.minimapCoef,
+											pz + m.playerMinimap->getTexture()->getHeight() * m.minimapCoef);
+
+					blitToWindow(nullptr, GL_COLOR_ATTACHMENT0, m.playerMinimap);
+					generator.playerChangedChunk = false;
+				}
+				generator.chunks_mutex.unlock();
+			}
 			glfwSwapBuffers(m.glfw->_window);
 
 			if (GLFW_PRESS == glfwGetKey(m.glfw->_window, GLFW_KEY_ESCAPE))
@@ -2393,41 +2395,42 @@ void	scene_checkMemory() {
 	std::cin >> input;
 	Texture* tex_bigass = new Texture(pathPrefix + "images/skybox4096.bmp");
 	std::cout << ">> Texture loaded" << std::endl;
-//Textrues
-#if 0
-	std::cout << "Texture unload load loop... ENTER" << std::endl;
-	std::cin >> input;
+	//Textrues
+	#if 0
+		std::cout << "Texture unload load loop... ENTER" << std::endl;
+		std::cin >> input;
 
-	for (size_t i = 0; i < 100; i++) {
-		//unload
-		tex_bigass->unloadTexture();
-		glfwSwapBuffers(glfw->_window);
-		std::cout << ">> Texture unloaded" << std::endl;
+		for (size_t i = 0; i < 100; i++) {
+			//unload
+			tex_bigass->unloadTexture();
+			glfwSwapBuffers(glfw->_window);
+			std::cout << ">> Texture unloaded" << std::endl;
 
-		//load
-		tex_bigass->loadTexture();
-		glfwSwapBuffers(glfw->_window);
-		std::cout << ">> Texture loaded" << std::endl;
-	}
-#endif
-//Skybox
-#if 1
-	SkyboxPG	rendererSkybox(pathPrefix + CUBEMAP_VS_FILE, pathPrefix + CUBEMAP_FS_FILE);
+			//load
+			tex_bigass->loadTexture();
+			glfwSwapBuffers(glfw->_window);
+			std::cout << ">> Texture loaded" << std::endl;
+		}
+	#endif
+	//Skybox
+	#if 1
+		SkyboxPG	rendererSkybox(pathPrefix + CUBEMAP_VS_FILE, pathPrefix + CUBEMAP_FS_FILE);
 
-	for (size_t i = 0; i < 100; i++) {
-		Skybox* sky = new Skybox(*tex_bigass, rendererSkybox);
-		delete sky;
-	}
-#endif
-//framebuffer
-#if 1
-#endif
+		for (size_t i = 0; i < 100; i++) {
+			Skybox* sky = new Skybox(*tex_bigass, rendererSkybox);
+			delete sky;
+		}
+	#endif
+	//framebuffer
+	#if 1
+	#endif
 	//exit
 	std::cout << "end... ENTER" << std::endl;
 	std::cin >> input;
 	exit(0);
 
 }
+
 #endif
 #define _CRTDBG_MAP_ALLOC
 #include <stdlib.h>

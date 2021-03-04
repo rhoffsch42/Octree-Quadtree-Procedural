@@ -3,6 +3,7 @@
 #include "math.hpp"
 #include "chunk.hpp"
 #include "uipanel.hpp"
+#include <mutex>
 
 #define CHUNK_GEN_DEBUG	0
 
@@ -20,26 +21,47 @@ public:
 		this->map = perlin_settings.map;
 		perlin_settings.map = nullptr;
 
-		//build map tiles
-		this->texture = PerlinSettings::HeightmapToTexture(map, sizex, sizez);
-		this->panel = new UIImage(this->texture);
-		this->panel->setPos(0, 0);
-		this->panel->setSize(sizex, sizez);
+		//map tiles
+		//could be done in buildPanel, but it is done here for parallelized computation
+		this->textureData = PerlinSettings::HeightmapToTextureData(map, this->sizeX, this->sizeZ);
+		this->texture = nullptr;
+		this->panel = nullptr;
 	}
 	~HeightMap() {
-		delete this->texture;
-		delete this->panel;
+		if (this->texture)
+			delete this->texture;
+		if (this->panel)
+			delete this->panel;
+
+		//should be deleted only here, it is used by Chunk::
 		for (int k = 0; k < this->sizeZ; k++) {
 			delete[] this->map[k];
 		}
 		delete[] this->map;
+		this->map = nullptr;
+	}
+
+	//opengl thread
+	void	glth_buildPanel() {
+		Glfw::glThreadSafety();
+		if (!this->panel) {//if it's not already done
+			this->texture = new Texture(this->textureData, this->sizeX, this->sizeZ);
+			this->panel = new UIImage(this->texture);
+			this->panel->setPos(0, 0);
+			this->panel->setSize(this->sizeX, this->sizeZ);
+
+			delete[] this->textureData;
+		}
 	}
 
 	int			posX;
 	int			posZ;
 	int			sizeX;
 	int			sizeZ;
-	uint8_t**	map;
+	uint8_t**	map;//used by Chunk::
+
+	//used to display the map tile
+	uint8_t*	textureData;
 	Texture*	texture;
 	UIImage*	panel;
 private:
@@ -48,10 +70,14 @@ private:
 class ChunkGenerator
 {
 public:
+	static std::mutex	chunks_mutex;
+
 	//grid_size_displayed will be clamped between 1 -> grid_size
 	ChunkGenerator(Math::Vector3 player_pos, const PerlinSettings& perlin_settings, Math::Vector3 chunk_size, Math::Vector3 grid_size, Math::Vector3 grid_size_displayed);
 	~ChunkGenerator();
 	bool	updateGrid(Math::Vector3 player_pos);
+	bool	updateGrid2(Math::Vector3 player_pos);
+	bool	buildMeshesAndMapTiles();
 
 	void	printData();
 
@@ -68,10 +94,11 @@ public:
 
 	HeightMap* **	heightMaps;
 	Math::Vector3	playerPos;
+	bool			playerChangedChunk;
+	std::mutex		mutex1;
 private:
-
 	void	updatePlayerPos(Math::Vector3 player_pos);
-	void	initValues(float diff, float& inc, float& start, float& end, float& endShift, float intersectionDimension, float size);
+	bool	_chunksReadyForMeshes;
 	ChunkGenerator();
 };
 

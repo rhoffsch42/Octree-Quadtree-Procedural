@@ -2,6 +2,9 @@
 #include "compiler_settings.h"
 #include <algorithm>
 
+ std::mutex	ChunkGenerator::chunks_mutex;
+
+
 ChunkGenerator::ChunkGenerator(Math::Vector3 player_pos, const PerlinSettings& perlin_settings, Math::Vector3 chunk_size, Math::Vector3 grid_size, Math::Vector3 grid_size_displayed)
 	: chunkSize(chunk_size),
 	gridSize(grid_size),//better be odd for equal horizon on every cardinal points
@@ -51,6 +54,8 @@ ChunkGenerator::ChunkGenerator(Math::Vector3 player_pos, const PerlinSettings& p
 			}
 		}
 	}
+	this->_chunksReadyForMeshes = true;
+	this->playerChangedChunk = true;
 }
 
 ChunkGenerator::~ChunkGenerator() {
@@ -74,22 +79,7 @@ ChunkGenerator::~ChunkGenerator() {
 	delete[] this->grid;
 }
 
-#if 0
-void		ChunkGenerator::buildHeightMapData(const Math::Vector3& smallestChunk, int i, int k) {
-	int x = (smallestChunk.x + i) * this->chunkSize.x;
-	int z = (smallestChunk.z + k) * this->chunkSize.z;
-	this->settings.genHeightMap(x, z, this->chunkSize.x, this->chunkSize.z);//this can be optimized to do it only once per Y (and even keep the generated heightmap in memory for later use)
-	this->heightMaps[k][i] = this->settings.map;
-	this->settings.map = nullptr;
-
-	//build map tiles
-	Texture* tex = PerlinSettings::HeightmapToTexture(this->heightMaps[k][i], this->chunkSize.x, this->chunkSize.z);
-	this->minimapTiles[k][i] = new UIImage(tex);
-	this->minimapTiles[k][i]->setPos(i * this->chunkSize.x, k * this->chunkSize.z);
-	this->minimapTiles[k][i]->setSize(this->chunkSize.x, this->chunkSize.z);
-}
-#endif
-void		ChunkGenerator::initValues(float diff, float& inc, float& start, float& end, float& endShift, float intersection, float size) {
+static void		initValues(float diff, float& inc, float& start, float& end, float& endShift, float intersection, float size) {
 	if (diff >= 0) {
 		inc = 1;
 		start = 0;//inclusive, we start here
@@ -102,26 +92,29 @@ void		ChunkGenerator::initValues(float diff, float& inc, float& start, float& en
 	endShift = start + inc * intersection;//exclusive
 }
 
-int	calcExceed(int posA, int sizeA, int posB, int sizeB) {
+static int	calcExceed(int posA, int sizeA, int posB, int sizeB) {
 	/*
 		A========.========A
 		    B----.----B
+
+		sizeB <= sizeA
 	*/
-	int halfA = sizeA / 2;
-	int halfB = sizeB / 2;
-	int	maxA = posA + (sizeA - halfA);
-	int	maxB = posB + (sizeB - halfB);
-	int	minA = posA - halfA;
-	int	minB = posB - halfB;
-	if (maxB >= maxA) {
-		return maxB - maxA;
-	} else if (minB <= minA) {
-		return minB - minA;
-	} else {
-		return 0;
+	if (sizeB > sizeA) {
+		std::cout << "Error: Grid Displayed is larger than the total Grid in memory" << std::endl;
+		exit(4);
 	}
+	int sign = posA <= posB ? 1 : -1;							// set up the sign to mirror the diff if it is negative to handle only positive case
+	int diffpos = sign * (posB - posA);							// mirrored if negative
+	int diffside = std::max((sizeB - sizeA) / 2 + diffpos, 0);	// std::max(diff,0) : if the diff is negative, nothing exceeds the bounds
+	return sign * diffside;										// mirrored back if sign was negative
+	/*
+		.========A
+		  .----B		//B does not exceed A
+		      .----C    //C exceeds A
+	*/
 }
 
+//return true if player step in another chunk
 bool	ChunkGenerator::updateGrid(Math::Vector3 player_pos) {
 	Math::Vector3	old_tile = this->currentChunk;
 	this->updatePlayerPos(player_pos);
@@ -132,7 +125,7 @@ bool	ChunkGenerator::updateGrid(Math::Vector3 player_pos) {
 		std::cout << "diff: ";
 		diff.printData();
 
-		//calculate the memory grid offset
+		//calculate if we need to move the memory grid and load new chunks
 		Math::Vector3	diffGrid;
 		diffGrid.x = calcExceed(this->gridPos.x, this->gridSize.x, this->currentChunk.x, this->gridSizeDisplay.x);
 		diffGrid.y = calcExceed(this->gridPos.y, this->gridSize.y, this->currentChunk.y, this->gridSizeDisplay.y);
@@ -159,13 +152,14 @@ bool	ChunkGenerator::updateGrid(Math::Vector3 player_pos) {
 
 			//now we define the incrementers, start points and end points to shift the intersection cube and delete unused data
 			Math::Vector3	inc, start, end, endShift;
-			this->initValues(diffGrid.x, inc.x, start.x, end.x, endShift.x, intersection.x, this->gridSize.x);
-			this->initValues(diffGrid.y, inc.y, start.y, end.y, endShift.y, intersection.y, this->gridSize.y);
-			this->initValues(diffGrid.z, inc.z, start.z, end.z, endShift.z, intersection.z, this->gridSize.z);
+			initValues(diffGrid.x, inc.x, start.x, end.x, endShift.x, intersection.x, this->gridSize.x);
+			initValues(diffGrid.y, inc.y, start.y, end.y, endShift.y, intersection.y, this->gridSize.y);
+			initValues(diffGrid.z, inc.z, start.z, end.z, endShift.z, intersection.z, this->gridSize.z);
 
 			//todo: generate heightmaps only once, save them, shift them the same way // done?
 
 			Math::Vector3	progress(0, 0, 0);
+			this->chunks_mutex.lock();
 			for (int k = start.z; k != end.z; k += inc.z) {
 				progress.y = 0;
 				for (int j = start.y; j != end.y; j += inc.y) {
@@ -212,18 +206,52 @@ bool	ChunkGenerator::updateGrid(Math::Vector3 player_pos) {
 			if (CHUNK_GEN_DEBUG) { std::cout << "_ Z row\n"; }
 
 			std::cout << "\n\n";
+			this->_chunksReadyForMeshes = true;
+			this->chunks_mutex.unlock();
+		}//end grid memory
+		this->playerChangedChunk = true;
+		return true;
+	}//end gridDisplayed
+	return false;
+}
+
+
+bool	ChunkGenerator::updateGrid2(Math::Vector3 player_pos) {
+	Math::Vector3	old_tile = this->currentChunk;
+	this->updatePlayerPos(player_pos);
+	Math::Vector3	diff(this->currentChunk);
+	diff.sub(old_tile);
+
+	if (diff.magnitude()) {//gridDisplayed
+
+	}
+	return true;
+}
+
+bool	ChunkGenerator::buildMeshesAndMapTiles() {
+	if (this->_chunksReadyForMeshes) {
+		for (unsigned int k = 0; k < this->gridSize.z; k++) {
+				for (unsigned int i = 0; i < this->gridSize.x; i++) {
+					this->heightMaps[k][i]->glth_buildPanel();
+					for (unsigned int j = 0; j < this->gridSize.y; j++) {
+						this->grid[k][j][i]->buildMesh();
+				}
+			}
 		}
+		this->_chunksReadyForMeshes = false;
+		std::cout << "ChunkGenerator meshes built\n";
 		return true;
 	}
 	return false;
 }
 
 void	ChunkGenerator::updatePlayerPos(Math::Vector3 player_pos) {
+	std::lock_guard<std::mutex> guard(this->mutex1);
 	this->playerPos = player_pos;
 	this->currentChunk.x = int(this->playerPos.x / this->chunkSize.x);
 	this->currentChunk.y = int(this->playerPos.y / this->chunkSize.y);
 	this->currentChunk.z = int(this->playerPos.z / this->chunkSize.z);
-	if (this->playerPos.x < 0) // cauze x=-32..+32 ----> x / 32 = 0; 
+	if (this->playerPos.x < 0) // cauze if x=-32..+32 ----> x / 32 = 0; 
 		this->currentChunk.x--;
 	if (this->playerPos.y < 0) // same
 		this->currentChunk.y--;

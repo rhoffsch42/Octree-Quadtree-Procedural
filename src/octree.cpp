@@ -58,10 +58,14 @@ double	measureDetail(Pixel*** arr, Math::Vector3 pos, Math::Vector3 size, Pixel 
 	//return this->genDetail(area) = 0;
 }
 
-Octree::Octree(Pixel *** arr, Math::Vector3 corner_pos, Math::Vector3 tree_size, unsigned int threshold) {
+Octree::Octree(Pixel*** arr, Math::Vector3 corner_pos, Math::Vector3 tree_size, unsigned int threshold) {
 	//std::cout << "_ " << __PRETTY_FUNCTION__ << std::endl;
 
 	this->children = nullptr;
+	this->detail = 0;
+	//pixel is the data contained in the octree, it can be anything, here it is a voxel.
+	//make a template for Octree? Octree<Pixel>(). ->> need getAverage() and measureDetail() defined
+	//make Octree abstract with these 2 funcs pure. then create the corresponding Octree class, here VoxelOctree
 	this->pixel.r = 0;
 	this->pixel.g = 0;
 	this->pixel.b = 0;
@@ -72,101 +76,104 @@ Octree::Octree(Pixel *** arr, Math::Vector3 corner_pos, Math::Vector3 tree_size,
 	this->neighbors = 0;//all sides are not empty by default (could count corners too, so 26)
 	if (size.x == 1 && size.y == 1 && size.z == 1) {// or x*y*z==1
 		this->pixel = arr[(int)this->pos.z][(int)this->pos.y][(int)this->pos.x];//use Vector3i to avoid casting
+#if 0 // checks not needed
 		this->detail = measureDetail(arr, pos, size, this->pixel);//should be 0
 		if (this->detail != 0) {
 			std::cout << "1x1 area, detail: " << this->detail << std::endl;
 			exit(10);
 		}
-		if (size.x * size.y * size.z >= OC_DEBUG_LEAF_AREA && OC_DEBUG_LEAF) {
+#endif
+/*		if (size.x * size.y * size.z >= OC_DEBUG_LEAF_AREA && OC_DEBUG_LEAF) {
 			std::cout << "new leaf: " << size.x << "x" << size.y << "x" << size.z << " at ";
 			std::cout << pos.x << ":" << pos.y << ":" << pos.z << "\t";
 			std::cout << (int)this->pixel.r << "  \t" << (int)this->pixel.g << "  \t" << (int)this->pixel.b;
 			std::cout << "\t" << this->detail << std::endl;
 		}
+*/
 		return;
 	}
 	this->pixel = getAverage(arr, pos, size);
 	this->detail = measureDetail(arr, pos, size, this->pixel);
-	if (this->detail <= double(threshold)) {//not that much details in the area
-		if (size.x * size.y * size.z >= OC_DEBUG_LEAF_AREA && OC_DEBUG_LEAF) {
+	if (this->detail <= double(threshold)) {//not that much details in the area, this is the end leaf
+		if (size.x * size.y * size.z >= OC_DEBUG_LEAF_AREA && OC_DEBUG_LEAF) {//simple debug
 			std::cout << "new leaf: " << size.x << "x" << size.y << "x" << size.z << " at ";
 			std::cout << pos.x << ":" << pos.y << ":" << pos.z << "\t";
 			std::cout << (int)this->pixel.r << "  \t" << (int)this->pixel.g << "  \t" << (int)this->pixel.b;
 			std::cout << "\tdetail: " << this->detail << std::endl;
 		}
 		//std::cout << this->pixel.r << " " << this->pixel.g << " " << this->pixel.b << std::endl;
+		return;
 	}
-	else {
 
-		//enough detail to split
-		this->children = new Octree * [CHILDREN];
-		//this->children = (Octree**)malloc(sizeof(Octree*) * 4);
-		if (!this->children) {
-			std::cout << "malloc failed\n"; exit(5);
-		}
+	//enough detail to split
+	this->children = new Octree * [CHILDREN];
+	//this->children = (Octree**)malloc(sizeof(Octree*) * 4);
+	if (!this->children) {
+		std::cout << "malloc failed\n"; exit(5);
+	}
 
-		for (size_t i = 0; i < 8; i++) {
-			this->children[i] = nullptr;
-		}
+	for (size_t i = 0; i < 8; i++) {
+		this->children[i] = nullptr;
+	}
 
-			/*
+		/*
 
-		   0_________x
-			| A | B |
-			|---|---|		lower layer seen from top
-			| C | D |
-		   z``front``
+		0_________x
+		| A | B |
+		|---|---|		lower layer seen from top
+		| C | D |
+		z``front``
+		_________
+		| E | F |
+		|---|---|		higher layer seen from top
+		| G | H |
+		``front``
 			_________
-			| E | F |
-			|---|---|		higher layer seen from top
-			| G | H |
-			``front``
-			 _________
-		   y/________/|
-			| G | H | |
-			|---|---| /		both layers seen from front
-			| C | D |/
-		   0`````````x
+		y/________/|
+		| G | H | |
+		|---|---| /		both layers seen from front
+		| C | D |/
+		0`````````x
 
-			*/
+		*/
 
-		//sizes
-		int	xBDFH = this->size.x / 2;//is rounded down, so smaller when width is odd
-		int yEFGH = this->size.y / 2;//is rounded down, so smaller when width is odd
-		int	zCDGH = this->size.z / 2;//is rounded down, so smaller when height is odd
-		int xACEG = this->size.x - xBDFH;
-		int yABCD = this->size.y - yEFGH;
-		int zABEF = this->size.z - zCDGH;
+	//sizes
+	int	xBDFH = this->size.x / 2;//is rounded down, so smaller when width is odd
+	int yEFGH = this->size.y / 2;//is rounded down, so smaller when width is odd
+	int	zCDGH = this->size.z / 2;//is rounded down, so smaller when height is odd
+	int xACEG = this->size.x - xBDFH;
+	int yABCD = this->size.y - yEFGH;
+	int zABEF = this->size.z - zCDGH;
 
-		Math::Vector3	posA(pos.x, pos.y, pos.z);
-		Math::Vector3	posB(pos.x + xACEG, pos.y, pos.z);
-		Math::Vector3	posC(pos.x, pos.y, pos.z + zABEF);
-		Math::Vector3	posD(pos.x + xACEG, pos.y, pos.z + zABEF);
+	Math::Vector3	posA(pos.x, pos.y, pos.z);
+	Math::Vector3	posB(pos.x + xACEG, pos.y, pos.z);
+	Math::Vector3	posC(pos.x, pos.y, pos.z + zABEF);
+	Math::Vector3	posD(pos.x + xACEG, pos.y, pos.z + zABEF);
 
-		Math::Vector3	posE(pos.x, pos.y + yABCD, pos.z);
-		Math::Vector3	posF(pos.x + xACEG, pos.y + yABCD, pos.z);
-		Math::Vector3	posG(pos.x, pos.y + yABCD, pos.z + zABEF);
-		Math::Vector3	posH(pos.x + xACEG, pos.y + yABCD, pos.z + zABEF);
+	Math::Vector3	posE(pos.x, pos.y + yABCD, pos.z);
+	Math::Vector3	posF(pos.x + xACEG, pos.y + yABCD, pos.z);
+	Math::Vector3	posG(pos.x, pos.y + yABCD, pos.z + zABEF);
+	Math::Vector3	posH(pos.x + xACEG, pos.y + yABCD, pos.z + zABEF);
 
-		//A0 B1 C2 D3 E4 F5 G6 H7
+	//A0 B1 C2 D3 E4 F5 G6 H7
 
-		this->children[0] = new Octree(arr, posA, Math::Vector3(xACEG, yABCD, zABEF), threshold);
-		if (xBDFH)
-			this->children[1] = new Octree(arr, posB, Math::Vector3(xBDFH, yABCD, zABEF), threshold);
-		if (zCDGH)
-			this->children[2] = new Octree(arr, posC, Math::Vector3(xACEG, yABCD, zCDGH), threshold);
-		if (xBDFH && zCDGH)
-			this->children[3] = new Octree(arr, posD, Math::Vector3(xBDFH, yABCD, zCDGH), threshold);
+	this->children[0] = new Octree(arr, posA, Math::Vector3(xACEG, yABCD, zABEF), threshold);
+	if (xBDFH)
+		this->children[1] = new Octree(arr, posB, Math::Vector3(xBDFH, yABCD, zABEF), threshold);
+	if (zCDGH)
+		this->children[2] = new Octree(arr, posC, Math::Vector3(xACEG, yABCD, zCDGH), threshold);
+	if (xBDFH && zCDGH)
+		this->children[3] = new Octree(arr, posD, Math::Vector3(xBDFH, yABCD, zCDGH), threshold);
 
-		if (yEFGH)
-			this->children[4] = new Octree(arr, posE, Math::Vector3(xACEG, yEFGH, zABEF), threshold);
-		if (yEFGH && xBDFH)
-			this->children[5] = new Octree(arr, posF, Math::Vector3(xBDFH, yEFGH, zABEF), threshold);
-		if (yEFGH && zCDGH)
-			this->children[6] = new Octree(arr, posG, Math::Vector3(xACEG, yEFGH, zCDGH), threshold);
-		if (yEFGH && xBDFH && zCDGH)
-			this->children[7] = new Octree(arr, posH, Math::Vector3(xBDFH, yEFGH, zCDGH), threshold);
-	}
+	if (yEFGH)
+		this->children[4] = new Octree(arr, posE, Math::Vector3(xACEG, yEFGH, zABEF), threshold);
+	if (yEFGH && xBDFH)
+		this->children[5] = new Octree(arr, posF, Math::Vector3(xBDFH, yEFGH, zABEF), threshold);
+	if (yEFGH && zCDGH)
+		this->children[6] = new Octree(arr, posG, Math::Vector3(xACEG, yEFGH, zCDGH), threshold);
+	if (yEFGH && xBDFH && zCDGH)
+		this->children[7] = new Octree(arr, posH, Math::Vector3(xBDFH, yEFGH, zCDGH), threshold);
+
 }
 
 Octree::~Octree() {

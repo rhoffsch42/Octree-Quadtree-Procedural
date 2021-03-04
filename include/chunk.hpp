@@ -27,7 +27,7 @@
 class PerlinSettings
 {
 public:
-	static Texture* HeightmapToTexture(uint8_t** map, int sizex, int sizez) {
+	static uint8_t* HeightmapToTextureData(uint8_t** map, int sizex, int sizez) {
 		uint8_t* data = new uint8_t[sizex * sizez * 3];
 		for (int z = 0; z < sizez; z++) {
 			for (int x = 0; x < sizex; x++) {
@@ -37,10 +37,7 @@ public:
 				data[index + 2] = map[z][x];
 			}
 		}
-		//std::cout << "_ generating Texture for mapTile" << std::endl;
-		Texture* tex = new Texture(data, sizex, sizez);
-		delete[] data;
-		return tex;
+		return data;
 	}
 
 	void	genHeightMap(int posx, int posz, int sizex, int sizez) {
@@ -153,14 +150,15 @@ public:
 	Math::Vector3	pos;
 	Math::Vector3	size;
 	Octree*			root;
-	uint8_t***		data;
 
 	//opengl 
 	Obj3dBP*		meshBP;
 	Obj3d*			mesh;
 
+	void		buildMesh();//with _vertexArray
 private:
 	Chunk();
 	// you should check for error: 0 means Chunk::cubebp is null, 1 means no error
-	int	buildVertexArrayFromOctree(Octree* root, Math::Vector3 pos_offset = Math::Vector3(0, 0, 0));
+	int		buildVertexArrayFromOctree(Octree* root, Math::Vector3 pos_offset = Math::Vector3(0, 0, 0));
+	std::vector<SimpleVertex>	_vertexArray;
 };
