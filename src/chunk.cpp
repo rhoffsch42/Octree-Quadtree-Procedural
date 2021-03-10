@@ -132,7 +132,10 @@ Chunk::Chunk(const Math::Vector3& tile_number, Math::Vector3 chunk_size, PerlinS
 	// important note: all chunks have their octree starting at pos 0 0 0. 
 	this->root = new Octree(pix, Math::Vector3(0,0,0), this->size, 0);//octree(T data,...) template?  || classe abstraite pour def average() etc
 	this->root->verifyNeighbors(VOXEL_EMPTY);//white
-	this->buildVertexArrayFromOctree(this->root, Math::Vector3(0,0,0));
+	if (this->buildVertexArrayFromOctree(this->root, Math::Vector3(0, 0, 0)) == 0) {
+		std::cout << "Error: failed to build vertex array for the chuck " << this << std::endl;
+		std::exit(23);
+	}
 
 	//delete data
 	for (unsigned int k = 0; k < this->size.z; k++) {

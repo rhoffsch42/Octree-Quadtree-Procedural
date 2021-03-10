@@ -75,8 +75,8 @@ public:
 	//grid_size_displayed will be clamped between 1 -> grid_size
 	ChunkGenerator(Math::Vector3 player_pos, const PerlinSettings& perlin_settings, Math::Vector3 chunk_size, Math::Vector3 grid_size, Math::Vector3 grid_size_displayed);
 	~ChunkGenerator();
+	bool	updateGrid_old(Math::Vector3 player_pos);
 	bool	updateGrid(Math::Vector3 player_pos);
-	bool	updateGrid2(Math::Vector3 player_pos);
 	bool	buildMeshesAndMapTiles();
 
 	void	printData();
@@ -85,8 +85,8 @@ public:
 
 	Math::Vector3	gridSize;
 	Math::Vector3	gridPos;//the center of the grid in game world coo
-	Math::Vector3	gridSizeDisplay;
-	Math::Vector3	gridDisplayIndex;
+	Math::Vector3	gridDisplaySize;
+	Math::Vector3	gridDisplayIndex;//the chunck where the player is
 
 	Chunk* ***		grid;
 	PerlinSettings	settings;

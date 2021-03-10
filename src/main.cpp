@@ -1851,13 +1851,13 @@ void	buildObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager,
 
 #if 1// display box
 	Math::Vector3	startDisplay(
-		generator.gridDisplayIndex.x - int(generator.gridSizeDisplay.x / 2),
-		generator.gridDisplayIndex.y - int(generator.gridSizeDisplay.y / 2),
-		generator.gridDisplayIndex.z - int(generator.gridSizeDisplay.z / 2));
+		generator.gridDisplayIndex.x - int(generator.gridDisplaySize.x / 2),
+		generator.gridDisplayIndex.y - int(generator.gridDisplaySize.y / 2),
+		generator.gridDisplayIndex.z - int(generator.gridDisplaySize.z / 2));
 	Math::Vector3	endDisplay(
-		startDisplay.x + generator.gridSizeDisplay.x,
-		startDisplay.y + generator.gridSizeDisplay.y,
-		startDisplay.z + generator.gridSizeDisplay.z);
+		startDisplay.x + generator.gridDisplaySize.x,
+		startDisplay.y + generator.gridDisplaySize.y,
+		startDisplay.z + generator.gridDisplaySize.z);
 	for (unsigned int k = startDisplay.z; k < endDisplay.z; k++) {
 		for (unsigned int j = startDisplay.y; j < endDisplay.y; j++) {
 			for (unsigned int i = startDisplay.x; i < endDisplay.x; i++) {
@@ -2147,7 +2147,7 @@ void	scene_benchmarks() {
 
 void	th1_mapGeneration(ChunkGenerator& generator, OctreeManager& manager, Obj3dBP& cubebp, Obj3dPG& renderer, Texture* tex_lena) {
 	while (1) {
-		if (!generator.playerChangedChunk && generator.updateGrid(manager.cam->local.getPos())) {
+		if (/*!generator.playerChangedChunk &&*/ generator.updateGrid(manager.cam->local.getPos())) {
 			//buildObjectFromGenerator(generator, manager, cubebp, renderer, tex_lena);
 			//parts are interacting with opengl, should be done in main thread
 		}
@@ -2276,6 +2276,7 @@ void	scene_octree() {
 	std::cout << "Begin while loop" << endl;
 	while (!glfwWindowShouldClose(m.glfw->_window)) {
 		if (defaultFps->wait_for_next_frame()) {
+			std::cout << ">>>>>>>>>>>>>>>>>>>> NEW FRAME <<<<<<<<<<<<<<<<<<<<" << std::endl;
 			m.glfw->setTitle(std::to_string(defaultFps->getFps()) + " fps");
 
 			glfwPollEvents();
@@ -2293,11 +2294,11 @@ void	scene_octree() {
 			if (generator.chunks_mutex.try_lock()) {
 				if (generator.playerChangedChunk) {
 
-					//double start = glfwGetTime(); std::cout << "building meshes...";
+					double start = glfwGetTime(); std::cout << "building meshes...";
 					generator.buildMeshesAndMapTiles();
-					//start = glfwGetTime() - start; std::cout << " built in " << start << " seconds\n";
+					start = glfwGetTime() - start; std::cout << " built in " << start << " seconds\n";
 
-					double start = glfwGetTime(); std::cout << "grabing meshes...";
+					start = glfwGetTime(); std::cout << "grabing meshes...";
 					buildObjectFromGenerator(generator, m, cubebp, *renderer, tex_lena);
 					start = glfwGetTime() - start; std::cout << " grabed in " << start << " seconds\n";
 					//generator.playerChangedChunk = false;//not yet
@@ -2365,6 +2366,7 @@ void	scene_octree() {
 			if (GLFW_PRESS == glfwGetKey(m.glfw->_window, GLFW_KEY_ESCAPE))
 				glfwSetWindowShouldClose(m.glfw->_window, GLFW_TRUE);
 		}
+
 	}
 
 	std::cout << "End while loop" << endl;
@@ -2466,11 +2468,11 @@ int		main(int ac, char **av) {
 	_CrtMemCheckpoint(&sNew); //take a snapchot 
 	if (_CrtMemDifference(&sDiff, &sOld, &sNew)) // if there is a difference
 	{
-		OutputDebugString("-----------_CrtMemDumpStatistics ---------");
+		OutputDebugStringA("-----------_CrtMemDumpStatistics ---------");
 		_CrtMemDumpStatistics(&sDiff);
-		OutputDebugString("-----------_CrtMemDumpAllObjectsSince ---------");
+		OutputDebugStringA("-----------_CrtMemDumpAllObjectsSince ---------");
 		_CrtMemDumpAllObjectsSince(&sOld);
-		OutputDebugString("-----------_CrtDumpMemoryLeaks ---------");
+		OutputDebugStringA("-----------_CrtDumpMemoryLeaks ---------");
 		_CrtDumpMemoryLeaks();
 	} else {
 		std::cout << "no diff for memory check" << std::endl;

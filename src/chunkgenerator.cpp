@@ -8,7 +8,7 @@
 ChunkGenerator::ChunkGenerator(Math::Vector3 player_pos, const PerlinSettings& perlin_settings, Math::Vector3 chunk_size, Math::Vector3 grid_size, Math::Vector3 grid_size_displayed)
 	: chunkSize(chunk_size),
 	gridSize(grid_size),//better be odd for equal horizon on every cardinal points
-	gridSizeDisplay(grid_size_displayed),//better be odd for equal horizon on every cardinal points
+	gridDisplaySize(grid_size_displayed),//better be odd for equal horizon on every cardinal points
 	settings(perlin_settings)
 {
 	std::cout << "_ " << __PRETTY_FUNCTION__ << std::endl;
@@ -20,9 +20,9 @@ ChunkGenerator::ChunkGenerator(Math::Vector3 player_pos, const PerlinSettings& p
 		int(this->gridSize.y / 2),
 		int(this->gridSize.z / 2));
 	//clamp grid display
-	this->gridSizeDisplay.x = std::clamp(this->gridSizeDisplay.x, 1.0f, this->gridSize.x);
-	this->gridSizeDisplay.y = std::clamp(this->gridSizeDisplay.y, 1.0f, this->gridSize.y);
-	this->gridSizeDisplay.z = std::clamp(this->gridSizeDisplay.z, 1.0f, this->gridSize.z);
+	this->gridDisplaySize.x = std::clamp(this->gridDisplaySize.x, 1.0f, this->gridSize.x);
+	this->gridDisplaySize.y = std::clamp(this->gridDisplaySize.y, 1.0f, this->gridSize.y);
+	this->gridDisplaySize.z = std::clamp(this->gridDisplaySize.z, 1.0f, this->gridSize.z);
 
 	//init grid
 	Math::Vector3 v(this->gridSize);
@@ -103,7 +103,7 @@ static int	calcExceed(int posA, int sizeA, int posB, int sizeB) {
 		std::cout << "Error: Grid Displayed is larger than the total Grid in memory" << std::endl;
 		exit(4);
 	}
-	int sign = posA <= posB ? 1 : -1;							// set up the sign to mirror the diff if it is negative to handle only positive case
+	int sign = posA <= posB ? 1 : -1;							// set up the sign to mirror the diff if it is negative to handle only positive part
 	int diffpos = sign * (posB - posA);							// mirrored if negative
 	int diffside = std::max((sizeB - sizeA) / 2 + diffpos, 0);	// std::max(diff,0) : if the diff is negative, nothing exceeds the bounds
 	return sign * diffside;										// mirrored back if sign was negative
@@ -115,7 +115,7 @@ static int	calcExceed(int posA, int sizeA, int posB, int sizeB) {
 }
 
 //return true if player step in another chunk
-bool	ChunkGenerator::updateGrid(Math::Vector3 player_pos) {
+bool	ChunkGenerator::updateGrid_old(Math::Vector3 player_pos) {
 	Math::Vector3	old_tile = this->currentChunk;
 	this->updatePlayerPos(player_pos);
 	Math::Vector3	diff(this->currentChunk);
@@ -127,9 +127,9 @@ bool	ChunkGenerator::updateGrid(Math::Vector3 player_pos) {
 
 		//calculate if we need to move the memory grid and load new chunks
 		Math::Vector3	diffGrid;
-		diffGrid.x = calcExceed(this->gridPos.x, this->gridSize.x, this->currentChunk.x, this->gridSizeDisplay.x);
-		diffGrid.y = calcExceed(this->gridPos.y, this->gridSize.y, this->currentChunk.y, this->gridSizeDisplay.y);
-		diffGrid.z = calcExceed(this->gridPos.z, this->gridSize.z, this->currentChunk.z, this->gridSizeDisplay.z);
+		diffGrid.x = calcExceed(this->gridPos.x, this->gridSize.x, this->currentChunk.x, this->gridDisplaySize.x);
+		diffGrid.y = calcExceed(this->gridPos.y, this->gridSize.y, this->currentChunk.y, this->gridDisplaySize.y);
+		diffGrid.z = calcExceed(this->gridPos.z, this->gridSize.z, this->currentChunk.z, this->gridDisplaySize.z);
 		this->gridPos.add(diffGrid);
 		std::cout << "\t--diff        \t"; diff.printData();
 		std::cout << "\t--diffGrid    \t"; diffGrid.printData();
@@ -181,8 +181,7 @@ bool	ChunkGenerator::updateGrid(Math::Vector3 player_pos) {
 								this->heightMaps[k][i] = this->heightMaps[k + int(diffGrid.z)][i + int(diffGrid.x)];
 								//this->heightMaps[k + int(diff.z)][i + int(diff.x)] = nullptr;//dont do that, if diff.z and .x are 0, it leeks the previously created heightmap
 							}
-						}
-						else {
+						} else {
 							if (CHUNK_GEN_DEBUG) { std::cout << "gen new chunk: " << i << ":" << j << ":" << k << std::endl; }
 							if (progress.y == 0) {//do it only once, for all the Y
 								this->heightMaps[k][i] = new HeightMap(this->settings,
@@ -215,16 +214,169 @@ bool	ChunkGenerator::updateGrid(Math::Vector3 player_pos) {
 	return false;
 }
 
+//tmp debug
+void   gridChecks(Chunk**** grid, HeightMap*** heightMaps, Math::Vector3 gridSize) {
+	int		nonulls = 0;
+	int		hmnonulls = 0;
+	int nulls = 0;
+	int hmnulls = 0;
+	for (int k = 0; k < gridSize.z; k++) {
+		for (int j = 0; j < gridSize.y; j++) {
+			for (int i = 0; i < gridSize.x; i++) {
+				if (grid[k][j][i])
+					nonulls++;
+				else
+					nulls++;
+				if (j == 0) {
+					if (heightMaps[k][i])
+						hmnonulls++;
+					else {
+						hmnulls++;
+					}
+				}
+			}
+		}
+	}
+	std::cout << " > grid checks before rebuild" << std::endl;
+	std::cout << " > nonull: " << nonulls << std::endl;
+	std::cout << " > nulls: " << nulls << std::endl;
+	std::cout << " >> total: " << nonulls + nulls << std::endl;
+	std::cout << " > hmap nonull: " << hmnonulls << std::endl;
+	std::cout << " > hmnulls: " << hmnulls << std::endl;
+	std::cout << " >> total: " << hmnonulls + hmnulls << std::endl;
 
-bool	ChunkGenerator::updateGrid2(Math::Vector3 player_pos) {
+}
+
+//return true if player step in another chunk
+bool	ChunkGenerator::updateGrid(Math::Vector3 player_pos) {
 	Math::Vector3	old_tile = this->currentChunk;
 	this->updatePlayerPos(player_pos);
 	Math::Vector3	diff(this->currentChunk);
 	diff.sub(old_tile);
 
-	if (diff.magnitude()) {//gridDisplayed
+	if (diff.magnitude() == 0)
+		return false;
+	//gridDisplayed
+	//--
+	this->chunks_mutex.lock();
+	this->playerChangedChunk = true;
+	std::cout << "diff: ";
+	diff.printData();
 
+	//calculate if we need to move the memory grid and load new chunks
+	Math::Vector3	diffGrid;
+	diffGrid.x = calcExceed(this->gridPos.x, this->gridSize.x, this->currentChunk.x, this->gridDisplaySize.x);
+	diffGrid.y = calcExceed(this->gridPos.y, this->gridSize.y, this->currentChunk.y, this->gridDisplaySize.y);
+	diffGrid.z = calcExceed(this->gridPos.z, this->gridSize.z, this->currentChunk.z, this->gridDisplaySize.z);
+	this->gridPos.add(diffGrid);
+	std::cout << "\t--diff        \t"; diff.printData();
+	std::cout << "\t--diffGrid    \t"; diffGrid.printData();
+	std::cout << "\t--gridPos     \t"; this->gridPos.printData();
+	std::cout << "\t--currentChunk\t"; this->currentChunk.printData();
+
+	this->gridDisplayIndex.add(diff);
+	this->gridDisplayIndex.sub(diffGrid); //should be inside the next block? yes, test it after the refacto
+
+	//--
+	if (diffGrid.magnitude() == 0) {
+		this->chunks_mutex.unlock();
+		return true;
 	}
+	//grid (memory)
+
+	// game crash when creating ne chuncks
+
+	std::vector<int>		indexK;
+	std::vector<int>		indexJ;
+	std::vector<int>		indexI;
+	std::vector<Chunk*>		chunks;
+	std::vector<HeightMap*>	hmaps;
+
+	//store the chunks and heightmaps with their new index 3D
+	for (int k = 0; k < this->gridSize.z; k++) {
+		for (int j = 0; j < this->gridSize.y; j++) {
+			for (int i = 0; i < this->gridSize.x; i++) {
+				indexK.push_back(k + diffGrid.z);
+				indexJ.push_back(j + diffGrid.y);
+				indexI.push_back(i + diffGrid.x);
+				chunks.push_back(this->grid[k][j][i]);
+				this->grid[k][j][i] = nullptr;
+				if (j == 0) {// there is only one hmap for an entire column of chunks
+					hmaps.push_back(this->heightMaps[k][i]);
+					this->heightMaps[k][i] = nullptr;
+				} else {
+					hmaps.push_back(nullptr);	// to match the chunks index for the next hmap
+				}
+			}
+		}
+	}
+
+	std::cout << "chunks referenced: " << chunks.size() << std::endl;
+	std::cout << "hmaps referenced (with nulls): " << hmaps.size() << std::endl;
+
+	//reassign the chunks in the grid if they are inside it
+	std::cout << "reassigning chunks...";
+	for (size_t n = 0; n < chunks.size(); n++) {
+		if (indexK[n] < this->gridSize.z && indexJ[n] < this->gridSize.y && indexI[n] < this->gridSize.x \
+			&& indexK[n] >= 0 && indexJ[n] >= 0 && indexI[n] >= 0) {
+			this->grid[indexK[n]][indexJ[n]][indexI[n]] = chunks[n];
+		} else {//is outside of the memory grid
+			std::cout << "deleting chunk : " << chunks[n] << " ( mesh Object* : " << chunks[n]->mesh << " )" << std::endl;
+			delete chunks[n];
+		}
+	}
+	std::cout << " OK" << std::endl;
+
+	//reassign the heightmaps
+	std::cout << "reassigning heightmaps...";
+	for (size_t n = 0; n < hmaps.size(); n++) {
+		if (hmaps[n]) {
+			if (indexK[n] < this->gridSize.z && indexI[n] < this->gridSize.x \
+				&& indexK[n] >= 0 && indexI[n] >= 0) {
+				this->heightMaps[indexK[n]][indexI[n]] = hmaps[n];
+			} else {
+			//	std::cout << "deleting hmaps : " << hmaps[n] << std::endl;
+				delete hmaps[n];
+			}
+		}
+	}
+	std::cout << " OK" << std::endl;
+
+	//debug checks before rebuild
+	std::cout << "checks...\n";
+	gridChecks(this->grid, this->heightMaps, this->gridSize);
+	std::cout << " OK" << std::endl;
+
+	//rebuild the empty chunks and heightmaps
+	std::cout << "rebuilding new chunks and heightmaps...";
+	Math::Vector3	halfGrid(int(this->gridSize.x / 2), int(this->gridSize.y / 2), int(this->gridSize.z / 2));//a Vector3i would be better
+	Math::Vector3	smallestChunk(this->gridPos); smallestChunk.sub(halfGrid);
+	for (int k = 0; k < this->gridSize.z; k++) {
+		for (int j = 0; j < this->gridSize.y; j++) {
+			for (int i = 0; i < this->gridSize.x; i++) {
+				if (!this->grid[k][j][i]) {
+					if (j == 0) {// there is only one hmap for an entire column of chunks
+						this->heightMaps[k][i] = new HeightMap(this->settings,
+							(smallestChunk.x + i) * this->chunkSize.x, (smallestChunk.z + k) * this->chunkSize.z,
+							this->chunkSize.x, this->chunkSize.z);
+					}
+					this->settings.map = this->heightMaps[k][i]->map;
+					this->grid[k][j][i] = new Chunk(Math::Vector3(smallestChunk.x + i, smallestChunk.y + j, smallestChunk.z + k),
+													this->chunkSize, this->settings);
+					this->settings.map = nullptr;
+				}
+			}
+		}
+	}
+	std::cout << " OK" << std::endl;
+
+	//debug checks after rebuild
+	std::cout << "checks...\n";
+	gridChecks(this->grid, this->heightMaps, this->gridSize);
+	std::cout << " OK" << std::endl;
+
+	this->_chunksReadyForMeshes = true;
+	this->chunks_mutex.unlock();
 	return true;
 }
 
