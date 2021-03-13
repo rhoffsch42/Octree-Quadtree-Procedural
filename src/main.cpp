@@ -1685,7 +1685,7 @@ public:
 		this->ps = new PerlinSettings(*this->perlin);
 
 		this->ps->frequency = 6;
-		this->ps->octaves = 6;
+		this->ps->octaves = 6;//def 6
 		this->ps->flattering = 0.6;//1 for no impact
 		this->ps->island = 0;// 0 for no impact
 		this->ps->heightCoef = 0.5;
@@ -1705,12 +1705,14 @@ public:
 		this->player = nullptr;
 		this->playerSpeed = 20;//unit/s
 		this->shiftPressed = false;
-		int s = 32;
+		int s = 16;
 		this->chunk_size = Math::Vector3(s * 2,
 										s * 2,
 										s * 2);
-		int	g = 9;
-		int	d = 5;
+		int	g = 41;
+		int	d = g * 2 / 3;
+		if (d % 2 == 0)
+			d++;
 		this->gridSize = Math::Vector3(g, g, g);
 		this->gridSizeDisplayed = Math::Vector3(d, d, d); //7 - 3 = 4 // 2 each side
 
@@ -1847,9 +1849,10 @@ void	buildObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager,
 	float	scale_coef = 0.99;
 	float	scale_coe2 = 1.0;
 	//scale_coef = 1;
-	std::cout << "chunks polygons: ";
+	std::stringstream polygon_debug;
+	polygon_debug << "chunks polygons: ";
 
-#if 1// display box
+	// display box
 	Math::Vector3	startDisplay(
 		generator.gridDisplayIndex.x - int(generator.gridDisplaySize.x / 2),
 		generator.gridDisplayIndex.y - int(generator.gridDisplaySize.y / 2),
@@ -1858,16 +1861,15 @@ void	buildObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager,
 		startDisplay.x + generator.gridDisplaySize.x,
 		startDisplay.y + generator.gridDisplaySize.y,
 		startDisplay.z + generator.gridDisplaySize.z);
+#if 0 // all the grid
+	startDisplay = Math::Vector3();
+	endDisplay = Math::Vector3(generator.gridSize);
+#endif
+
 	for (unsigned int k = startDisplay.z; k < endDisplay.z; k++) {
 		for (unsigned int j = startDisplay.y; j < endDisplay.y; j++) {
 			for (unsigned int i = startDisplay.x; i < endDisplay.x; i++) {
-#else // all the grid
-	for (unsigned int k = 0; k < generator.gridSize.z; k++) {
-		for (unsigned int j = 0; j < generator.gridSize.y; j++) {
-			for (unsigned int i = 0; i < generator.gridSize.x; i++) {
-#endif
 				Chunk* chunkPtr = generator.grid[k][j][i];
-
 				if (!chunkPtr->root) {
 					std::cout << "fuck there is no root\n";
 					std::exit(1);
@@ -1901,7 +1903,7 @@ void	buildObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager,
 						chunkPtr->mesh->setTexture(tex_lena);
 						chunkPtr->mesh->displayTexture = false;
 						total_polygons += pol;
-						std::cout << pol << " ";
+						polygon_debug << pol << " ";
 					}
 				}
 				else {// oldcode, browsing to build 1 obj3d per cube (not chunk)
@@ -1962,7 +1964,7 @@ void	buildObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager,
 			}
 		}
 	}
-	std::cout << std::endl;
+	std::cout << polygon_debug.str() << std::endl;
 	std::cout << "total polygons:\t" << total_polygons << std::endl;
 	std::cout << "hiddenBlocks:\t" << hiddenBlocks << std::endl;
 	for (auto i : manager.renderlistVoxels)
@@ -2276,7 +2278,7 @@ void	scene_octree() {
 	std::cout << "Begin while loop" << endl;
 	while (!glfwWindowShouldClose(m.glfw->_window)) {
 		if (defaultFps->wait_for_next_frame()) {
-			std::cout << ">>>>>>>>>>>>>>>>>>>> NEW FRAME <<<<<<<<<<<<<<<<<<<<" << std::endl;
+			//std::cout << ">>>>>>>>>>>>>>>>>>>> NEW FRAME <<<<<<<<<<<<<<<<<<<<" << std::endl;
 			m.glfw->setTitle(std::to_string(defaultFps->getFps()) + " fps");
 
 			glfwPollEvents();
@@ -2301,7 +2303,7 @@ void	scene_octree() {
 					start = glfwGetTime(); std::cout << "grabing meshes...";
 					buildObjectFromGenerator(generator, m, cubebp, *renderer, tex_lena);
 					start = glfwGetTime() - start; std::cout << " grabed in " << start << " seconds\n";
-					//generator.playerChangedChunk = false;//not yet
+					generator.playerChangedChunk = false;
 				}
 				generator.chunks_mutex.unlock();
 			}
@@ -2332,33 +2334,30 @@ void	scene_octree() {
 #endif
 			rendererSkybox.renderObjects(m.renderlistSkybox, cam, PG_FORCE_DRAW);
 
-
 			if (generator.chunks_mutex.try_lock()) {
+				//thread player management?
+				// coo in 3d world
+				playerPos = cam.local.getPos();
+				float	zmax = generator.gridSize.z * generator.chunkSize.z;//for gl convertion
+				float	px_topleftChunk = generator.grid[0][0][0]->pos.x;//need to setup a mutex or it will crash
+				float	pz_topleftChunk = generator.grid[0][0][0]->pos.z;
+//#define MINIMAP
+#ifdef MINIMAP
+				// coo on 2d screen
+				float	px = (playerPos.x - px_topleftChunk) * m.minimapCoef;
+				float	pz = (zmax - (playerPos.z - pz_topleftChunk)) * m.minimapCoef;
+				m.playerMinimap->setPos(px, pz);
+				m.playerMinimap->setPos2(px + m.playerMinimap->getTexture()->getWidth() * m.minimapCoef,
+										pz + m.playerMinimap->getTexture()->getHeight() * m.minimapCoef);
 				//build minimap
+				//too many blit, build a single image for all the minimap! for all the UI?
 				for (unsigned int k = 0; k < generator.gridSize.z; k++) {
 					for (unsigned int i = 0; i < generator.gridSize.x; i++) {
 						blitToWindow(nullptr, GL_COLOR_ATTACHMENT0, generator.heightMaps[k][i]->panel);
 					}
 				}
-				if (true || generator.playerChangedChunk) {//why?
-					//thread player management?
-
-					// coo in 3d world
-					playerPos = cam.local.getPos();
-					float	zmax = generator.gridSize.z * generator.chunkSize.z;//for gl convertion
-					float	px_topleftChunk = generator.grid[0][0][0]->pos.x;//need to setup a mutex or it will crash
-					float	pz_topleftChunk = generator.grid[0][0][0]->pos.z;
-
-					// coo on 2d screen
-					float	px = (playerPos.x - px_topleftChunk) * m.minimapCoef;
-					float	pz = (zmax - (playerPos.z - pz_topleftChunk)) * m.minimapCoef;
-					m.playerMinimap->setPos(px, pz);
-					m.playerMinimap->setPos2(px + m.playerMinimap->getTexture()->getWidth() * m.minimapCoef,
-											pz + m.playerMinimap->getTexture()->getHeight() * m.minimapCoef);
-
-					blitToWindow(nullptr, GL_COLOR_ATTACHMENT0, m.playerMinimap);
-					generator.playerChangedChunk = false;
-				}
+				blitToWindow(nullptr, GL_COLOR_ATTACHMENT0, m.playerMinimap);
+#endif
 				generator.chunks_mutex.unlock();
 			}
 			glfwSwapBuffers(m.glfw->_window);

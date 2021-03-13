@@ -237,7 +237,7 @@ void   gridChecks(Chunk**** grid, HeightMap*** heightMaps, Math::Vector3 gridSiz
 			}
 		}
 	}
-	std::cout << " > grid checks before rebuild" << std::endl;
+	std::cout << " > grid checks" << std::endl;
 	std::cout << " > nonull: " << nonulls << std::endl;
 	std::cout << " > nulls: " << nulls << std::endl;
 	std::cout << " >> total: " << nonulls + nulls << std::endl;
@@ -257,7 +257,6 @@ bool	ChunkGenerator::updateGrid(Math::Vector3 player_pos) {
 	if (diff.magnitude() == 0)
 		return false;
 	//gridDisplayed
-	//--
 	this->chunks_mutex.lock();
 	this->playerChangedChunk = true;
 	std::cout << "diff: ";
@@ -277,33 +276,33 @@ bool	ChunkGenerator::updateGrid(Math::Vector3 player_pos) {
 	this->gridDisplayIndex.add(diff);
 	this->gridDisplayIndex.sub(diffGrid); //should be inside the next block? yes, test it after the refacto
 
-	//--
+	std::cout << "\t--gridDisplayIndex        \t"; this->gridDisplayIndex.printData();
+
 	if (diffGrid.magnitude() == 0) {
 		this->chunks_mutex.unlock();
 		return true;
 	}
 	//grid (memory)
-
-	// game crash when creating ne chuncks
-
-	std::vector<int>		indexK;
-	std::vector<int>		indexJ;
-	std::vector<int>		indexI;
+	std::vector<int>		indexZ;
+	std::vector<int>		indexY;
+	std::vector<int>		indexX;
 	std::vector<Chunk*>		chunks;
 	std::vector<HeightMap*>	hmaps;
+	std::vector<Chunk*>		chunksToDelete;
+	std::vector<HeightMap*>	hmapsToDelete;
 
 	//store the chunks and heightmaps with their new index 3D
-	for (int k = 0; k < this->gridSize.z; k++) {
-		for (int j = 0; j < this->gridSize.y; j++) {
-			for (int i = 0; i < this->gridSize.x; i++) {
-				indexK.push_back(k + diffGrid.z);
-				indexJ.push_back(j + diffGrid.y);
-				indexI.push_back(i + diffGrid.x);
-				chunks.push_back(this->grid[k][j][i]);
-				this->grid[k][j][i] = nullptr;
-				if (j == 0) {// there is only one hmap for an entire column of chunks
-					hmaps.push_back(this->heightMaps[k][i]);
-					this->heightMaps[k][i] = nullptr;
+	for (int z = 0; z < this->gridSize.z; z++) {
+		for (int y = 0; y < this->gridSize.y; y++) {
+			for (int x = 0; x < this->gridSize.x; x++) {
+				indexZ.push_back(z - diffGrid.z);//each tile goes in the opposite way of the player movement
+				indexY.push_back(y - diffGrid.y);
+				indexX.push_back(x - diffGrid.x);
+				chunks.push_back(this->grid[z][y][x]);
+				this->grid[z][y][x] = nullptr;
+				if (y == 0) {// there is only one hmap for an entire column of chunks
+					hmaps.push_back(this->heightMaps[z][x]);
+					this->heightMaps[z][x] = nullptr;
 				} else {
 					hmaps.push_back(nullptr);	// to match the chunks index for the next hmap
 				}
@@ -317,12 +316,11 @@ bool	ChunkGenerator::updateGrid(Math::Vector3 player_pos) {
 	//reassign the chunks in the grid if they are inside it
 	std::cout << "reassigning chunks...";
 	for (size_t n = 0; n < chunks.size(); n++) {
-		if (indexK[n] < this->gridSize.z && indexJ[n] < this->gridSize.y && indexI[n] < this->gridSize.x \
-			&& indexK[n] >= 0 && indexJ[n] >= 0 && indexI[n] >= 0) {
-			this->grid[indexK[n]][indexJ[n]][indexI[n]] = chunks[n];
+		if (indexZ[n] < this->gridSize.z && indexY[n] < this->gridSize.y && indexX[n] < this->gridSize.x \
+			&& indexZ[n] >= 0 && indexY[n] >= 0 && indexX[n] >= 0) {
+			this->grid[indexZ[n]][indexY[n]][indexX[n]] = chunks[n];
 		} else {//is outside of the memory grid
-			std::cout << "deleting chunk : " << chunks[n] << " ( mesh Object* : " << chunks[n]->mesh << " )" << std::endl;
-			delete chunks[n];
+			chunksToDelete.push_back(chunks[n]);
 		}
 	}
 	std::cout << " OK" << std::endl;
@@ -331,12 +329,11 @@ bool	ChunkGenerator::updateGrid(Math::Vector3 player_pos) {
 	std::cout << "reassigning heightmaps...";
 	for (size_t n = 0; n < hmaps.size(); n++) {
 		if (hmaps[n]) {
-			if (indexK[n] < this->gridSize.z && indexI[n] < this->gridSize.x \
-				&& indexK[n] >= 0 && indexI[n] >= 0) {
-				this->heightMaps[indexK[n]][indexI[n]] = hmaps[n];
-			} else {
-			//	std::cout << "deleting hmaps : " << hmaps[n] << std::endl;
-				delete hmaps[n];
+			if (indexZ[n] < this->gridSize.z && indexX[n] < this->gridSize.x \
+				&& indexZ[n] >= 0 && indexX[n] >= 0) {
+				this->heightMaps[indexZ[n]][indexX[n]] = hmaps[n];
+			} else {//is outside of the memory grid
+				hmapsToDelete.push_back(hmaps[n]);
 			}
 		}
 	}
@@ -348,34 +345,59 @@ bool	ChunkGenerator::updateGrid(Math::Vector3 player_pos) {
 	std::cout << " OK" << std::endl;
 
 	//rebuild the empty chunks and heightmaps
-	std::cout << "rebuilding new chunks and heightmaps...";
+	int chunksRebuilt = 0;
+	int hmapsRebuilt = 0;
 	Math::Vector3	halfGrid(int(this->gridSize.x / 2), int(this->gridSize.y / 2), int(this->gridSize.z / 2));//a Vector3i would be better
 	Math::Vector3	smallestChunk(this->gridPos); smallestChunk.sub(halfGrid);
-	for (int k = 0; k < this->gridSize.z; k++) {
-		for (int j = 0; j < this->gridSize.y; j++) {
-			for (int i = 0; i < this->gridSize.x; i++) {
-				if (!this->grid[k][j][i]) {
-					if (j == 0) {// there is only one hmap for an entire column of chunks
-						this->heightMaps[k][i] = new HeightMap(this->settings,
-							(smallestChunk.x + i) * this->chunkSize.x, (smallestChunk.z + k) * this->chunkSize.z,
-							this->chunkSize.x, this->chunkSize.z);
-					}
-					this->settings.map = this->heightMaps[k][i]->map;
-					this->grid[k][j][i] = new Chunk(Math::Vector3(smallestChunk.x + i, smallestChunk.y + j, smallestChunk.z + k),
+	std::cout << "rebuilding new heightmaps...";
+	for (int z = 0; z < this->gridSize.z; z++) {
+		for (int x = 0; x < this->gridSize.x; x++) {
+			if (!this->heightMaps[z][x]) {
+				this->heightMaps[z][x] = new HeightMap(this->settings,
+					(smallestChunk.x + x) * this->chunkSize.x, (smallestChunk.z + z) * this->chunkSize.z,
+					this->chunkSize.x, this->chunkSize.z);
+				hmapsRebuilt++;
+			}
+		}
+	}
+	std::cout << "rebuilding new chunks...";
+	for (int z = 0; z < this->gridSize.z; z++) {
+		for (int y = 0; y < this->gridSize.y; y++) {
+			for (int x = 0; x < this->gridSize.x; x++) {
+				if (!this->grid[z][y][x]) {
+					this->settings.map = this->heightMaps[z][x]->map;
+					this->grid[z][y][x] = new Chunk(Math::Vector3(smallestChunk.x + x, smallestChunk.y + y, smallestChunk.z + z),
 													this->chunkSize, this->settings);
+					chunksRebuilt++;
 					this->settings.map = nullptr;
 				}
 			}
 		}
 	}
+	std::cout << "chunksRebuilt : " << chunksRebuilt << std::endl;
+	std::cout << "hmapsRebuilt : " << hmapsRebuilt << std::endl;
 	std::cout << " OK" << std::endl;
 
 	//debug checks after rebuild
 	std::cout << "checks...\n";
 	gridChecks(this->grid, this->heightMaps, this->gridSize);
 	std::cout << " OK" << std::endl;
-
 	this->_chunksReadyForMeshes = true;
+
+#if 1
+	//deleting old chunks and heighmaps
+	//there is still a risk for them to be used by the renderer, we should make a list with these now useless data to be deleted at the end of each X frames
+	std::cout << "deleting chunks... " << chunksToDelete.size() << std::endl;
+	for (size_t n = 0; n < chunksToDelete.size(); n++) {
+		std::cout << "deleting chunk : " << chunksToDelete[n] << " ( mesh Object* : " << chunksToDelete[n]->mesh << " )" << std::endl;
+		delete chunksToDelete[n];
+	}
+	std::cout << "deleting hmaps... " << hmapsToDelete.size() << std::endl;
+	for (size_t n = 0; n < hmapsToDelete.size(); n++) {
+		std::cout << "deleting hmaps : " << hmapsToDelete[n] << std::endl;
+		delete hmapsToDelete[n];
+	}
+#endif
 	this->chunks_mutex.unlock();
 	return true;
 }
