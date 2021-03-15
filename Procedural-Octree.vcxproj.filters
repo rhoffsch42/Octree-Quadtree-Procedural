@@ -111,6 +111,9 @@
     <ClCompile Include="SimpleGL\src\obj3d_ipg.cpp">
       <Filter>SimpleGL\Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\heightmap.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="SimpleGL\include\behavior.hpp">
@@ -205,6 +208,9 @@
     </ClInclude>
     <ClInclude Include="SimpleGL\include\compiler_settings.h">
       <Filter>SimpleGL\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\heightmap.hpp">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

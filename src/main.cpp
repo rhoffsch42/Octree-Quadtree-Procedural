@@ -1709,7 +1709,7 @@ public:
 		this->chunk_size = Math::Vector3(s * 2,
 										s * 2,
 										s * 2);
-		int	g = 41;
+		int	g = 15;
 		int	d = g * 2 / 3;
 		if (d % 2 == 0)
 			d++;
@@ -1807,7 +1807,7 @@ static void		keyCallback_ocTree(GLFWwindow* window, int key, int scancode, int a
 	}
 }
 
-void	buildObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager, Obj3dBP& cubebp, Obj3dPG& obj3d_prog, Texture* tex_lena) {
+void	grabObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager, Obj3dBP& cubebp, Obj3dPG& obj3d_prog, Texture* tex_lena) {
 	std::cout << "_ " << __PRETTY_FUNCTION__ << std::endl;
 
 
@@ -2150,8 +2150,56 @@ void	scene_benchmarks() {
 void	th1_mapGeneration(ChunkGenerator& generator, OctreeManager& manager, Obj3dBP& cubebp, Obj3dPG& renderer, Texture* tex_lena) {
 	while (1) {
 		if (/*!generator.playerChangedChunk &&*/ generator.updateGrid(manager.cam->local.getPos())) {
-			//buildObjectFromGenerator(generator, manager, cubebp, renderer, tex_lena);
+			//grabObjectFromGenerator(generator, manager, cubebp, renderer, tex_lena);
 			//parts are interacting with opengl, should be done in main thread
+		}
+	}
+}
+
+void	th_builders(ChunkGenerator& generator) {
+	//we could store all the grid's pointers to a vector to have a faster access
+	std::thread::id threadID = std::this_thread::get_id();
+	Chunk*		fakeChunk = reinterpret_cast<Chunk*>(2);
+	HeightMap*	fakeHeightmap = reinterpret_cast<HeightMap*>(3);
+
+	while (true) {
+		if (!generator._chunksReadyForMeshes && generator.chunks_mutex.try_lock()) {
+			for (size_t z = 0; z < generator.gridSize.z; z++) {
+				for (size_t y = 0; y < generator.gridSize.y; y++) {
+					for (size_t x = 0; x < generator.gridSize.x; x++) {
+
+						if (!generator.grid[z][y][x]) {
+							generator._chunksReadyForMeshes = false;
+							generator.grid[z][y][x] = fakeChunk;//assign whatever to the pointer so it's not nullptr anymore
+							if (y == 0 && !generator.heightMaps[z][x]) {
+								generator.heightMaps[z][x] = fakeHeightmap;//assign whatever to the pointer so it's not nullptr anymore
+							}
+							Math::Vector3	halfGrid(int(generator.gridSize.x / 2), int(generator.gridSize.y / 2), int(generator.gridSize.z / 2));//a Vector3i would be better
+							Math::Vector3	smallestChunk(generator.gridPos); smallestChunk.sub(halfGrid);
+							generator.chunks_mutex.unlock();
+
+							//now we can build a real chunk and heightmap
+							if (generator.heightMaps[z][x] == fakeHeightmap) {
+								generator.heightMaps[z][x] = new HeightMap(generator.settings,
+									(smallestChunk.x + x) * generator.chunkSize.x, (smallestChunk.z + z) * generator.chunkSize.z,
+									generator.chunkSize.x, generator.chunkSize.z);
+								std::cout << "[thread " << threadID << "] built HeightMap " << generator.heightMaps[z][x] << std::endl;
+							}
+							generator.grid[z][y][x] = new Chunk(Math::Vector3(smallestChunk.x + x, smallestChunk.y + y, smallestChunk.z + z),
+								generator.chunkSize, generator.settings, generator.heightMaps[z][x]);
+							std::cout << "[thread " << threadID << "] built Chunk " << generator.grid[z][y][x] << std::endl;
+							goto endfors;
+						}
+
+					}
+				}
+			}
+			if (generator.gridMemoryMoved)
+				generator._chunksReadyForMeshes = true;
+			//if all the grid is built, _chunksReadyForMeshes? race condition between builders and main thread 
+			generator.chunks_mutex.unlock();
+		endfors:
+			(void)generator;
 		}
 	}
 }
@@ -2259,51 +2307,54 @@ void	scene_octree() {
 	Math::Vector3	playerPos = cam.local.getPos();
 	ChunkGenerator	generator(playerPos, *m.ps, m.chunk_size, m.gridSize, m.gridSizeDisplayed);
 //	generator.buildMeshesAndMapTiles();
-	//buildObjectFromGenerator(generator, m, cubebp, *renderer, tex_lena);
+	//grabObjectFromGenerator(generator, m, cubebp, *renderer, tex_lena);
 
 #endif
-	Fps	fpsBIG(1000);
-	Fps	fps144(144);
-	Fps	fps60(60);
-	//Fps* defaultFps = &fpsBIG;
-	Fps* defaultFps = &fps144;
-	//Fps* defaultFps = &fps60;
+	Fps	fps(135);
 
 	//threads
 #define USE_THREADS
 #ifdef USE_THREADS
 	//void	th1_mapGeneration(ChunkGenerator& generator, OctreeManager& manager, Obj3dBP& cubebp, Obj3dPG& renderer, Texture* tex_lena, Cam& cam, ) {
 	std::thread helper1(th1_mapGeneration, std::ref(generator), std::ref(m), std::ref(cubebp), std::ref(*renderer), tex_lena);
+
+	//chunks builder
+	std::thread helper2(th_builders, std::ref(generator));
+	//std::thread helper3(th_builders, std::ref(generator));
+	//std::thread helper4(th_builders, std::ref(generator));
+	//std::thread helper5(th_builders, std::ref(generator));
 #endif
 	std::cout << "Begin while loop" << endl;
 	while (!glfwWindowShouldClose(m.glfw->_window)) {
-		if (defaultFps->wait_for_next_frame()) {
+		if (fps.wait_for_next_frame()) {
 			//std::cout << ">>>>>>>>>>>>>>>>>>>> NEW FRAME <<<<<<<<<<<<<<<<<<<<" << std::endl;
-			m.glfw->setTitle(std::to_string(defaultFps->getFps()) + " fps");
+			m.glfw->setTitle(std::to_string(fps.getFps()) + " fps");
 
 			glfwPollEvents();
 			m.glfw->updateMouse();//to do before cam's events
 			{
-				std::lock_guard<std::mutex> guard(generator.mutex1);
-				m.cam->events(*m.glfw, float(defaultFps->getTick()));
+				std::lock_guard<std::mutex> guard(generator.mutex1);//?
+				m.cam->events(*m.glfw, float(fps.getTick()));
 			}
 #ifndef USE_THREADS
 			if (1 && generator.updateGrid(m.cam->local.getPos())) {
 				generator.buildMeshesAndMapTiles();
-				buildObjectFromGenerator(generator, m, cubebp, *renderer, tex_lena);
+				grabObjectFromGenerator(generator, m, cubebp, *renderer, tex_lena);
 			}
 #else
 			if (generator.chunks_mutex.try_lock()) {
 				if (generator.playerChangedChunk) {
 
-					double start = glfwGetTime(); std::cout << "building meshes...";
-					generator.buildMeshesAndMapTiles();
-					start = glfwGetTime() - start; std::cout << " built in " << start << " seconds\n";
+					double start = glfwGetTime(); std::cout << "building meshes... ";
+					if (generator.buildMeshesAndMapTiles()) {
+						start = glfwGetTime() - start; std::cout << "built in " << start << " seconds\n";
 
-					start = glfwGetTime(); std::cout << "grabing meshes...";
-					buildObjectFromGenerator(generator, m, cubebp, *renderer, tex_lena);
-					start = glfwGetTime() - start; std::cout << " grabed in " << start << " seconds\n";
+						start = glfwGetTime(); std::cout << "grabing meshes... ";
+						grabObjectFromGenerator(generator, m, cubebp, *renderer, tex_lena);
+						start = glfwGetTime() - start; std::cout << "grabed in " << start << " seconds\n";
+					}
 					generator.playerChangedChunk = false;
+					// the generator can do what he want with the grid, the renderer has what he need for the current frame
 				}
 				generator.chunks_mutex.unlock();
 			}
@@ -2380,11 +2431,7 @@ void	maxUniforms() {
 	std::cout << "GL_MAX_TESS_EVALUATION_UNIFORM_COMPONENTS\t" << GL_MAX_TESS_EVALUATION_UNIFORM_COMPONENTS << std::endl;
 	std::cout << "GL_MAX_COMPUTE_UNIFORM_COMPONENTS\t" << GL_MAX_COMPUTE_UNIFORM_COMPONENTS << std::endl;
 	std::cout << "GL_MAX_UNIFORM_LOCATIONS\t" << GL_MAX_UNIFORM_LOCATIONS << std::endl;
-	exit(0);
-}
-
-void	testtype(uint8_t value) {
-	std::cout << int(value) << std::endl;
+	std::exit(0);
 }
 
 void	scene_checkMemory() {
@@ -2428,7 +2475,7 @@ void	scene_checkMemory() {
 	//exit
 	std::cout << "end... ENTER" << std::endl;
 	std::cin >> input;
-	exit(0);
+	std::exit(0);
 
 }
 

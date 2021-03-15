@@ -47,15 +47,14 @@ ChunkGenerator::ChunkGenerator(Math::Vector3 player_pos, const PerlinSettings& p
 		for (unsigned int j = 0; j < this->gridSize.y; j++) {
 			this->grid[k][j] = new Chunk * [this->gridSize.x];
 			for (unsigned int i = 0; i < this->gridSize.x; i++) {
-				this->settings.map = this->heightMaps[k][i]->map;
 				Math::Vector3	tileNumber(smallestChunk.x + i, smallestChunk.y + j, smallestChunk.z + k);
-				this->grid[k][j][i] = new Chunk(tileNumber, this->chunkSize, this->settings);
-				this->settings.map = nullptr;
+				this->grid[k][j][i] = new Chunk(tileNumber, this->chunkSize, this->settings, this->heightMaps[k][i]);
 			}
 		}
 	}
 	this->_chunksReadyForMeshes = true;
 	this->playerChangedChunk = true;
+	this->gridMemoryMoved = false;
 }
 
 ChunkGenerator::~ChunkGenerator() {
@@ -116,6 +115,7 @@ static int	calcExceed(int posA, int sizeA, int posB, int sizeB) {
 
 //return true if player step in another chunk
 bool	ChunkGenerator::updateGrid_old(Math::Vector3 player_pos) {
+	//more direct but more complicated than the new updateGrid()
 	Math::Vector3	old_tile = this->currentChunk;
 	this->updatePlayerPos(player_pos);
 	Math::Vector3	diff(this->currentChunk);
@@ -156,8 +156,6 @@ bool	ChunkGenerator::updateGrid_old(Math::Vector3 player_pos) {
 			initValues(diffGrid.y, inc.y, start.y, end.y, endShift.y, intersection.y, this->gridSize.y);
 			initValues(diffGrid.z, inc.z, start.z, end.z, endShift.z, intersection.z, this->gridSize.z);
 
-			//todo: generate heightmaps only once, save them, shift them the same way // done?
-
 			Math::Vector3	progress(0, 0, 0);
 			this->chunks_mutex.lock();
 			for (int k = start.z; k != end.z; k += inc.z) {
@@ -188,23 +186,17 @@ bool	ChunkGenerator::updateGrid_old(Math::Vector3 player_pos) {
 									(smallestChunk.x + i) * this->chunkSize.x, (smallestChunk.z + k) * this->chunkSize.z,
 									this->chunkSize.x, this->chunkSize.z);
 							}
-							this->settings.map = this->heightMaps[k][i]->map;
 							this->grid[k][j][i] = new Chunk(
 								Math::Vector3(smallestChunk.x + i, smallestChunk.y + j, smallestChunk.z + k),//what happen when we send that to a ref?
-								this->chunkSize, this->settings);
-							this->settings.map = nullptr;
+								this->chunkSize, this->settings, this->heightMaps[k][i]);
 						}
 						progress.x++;
 					}
 					progress.y++;
-					if (CHUNK_GEN_DEBUG) { std::cout << "_ X row\n"; }
 				}
 				progress.z++;
-				if (CHUNK_GEN_DEBUG) { std::cout << "_ Y row\n"; }
 			}
-			if (CHUNK_GEN_DEBUG) { std::cout << "_ Z row\n"; }
 
-			std::cout << "\n\n";
 			this->_chunksReadyForMeshes = true;
 			this->chunks_mutex.unlock();
 		}//end grid memory
@@ -282,6 +274,8 @@ bool	ChunkGenerator::updateGrid(Math::Vector3 player_pos) {
 		this->chunks_mutex.unlock();
 		return true;
 	}
+	this->gridMemoryMoved = true;
+
 	//grid (memory)
 	std::vector<int>		indexZ;
 	std::vector<int>		indexY;
@@ -313,7 +307,7 @@ bool	ChunkGenerator::updateGrid(Math::Vector3 player_pos) {
 	std::cout << "chunks referenced: " << chunks.size() << std::endl;
 	std::cout << "hmaps referenced (with nulls): " << hmaps.size() << std::endl;
 
-	//reassign the chunks in the grid if they are inside it
+	//reassign the chunks
 	std::cout << "reassigning chunks...";
 	for (size_t n = 0; n < chunks.size(); n++) {
 		if (indexZ[n] < this->gridSize.z && indexY[n] < this->gridSize.y && indexX[n] < this->gridSize.x \
@@ -344,6 +338,7 @@ bool	ChunkGenerator::updateGrid(Math::Vector3 player_pos) {
 	gridChecks(this->grid, this->heightMaps, this->gridSize);
 	std::cout << " OK" << std::endl;
 
+#if 0
 	//rebuild the empty chunks and heightmaps
 	int chunksRebuilt = 0;
 	int hmapsRebuilt = 0;
@@ -377,16 +372,18 @@ bool	ChunkGenerator::updateGrid(Math::Vector3 player_pos) {
 	std::cout << "chunksRebuilt : " << chunksRebuilt << std::endl;
 	std::cout << "hmapsRebuilt : " << hmapsRebuilt << std::endl;
 	std::cout << " OK" << std::endl;
+#endif
 
 	//debug checks after rebuild
 	std::cout << "checks...\n";
 	gridChecks(this->grid, this->heightMaps, this->gridSize);
 	std::cout << " OK" << std::endl;
-	this->_chunksReadyForMeshes = true;
+	//this->_chunksReadyForMeshes = true;
 
 #if 1
 	//deleting old chunks and heighmaps
-	//there is still a risk for them to be used by the renderer, we should make a list with these now useless data to be deleted at the end of each X frames
+	//vulnerable to race condition with the renderer in main thread
+	//we should make a list with these now useless data to be deleted at the end of each X frames
 	std::cout << "deleting chunks... " << chunksToDelete.size() << std::endl;
 	for (size_t n = 0; n < chunksToDelete.size(); n++) {
 		std::cout << "deleting chunk : " << chunksToDelete[n] << " ( mesh Object* : " << chunksToDelete[n]->mesh << " )" << std::endl;
@@ -415,6 +412,8 @@ bool	ChunkGenerator::buildMeshesAndMapTiles() {
 		this->_chunksReadyForMeshes = false;
 		std::cout << "ChunkGenerator meshes built\n";
 		return true;
+	} else {
+		std::cout << "Chunks are not ready yet\n";
 	}
 	return false;
 }

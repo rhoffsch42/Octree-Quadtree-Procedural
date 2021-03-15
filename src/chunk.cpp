@@ -61,9 +61,7 @@ void	Chunk::buildMesh() {
 	}
 }
 
-Chunk::Chunk() {}
-
-Chunk::Chunk(const Math::Vector3& tile_number, Math::Vector3 chunk_size, PerlinSettings& perlinSettings) {
+Chunk::Chunk(const Math::Vector3& tile_number, Math::Vector3 chunk_size, PerlinSettings& perlinSettings, HeightMap* hmap) {
 	this->tile = tile_number;
 	this->pos = tile_number;
 	this->pos.x *= chunk_size.x;
@@ -73,12 +71,6 @@ Chunk::Chunk(const Math::Vector3& tile_number, Math::Vector3 chunk_size, PerlinS
 	this->meshBP = nullptr;
 	this->mesh = nullptr;
 
-	bool	delmap = false;
-	if (perlinSettings.map == nullptr) {//when we didnt pregenerate the heightmap
-		perlinSettings.genHeightMap(this->pos.x, this->pos.z, this->size.x, this->size.z);
-		delmap = true;//to delete it after
-	}
-
 	uint8_t***		data;
 	data = new uint8_t * *[this->size.z];
 	for (unsigned int k = 0; k < this->size.z; k++) {
@@ -86,8 +78,8 @@ Chunk::Chunk(const Math::Vector3& tile_number, Math::Vector3 chunk_size, PerlinS
 		for (unsigned int j = 0; j < this->size.y; j++) {
 			data[k][j] = new uint8_t[this->size.x];
 			for (unsigned int i = 0; i < this->size.x; i++) {
-				//std::cout << "pos.y + j = " << (pos.y + j) << "  is > to " << int(perlinSettings.map[k][i]) << "\t?" << std::endl;
-				if (pos.y + j > int(perlinSettings.map[k][i])) {//procedural: surface with heightmap
+				//std::cout << "pos.y + j = " << (pos.y + j) << "  is > to " << int(map[k][i]) << "\t?" << std::endl;
+				if (hmap && pos.y + j > int(hmap->map[k][i])) {//procedural: surface with heightmap
 					data[k][j][i] = VOXEL_EMPTY.r;
 				} else {
 					if (0) {//procedural: which dirt, 3d noise
@@ -111,9 +103,6 @@ Chunk::Chunk(const Math::Vector3& tile_number, Math::Vector3 chunk_size, PerlinS
 			}
 		}
 	}
-
-	if (delmap)
-		perlinSettings.deleteMap();
 
 	//tmp
 	Pixel*** pix = new Pixel**[this->size.z];
