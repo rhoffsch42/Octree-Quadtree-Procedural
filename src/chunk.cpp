@@ -44,7 +44,7 @@ int	Chunk::buildVertexArrayFromOctree(Octree* root, Math::Vector3 pos_offset) {
 			}
 		}
 	});
-	std::cout << "\t> vertex array ready: " << this->_vertexArray.size() << std::endl;
+	//std::cout << "\t> vertex array ready: " << this->_vertexArray.size() << std::endl;
 	return 1;
 }
 

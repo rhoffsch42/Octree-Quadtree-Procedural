@@ -4,6 +4,7 @@
 #include "chunk.hpp"
 #include "heightmap.hpp"
 #include <mutex>
+#include <condition_variable>
 
 #define CHUNK_GEN_DEBUG	0
 
@@ -15,13 +16,15 @@ typedef UIImage*	minimapTile;
 class ChunkGenerator
 {
 public:
-	static std::mutex	chunks_mutex;
+	std::condition_variable	cv;
+	std::mutex	chunks_mutex;
 
 	//grid_size_displayed will be clamped between 1 -> grid_size
 	ChunkGenerator(Math::Vector3 player_pos, const PerlinSettings& perlin_settings, Math::Vector3 chunk_size, Math::Vector3 grid_size, Math::Vector3 grid_size_displayed);
 	~ChunkGenerator();
 	bool	updateGrid_old(Math::Vector3 player_pos);
 	bool	updateGrid(Math::Vector3 player_pos);
+	void	th_builders();
 	bool	buildMeshesAndMapTiles();
 
 	void	printData();
@@ -40,9 +43,10 @@ public:
 	HeightMap* **	heightMaps;
 	Math::Vector3	playerPos;
 	bool			playerChangedChunk;
-	std::mutex		mutex1;//?
+	std::mutex		mutex1;//? used in updatePlayerPos, usefull? maybe for events
 	bool	_chunksReadyForMeshes;
 	bool	gridMemoryMoved;
+	uint8_t threadsReadyToBuildChunks;
 private:
 	void	updatePlayerPos(Math::Vector3 player_pos);
 	ChunkGenerator();

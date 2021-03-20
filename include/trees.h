@@ -32,7 +32,8 @@
 #include <algorithm>
 #include <thread>
 #include <cassert>
-
+#include <mutex>
+#include <functional>
 
 #ifdef _WIN32
 #include <direct.h>

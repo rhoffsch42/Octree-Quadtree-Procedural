@@ -2,9 +2,6 @@
 #include "compiler_settings.h"
 #include <algorithm>
 
- std::mutex	ChunkGenerator::chunks_mutex;
-
-
 ChunkGenerator::ChunkGenerator(Math::Vector3 player_pos, const PerlinSettings& perlin_settings, Math::Vector3 chunk_size, Math::Vector3 grid_size, Math::Vector3 grid_size_displayed)
 	: chunkSize(chunk_size),
 	gridSize(grid_size),//better be odd for equal horizon on every cardinal points
@@ -12,6 +9,29 @@ ChunkGenerator::ChunkGenerator(Math::Vector3 player_pos, const PerlinSettings& p
 	settings(perlin_settings)
 {
 	std::cout << "_ " << __PRETTY_FUNCTION__ << std::endl;
+/*
+	retfacto grid with 3d list
+	std::list< std::list< std::list<Chunk*> > >	gr;
+	//move forward +Z
+	gr.push_back
+	gr.pop_front
+	//move backward -Z
+	gr.pop_back
+	gr.push_front
+	//move up +Y
+	gr[z].push_back
+	gr[z].pop_front
+	//move down -Y
+	gr[z].pop_back
+	gr[z].push_front
+	//move left -X
+	gr[z][y].pop_back
+	gr[z][y].push_front
+	//move right +X
+	gr[z][y].push_back
+	gr[z][y].pop_front
+*/
+
 	// current tile index
 	this->updatePlayerPos(player_pos);
 	this->gridPos = this->currentChunk;
@@ -35,9 +55,10 @@ ChunkGenerator::ChunkGenerator(Math::Vector3 player_pos, const PerlinSettings& p
 	for (unsigned int k = 0; k < this->gridSize.z; k++) {
 		this->heightMaps[k] = new HeightMap*[this->gridSize.x];
 		for (unsigned int i = 0; i < this->gridSize.x; i++) {
-			this->heightMaps[k][i] = new HeightMap(this->settings,
-				(smallestChunk.x + i) * this->chunkSize.x, (smallestChunk.z + k) * this->chunkSize.z,
-				this->chunkSize.x, this->chunkSize.z);
+			//this->heightMaps[k][i] = new HeightMap(this->settings,
+			//	(smallestChunk.x + i) * this->chunkSize.x, (smallestChunk.z + k) * this->chunkSize.z,
+			//	this->chunkSize.x, this->chunkSize.z);
+			this->heightMaps[k][i] = nullptr;
 		}
 	}
 
@@ -47,14 +68,16 @@ ChunkGenerator::ChunkGenerator(Math::Vector3 player_pos, const PerlinSettings& p
 		for (unsigned int j = 0; j < this->gridSize.y; j++) {
 			this->grid[k][j] = new Chunk * [this->gridSize.x];
 			for (unsigned int i = 0; i < this->gridSize.x; i++) {
-				Math::Vector3	tileNumber(smallestChunk.x + i, smallestChunk.y + j, smallestChunk.z + k);
-				this->grid[k][j][i] = new Chunk(tileNumber, this->chunkSize, this->settings, this->heightMaps[k][i]);
+				//Math::Vector3	tileNumber(smallestChunk.x + i, smallestChunk.y + j, smallestChunk.z + k);
+				//this->grid[k][j][i] = new Chunk(tileNumber, this->chunkSize, this->settings, this->heightMaps[k][i]);
+				this->grid[k][j][i] = nullptr;
 			}
 		}
 	}
 	this->_chunksReadyForMeshes = true;
 	this->playerChangedChunk = true;
 	this->gridMemoryMoved = false;
+	this->threadsReadyToBuildChunks = 0;
 }
 
 ChunkGenerator::~ChunkGenerator() {
@@ -241,6 +264,8 @@ void   gridChecks(Chunk**** grid, HeightMap*** heightMaps, Math::Vector3 gridSiz
 
 //return true if player step in another chunk
 bool	ChunkGenerator::updateGrid(Math::Vector3 player_pos) {
+	std::unique_lock<std::mutex> lock(this->chunks_mutex);
+
 	Math::Vector3	old_tile = this->currentChunk;
 	this->updatePlayerPos(player_pos);
 	Math::Vector3	diff(this->currentChunk);
@@ -249,7 +274,6 @@ bool	ChunkGenerator::updateGrid(Math::Vector3 player_pos) {
 	if (diff.magnitude() == 0)
 		return false;
 	//gridDisplayed
-	this->chunks_mutex.lock();
 	this->playerChangedChunk = true;
 	std::cout << "diff: ";
 	diff.printData();
@@ -270,10 +294,8 @@ bool	ChunkGenerator::updateGrid(Math::Vector3 player_pos) {
 
 	std::cout << "\t--gridDisplayIndex        \t"; this->gridDisplayIndex.printData();
 
-	if (diffGrid.magnitude() == 0) {
-		this->chunks_mutex.unlock();
+	if (diffGrid.magnitude() == 0)
 		return true;
-	}
 	this->gridMemoryMoved = true;
 
 	//grid (memory)
@@ -339,64 +361,93 @@ bool	ChunkGenerator::updateGrid(Math::Vector3 player_pos) {
 	std::cout << " OK" << std::endl;
 
 #if 0
-	//rebuild the empty chunks and heightmaps
-	int chunksRebuilt = 0;
-	int hmapsRebuilt = 0;
-	Math::Vector3	halfGrid(int(this->gridSize.x / 2), int(this->gridSize.y / 2), int(this->gridSize.z / 2));//a Vector3i would be better
-	Math::Vector3	smallestChunk(this->gridPos); smallestChunk.sub(halfGrid);
-	std::cout << "rebuilding new heightmaps...";
-	for (int z = 0; z < this->gridSize.z; z++) {
-		for (int x = 0; x < this->gridSize.x; x++) {
-			if (!this->heightMaps[z][x]) {
-				this->heightMaps[z][x] = new HeightMap(this->settings,
-					(smallestChunk.x + x) * this->chunkSize.x, (smallestChunk.z + z) * this->chunkSize.z,
-					this->chunkSize.x, this->chunkSize.z);
-				hmapsRebuilt++;
-			}
-		}
-	}
-	std::cout << "rebuilding new chunks...";
-	for (int z = 0; z < this->gridSize.z; z++) {
-		for (int y = 0; y < this->gridSize.y; y++) {
-			for (int x = 0; x < this->gridSize.x; x++) {
-				if (!this->grid[z][y][x]) {
-					this->settings.map = this->heightMaps[z][x]->map;
-					this->grid[z][y][x] = new Chunk(Math::Vector3(smallestChunk.x + x, smallestChunk.y + y, smallestChunk.z + z),
-													this->chunkSize, this->settings);
-					chunksRebuilt++;
-					this->settings.map = nullptr;
-				}
-			}
-		}
-	}
-	std::cout << "chunksRebuilt : " << chunksRebuilt << std::endl;
-	std::cout << "hmapsRebuilt : " << hmapsRebuilt << std::endl;
-	std::cout << " OK" << std::endl;
-#endif
-
-	//debug checks after rebuild
-	std::cout << "checks...\n";
-	gridChecks(this->grid, this->heightMaps, this->gridSize);
-	std::cout << " OK" << std::endl;
-	//this->_chunksReadyForMeshes = true;
-
-#if 1
 	//deleting old chunks and heighmaps
 	//vulnerable to race condition with the renderer in main thread
 	//we should make a list with these now useless data to be deleted at the end of each X frames
 	std::cout << "deleting chunks... " << chunksToDelete.size() << std::endl;
 	for (size_t n = 0; n < chunksToDelete.size(); n++) {
-		std::cout << "deleting chunk : " << chunksToDelete[n] << " ( mesh Object* : " << chunksToDelete[n]->mesh << " )" << std::endl;
+		//std::cout << "deleting chunk : " << chunksToDelete[n] << " ( mesh Object* : " << chunksToDelete[n]->mesh << " )" << std::endl;
 		delete chunksToDelete[n];
 	}
 	std::cout << "deleting hmaps... " << hmapsToDelete.size() << std::endl;
 	for (size_t n = 0; n < hmapsToDelete.size(); n++) {
-		std::cout << "deleting hmaps : " << hmapsToDelete[n] << std::endl;
+		//std::cout << "deleting hmaps : " << hmapsToDelete[n] << std::endl;
 		delete hmapsToDelete[n];
 	}
 #endif
-	this->chunks_mutex.unlock();
+	this->_chunksReadyForMeshes = false;
+	this->cv.notify_all();
 	return true;
+}
+
+void	ChunkGenerator::th_builders() {
+	std::thread::id threadID = std::this_thread::get_id();
+	Chunk* fakeChunk = reinterpret_cast<Chunk*>(2);
+	HeightMap* fakeHeightmap = reinterpret_cast<HeightMap*>(3);
+	std::unique_lock<std::mutex> lock(this->chunks_mutex);
+
+	//build job variables
+	PerlinSettings	perlinSettings(this->settings);//if they change later, we have to update them, cpy them when finding a job?
+	Math::Vector3	halfGrid = Math::Vector3(int(this->gridSize.x / 2), int(this->gridSize.y / 2), int(this->gridSize.z / 2)); // same
+	Math::Vector3	chunk_size(this->chunkSize);//same
+	Chunk* newChunk = nullptr;
+	HeightMap* newHmap = nullptr;
+
+	while (true) {
+		std::cout << "[" << threadID << "] waiting " << std::endl;
+		this->cv.wait(lock, [this] { return !this->_chunksReadyForMeshes; });//wait unlocks
+		for (size_t z = 0; z < this->gridSize.z; z++) {
+			for (size_t x = 0; x < this->gridSize.x; x++) {
+				if (!this->heightMaps[z][x]) {
+					this->heightMaps[z][x] = fakeHeightmap;//reserve the slot: assign whatever to the pointer so it's not nullptr anymore
+					lock.unlock(); // now we can build the data
+					Math::Vector3	chunkWorldIndex(this->gridPos.x - halfGrid.x + x,
+													0,//useless here
+													this->gridPos.z - halfGrid.z + z);
+					newHmap = new HeightMap(perlinSettings,
+						chunkWorldIndex.x * chunk_size.x, chunkWorldIndex.z * chunk_size.z,
+						chunk_size.x, chunk_size.z);
+					lock.lock(); //to assign the new data
+					//std::cout << "[thread " << threadID << "] built HeightMap " << newHmap << std::endl;
+					this->heightMaps[z][x] = newHmap;
+					newHmap = nullptr;
+				}
+			}
+		}
+		this->threadsReadyToBuildChunks++;
+		std::cout << "[" << threadID << "] threadsReadyToBuildChunks : " << (int)threadsReadyToBuildChunks << std::endl;
+		this->cv.wait(lock, [this] { return (this->threadsReadyToBuildChunks == 6); });//wait unlocks
+		this->cv.notify_all();//wakes up other threads
+		lock.unlock();
+		std::this_thread::sleep_for(std::chrono::milliseconds(50));
+		lock.lock();
+
+		std::cout << "[" << threadID << "] building chunks... " << std::endl;
+		for (size_t z = 0; z < this->gridSize.z; z++) {
+			for (size_t y = 0; y < this->gridSize.y; y++) {
+				for (size_t x = 0; x < this->gridSize.x; x++) {
+					if (!this->grid[z][y][x]) {
+						this->grid[z][y][x] = fakeChunk;//reserve the slot: assign whatever to the pointer so it's not nullptr anymore
+						newHmap = this->heightMaps[z][x];
+						Math::Vector3	chunkWorldIndex(this->gridPos.x - halfGrid.x + x,
+														this->gridPos.y - halfGrid.y + y,
+														this->gridPos.z - halfGrid.z + z);
+						lock.unlock();//now we can build a real chunk and heightmap
+						newChunk = new Chunk(chunkWorldIndex, chunk_size, perlinSettings, newHmap);
+						lock.lock(); //to assign the new data
+						this->grid[z][y][x] = newChunk;
+						//std::cout << "[" << threadID << "] built chunk " << z << " " << y << " " << x << " " << this->grid[z][y][x] << std::endl;
+						newChunk = nullptr;
+						newHmap = nullptr;
+					}
+				}
+			}
+		}
+		//this->playerChangedChunk = false;
+		this->_chunksReadyForMeshes = true;
+		this->threadsReadyToBuildChunks = 0;
+		std::cout << "[" << threadID << "] nomore chunks to build, _chunksReadyForMeshes true\n";
+	}
 }
 
 bool	ChunkGenerator::buildMeshesAndMapTiles() {
@@ -413,9 +464,9 @@ bool	ChunkGenerator::buildMeshesAndMapTiles() {
 		std::cout << "ChunkGenerator meshes built\n";
 		return true;
 	} else {
-		std::cout << "Chunks are not ready yet\n";
+		//std::cout << "Chunks are not ready yet\n";
+		return false;
 	}
-	return false;
 }
 
 void	ChunkGenerator::updatePlayerPos(Math::Vector3 player_pos) {
