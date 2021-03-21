@@ -2374,6 +2374,7 @@ void	scene_octree() {
 				generator.chunks_mutex.unlock();
 			}
 			glfwSwapBuffers(m.glfw->_window);
+			generator.try_deleteUnusedData();
 
 			if (GLFW_PRESS == glfwGetKey(m.glfw->_window, GLFW_KEY_ESCAPE))
 				glfwSetWindowShouldClose(m.glfw->_window, GLFW_TRUE);

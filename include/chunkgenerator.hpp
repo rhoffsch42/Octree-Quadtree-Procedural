@@ -5,6 +5,7 @@
 #include "heightmap.hpp"
 #include <mutex>
 #include <condition_variable>
+#include <vector>
 
 #define CHUNK_GEN_DEBUG	0
 
@@ -26,6 +27,7 @@ public:
 	bool	updateGrid(Math::Vector3 player_pos);
 	void	th_builders();
 	bool	buildMeshesAndMapTiles();
+	bool	try_deleteUnusedData();
 
 	void	printData();
 
@@ -50,6 +52,11 @@ public:
 private:
 	void	updatePlayerPos(Math::Vector3 player_pos);
 	ChunkGenerator();
+
+	void	deleteUnusedData();
+	std::mutex					trash_mutex;
+	std::vector<HeightMap*>		trashHeightMaps;
+	std::vector<Chunk*>			trashChunks;
 };
 
 /*

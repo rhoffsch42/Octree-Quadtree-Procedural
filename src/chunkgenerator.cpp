@@ -360,21 +360,12 @@ bool	ChunkGenerator::updateGrid(Math::Vector3 player_pos) {
 	gridChecks(this->grid, this->heightMaps, this->gridSize);
 	std::cout << " OK" << std::endl;
 
-#if 0
-	//deleting old chunks and heighmaps
-	//vulnerable to race condition with the renderer in main thread
-	//we should make a list with these now useless data to be deleted at the end of each X frames
-	std::cout << "deleting chunks... " << chunksToDelete.size() << std::endl;
-	for (size_t n = 0; n < chunksToDelete.size(); n++) {
-		//std::cout << "deleting chunk : " << chunksToDelete[n] << " ( mesh Object* : " << chunksToDelete[n]->mesh << " )" << std::endl;
-		delete chunksToDelete[n];
-	}
-	std::cout << "deleting hmaps... " << hmapsToDelete.size() << std::endl;
-	for (size_t n = 0; n < hmapsToDelete.size(); n++) {
-		//std::cout << "deleting hmaps : " << hmapsToDelete[n] << std::endl;
-		delete hmapsToDelete[n];
-	}
-#endif
+	//send useless data to bins
+	this->trash_mutex.lock();
+	this->trashHeightMaps.insert(this->trashHeightMaps.end(), hmapsToDelete.begin(), hmapsToDelete.end());
+	this->trashChunks.insert(this->trashChunks.end(), chunksToDelete.begin(), chunksToDelete.end());
+	this->trash_mutex.unlock();
+
 	this->_chunksReadyForMeshes = false;
 	this->cv.notify_all();
 	return true;
@@ -497,4 +488,27 @@ void	ChunkGenerator::printData() {
 			}
 		}
 	}
+}
+
+bool	ChunkGenerator::try_deleteUnusedData() {
+	if (this->trash_mutex.try_lock()) {
+		this->deleteUnusedData();
+		this->trash_mutex.unlock();
+		return true;
+	}
+	return false;
+}
+
+void	ChunkGenerator::deleteUnusedData() {
+	//todo : use unique_ptr in the vectors
+	for (auto& pointer : this->trashHeightMaps)	{
+			delete pointer;
+			pointer = nullptr;
+	}
+	this->trashHeightMaps.erase(std::remove(this->trashHeightMaps.begin(), this->trashHeightMaps.end(), nullptr), this->trashHeightMaps.end());
+	for (auto& pointer : this->trashChunks) {
+		delete pointer;
+		pointer = nullptr;
+	}
+	this->trashChunks.erase(std::remove(this->trashChunks.begin(), this->trashChunks.end(), nullptr), this->trashChunks.end());
 }
