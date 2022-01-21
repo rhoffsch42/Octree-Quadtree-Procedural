@@ -4,7 +4,6 @@ HeightMap::HeightMap(PerlinSettings& perlin_settings, int posx, int posz, int si
 	: posX(posx), posZ(posz), sizeX(sizex), sizeZ(sizez)
 {
 	this->map = perlin_settings.genHeightMap(posx, posz, sizex, sizez);
-
 	//map tiles
 	//could be done in buildPanel, but it is done here for parallelized computation
 	this->textureData = PerlinSettings::HeightmapToTextureData(map, this->sizeX, this->sizeZ);
@@ -28,7 +27,7 @@ HeightMap::~HeightMap() {
 
 //opengl thread
 void	HeightMap::glth_buildPanel() {
-	Glfw::glThreadSafety();
+	//Glfw::glThreadSafety();
 	if (!this->panel) {//if it's not already done
 		this->texture = new Texture(this->textureData, this->sizeX, this->sizeZ);
 		this->panel = new UIImage(this->texture);

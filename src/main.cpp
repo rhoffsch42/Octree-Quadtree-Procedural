@@ -3,6 +3,15 @@
 #include "simplegl.h"
 #include "trees.h"
 
+void	pdebug(bool reset = false) {
+	return;
+	const char *s = "0123456789`~!@#$%^&*()_+-=[]{}\\|;:'\",./<>?";
+	static unsigned int i = 0;
+	std::cout << s[i];
+	i++;
+	if (reset || i == 42)
+		i = 0;
+}
 
 void	blitToWindow(FrameBuffer* readFramebuffer, GLenum attachmentPoint, UIPanel* panel) {
 	GLuint fbo;
@@ -29,13 +38,13 @@ void	blitToWindow(FrameBuffer* readFramebuffer, GLenum attachmentPoint, UIPanel*
 		w = panel->getTexture()->getWidth();
 		h = panel->getTexture()->getHeight();
 	} else {
-		std::cout << "FUCK " << __PRETTY_FUNCTION__ << std::endl;
+		std::cout << "FUCK " << __PRETTY_FUNCTION__ << "\n";
 		std::exit(2);
 	}
 	if (0) {
 		std::cout << "copy " << w << "x" << h << "\tresized\t" << panel->_width << "x" << panel->_height \
-			<< "\tat pos\t" << panel->_posX << ":" << panel->_posY << std::endl;
-		// << " -> " << (panel->posX + panel->width) << "x" << (panel->posY + panel->height) << std::endl;
+			<< "\tat pos\t" << panel->_posX << ":" << panel->_posY << "\n";
+		// << " -> " << (panel->posX + panel->width) << "x" << (panel->posY + panel->height) << "\n";
 	}
 	glBlitFramebuffer(0, 0, w, h, \
 		panel->_posX, panel->_posY, panel->_posX2, panel->_posY2, GL_COLOR_BUFFER_BIT, GL_NEAREST);
@@ -44,41 +53,41 @@ void	blitToWindow(FrameBuffer* readFramebuffer, GLenum attachmentPoint, UIPanel*
 }
 
 void	check_paddings() {
-	//	cout << sizeof(BITMAPINFOHEADER) << " = " << sizeof(BMPINFOHEADER) << endl;
+	//	cout << sizeof(BITMAPINFOHEADER) << " = " << sizeof(BMPINFOHEADER) << "\n";
 #ifdef _WIN322
-	std::cout << sizeof(BITMAPFILEHEADER) << " = " << sizeof(BMPFILEHEADER) << endl;
-	std::cout << "bfType\t" << offsetof(BMPINFOHEADERBITMAPFILEHEADER, bfType) << endl;
-	std::cout << "bfSize\t" << offsetof(BITMAPFILEHEADER, bfSize) << endl;
-	std::cout << "bfReserved1\t" << offsetof(BITMAPFILEHEADER, bfReserved1) << endl;
-	std::cout << "bfReserved2\t" << offsetof(BITMAPFILEHEADER, bfReserved2) << endl;
-	std::cout << "bfOffBits\t" << offsetof(BITMAPFILEHEADER, bfOffBits) << endl;
+	std::cout << sizeof(BITMAPFILEHEADER) << " = " << sizeof(BMPFILEHEADER) << "\n";
+	std::cout << "bfType\t" << offsetof(BMPINFOHEADERBITMAPFILEHEADER, bfType) << "\n";
+	std::cout << "bfSize\t" << offsetof(BITMAPFILEHEADER, bfSize) << "\n";
+	std::cout << "bfReserved1\t" << offsetof(BITMAPFILEHEADER, bfReserved1) << "\n";
+	std::cout << "bfReserved2\t" << offsetof(BITMAPFILEHEADER, bfReserved2) << "\n";
+	std::cout << "bfOffBits\t" << offsetof(BITMAPFILEHEADER, bfOffBits) << "\n";
 #endif//_WIN32
-	std::cout << "unsigned short\t" << sizeof(unsigned short) << endl;
-	std::cout << "unsigned long \t" << sizeof(unsigned long) << endl;
-	std::cout << "long          \t" << sizeof(long) << endl;
-	std::cout << "long long     \t" << sizeof(long long) << endl;
-	std::cout << "int           \t" << sizeof(int) << endl;
-	if (sizeof(BMPFILEHEADER) != 14 || sizeof(BMPINFOHEADER) != 40) {
-		cerr << "Padding in structure, exiting..." << endl << endl;
-		std::cout << "BMPFILEHEADER\t" << sizeof(BMPFILEHEADER) << endl;
-		std::cout << "bfType     \t" << offsetof(BMPFILEHEADER, bfType) << endl;
-		std::cout << "bfSize     \t" << offsetof(BMPFILEHEADER, bfSize) << endl;
-		std::cout << "bfReserved1\t" << offsetof(BMPFILEHEADER, bfReserved1) << endl;
-		std::cout << "bfReserved2\t" << offsetof(BMPFILEHEADER, bfReserved2) << endl;
-		std::cout << "bfOffBits\t" << offsetof(BMPFILEHEADER, bfOffBits) << endl;
-		std::cout << "-----" << endl;
-		std::cout << "BMPINFOHEADER\t" << sizeof(BMPINFOHEADER) << endl;
-		std::cout << "biSize     \t" << offsetof(BMPINFOHEADER, biSize) << endl;
-		std::cout << "biWidth    \t" << offsetof(BMPINFOHEADER, biWidth) << endl;
-		std::cout << "biHeight\t" << offsetof(BMPINFOHEADER, biHeight) << endl;
-		std::cout << "biPlanes\t" << offsetof(BMPINFOHEADER, biPlanes) << endl;
-		std::cout << "biBitCount\t" << offsetof(BMPINFOHEADER, biBitCount) << endl;
-		std::cout << "biCompression\t" << offsetof(BMPINFOHEADER, biCompression) << endl;
-		std::cout << "biSizeImage\t" << offsetof(BMPINFOHEADER, biSizeImage) << endl;
-		std::cout << "biXPelsPerMeter\t" << offsetof(BMPINFOHEADER, biXPelsPerMeter) << endl;
-		std::cout << "biYPelsPerMeter\t" << offsetof(BMPINFOHEADER, biYPelsPerMeter) << endl;
-		std::cout << "biClrUsed\t" << offsetof(BMPINFOHEADER, biClrUsed) << endl;
-		std::cout << "biClrImportant\t" << offsetof(BMPINFOHEADER, biClrImportant) << endl;
+	std::cout << "unsigned short\t" << sizeof(unsigned short) << "\n";
+	std::cout << "unsigned long \t" << sizeof(unsigned long) << "\n";
+	std::cout << "long          \t" << sizeof(long) << "\n";
+	std::cout << "long long     \t" << sizeof(long long) << "\n";
+	std::cout << "int           \t" << sizeof(int) << "\n";
+	if ((sizeof(BMPFILEHEADER) != 14) || (sizeof(BMPINFOHEADER) != 40)) {
+		cerr << "Padding in structure, exiting...\n" << "\n";
+		std::cout << "BMPFILEHEADER\t" << sizeof(BMPFILEHEADER) << "\n";
+		std::cout << "bfType     \t" << offsetof(BMPFILEHEADER, bfType) << "\n";
+		std::cout << "bfSize     \t" << offsetof(BMPFILEHEADER, bfSize) << "\n";
+		std::cout << "bfReserved1\t" << offsetof(BMPFILEHEADER, bfReserved1) << "\n";
+		std::cout << "bfReserved2\t" << offsetof(BMPFILEHEADER, bfReserved2) << "\n";
+		std::cout << "bfOffBits\t" << offsetof(BMPFILEHEADER, bfOffBits) << "\n";
+		std::cout << "-----\n";
+		std::cout << "BMPINFOHEADER\t" << sizeof(BMPINFOHEADER) << "\n";
+		std::cout << "biSize     \t" << offsetof(BMPINFOHEADER, biSize) << "\n";
+		std::cout << "biWidth    \t" << offsetof(BMPINFOHEADER, biWidth) << "\n";
+		std::cout << "biHeight\t" << offsetof(BMPINFOHEADER, biHeight) << "\n";
+		std::cout << "biPlanes\t" << offsetof(BMPINFOHEADER, biPlanes) << "\n";
+		std::cout << "biBitCount\t" << offsetof(BMPINFOHEADER, biBitCount) << "\n";
+		std::cout << "biCompression\t" << offsetof(BMPINFOHEADER, biCompression) << "\n";
+		std::cout << "biSizeImage\t" << offsetof(BMPINFOHEADER, biSizeImage) << "\n";
+		std::cout << "biXPelsPerMeter\t" << offsetof(BMPINFOHEADER, biXPelsPerMeter) << "\n";
+		std::cout << "biYPelsPerMeter\t" << offsetof(BMPINFOHEADER, biYPelsPerMeter) << "\n";
+		std::cout << "biClrUsed\t" << offsetof(BMPINFOHEADER, biClrUsed) << "\n";
+		std::cout << "biClrImportant\t" << offsetof(BMPINFOHEADER, biClrImportant) << "\n";
 		exit(ERROR_PADDING);
 	}
 }
@@ -157,7 +166,7 @@ void	scene1() {
 	Obj3dBP			rocketBP("obj3d/ARSENAL_VG33/Arsenal_VG33.obj");
 	// Obj3dBP			lamboBP("obj3d/lambo/Lamborginhi_Aventador_OBJ/Lamborghini_Aventador.obj");
 	Obj3dBP			lamboBP("obj3d/lambo/Lamborginhi_Aventador_OBJ/Lamborghini_Aventador_no_collider.obj");
-	cout << "======" << endl;
+	cout << "======\n";
 #endif
 #ifndef TEXTURES
 	Texture* texture1 = new Texture("images/lena.bmp");
@@ -289,14 +298,14 @@ void	scene1() {
 
 	// Properties::defaultSize = PP_DEFAULT_SIZE;
 
-	cout << &rocket1 << endl;
+	cout << &rocket1 << "\n";
 	// test_behaviors(rocket1);
 
-	cout << "Object # : " << Object::getInstanceAmount() << endl;
-	cout << "Obj3d # : " << Obj3d::getInstanceAmount() << endl;
-	cout << endl;
-	cout << "GL_MAX_CUBE_MAP_TEXTURE_SIZE " << GL_MAX_CUBE_MAP_TEXTURE_SIZE << endl;
-	cout << "GL_MAX_TEXTURE_SIZE " << GL_MAX_TEXTURE_SIZE << endl;
+	cout << "Object # : " << Object::getInstanceAmount() << "\n";
+	cout << "Obj3d # : " << Obj3d::getInstanceAmount() << "\n";
+	cout << "\n";
+	cout << "GL_MAX_CUBE_MAP_TEXTURE_SIZE " << GL_MAX_CUBE_MAP_TEXTURE_SIZE << "\n";
+	cout << "GL_MAX_TEXTURE_SIZE " << GL_MAX_TEXTURE_SIZE << "\n";
 
 	SkyboxPG	sky_pg(CUBEMAP_VS_FILE, CUBEMAP_FS_FILE);
 	Skybox		skybox(*texture3, sky_pg);
@@ -309,7 +318,7 @@ void	scene1() {
 	cam.lockedOrientation = false;
 
 	glfw.setMouseAngle(45);
-	std::cout << "MouseAngle: " << glfw.getMouseAngle() << std::endl;
+	std::cout << "MouseAngle: " << glfw.getMouseAngle() << "\n";
 	//exit(0);
 
 	if (false) {//cam anchor to rocket1, bugged with Z rot
@@ -329,7 +338,7 @@ void	scene1() {
 
 
 #ifndef BEHAVIORS
-	cout << "behavior:" << endl;
+	cout << "behavior:\n";
 	TransformBH		b1;
 	b1.transform.rot.setUnit(ROT_DEG);
 	b1.transform.rot.z = 10 * defaultFps->getTick();
@@ -337,14 +346,14 @@ void	scene1() {
 	float ss = 1.0f + 0.1f * defaultFps->getTick();
 	//b1.transform.scale = Math::Vector3(ss, ss, ss);
 //	b1.modeScale = MULTIPLICATIVE;
-	cout << "___ adding rocket1: " << &rocket1 << endl;
+	cout << "___ adding rocket1: " << &rocket1 << "\n";
 	b1.addTarget(&rocket1);
 	b1.addTarget(&lambo1);
 	b1.removeTarget(&lambo1);
 	b1.setTargetStatus(&rocket1, false);
-	std::cout << "rocket1 status: " << b1.getTargetStatus(&rocket1) << std::endl;
+	std::cout << "rocket1 status: " << b1.getTargetStatus(&rocket1) << "\n";
 	b1.setTargetStatus(&rocket1, true);
-	std::cout << "rocket1 status: " << b1.getTargetStatus(&rocket1) << std::endl;
+	std::cout << "rocket1 status: " << b1.getTargetStatus(&rocket1) << "\n";
 
 	TransformBH		b2;// = b1;//bug
 	b2.transform.scale = Math::Vector3(0, 0, 0);
@@ -363,8 +372,8 @@ void	scene1() {
 	b3.transform.rot.y = 102.0f * defaultFps->getTick();
 	b3.addTarget(&lambo2);
 
-	cout << "b1: " << b1.getTargetList().size() << endl;
-	cout << "b2: " << b2.getTargetList().size() << endl;
+	cout << "b1: " << b1.getTargetList().size() << "\n";
+	cout << "b2: " << b2.getTargetList().size() << "\n";
 
 	TransformBH		b4;// = b1;//bug
 	b4.transform.scale = Math::Vector3(0, 0, 0);
@@ -375,30 +384,30 @@ void	scene1() {
 
 	if (false) {// check behavior target, add remove
 
-		cout << "behaviorsActive: " << (empty1.behaviorsActive ? "true" : "false") << endl;
-		cout << "------------" << endl;
-		cout << "lambo1:\t" << lambo1.behaviorList.size() << endl;
-		cout << "b2:    \t" << b2.getTargetList().size() << endl;
-		cout << "b2.addTarget(&lambo1);" << endl;
+		cout << "behaviorsActive: " << (empty1.behaviorsActive ? "true" : "false") << "\n";
+		cout << "------------\n";
+		cout << "lambo1:\t" << lambo1.behaviorList.size() << "\n";
+		cout << "b2:    \t" << b2.getTargetList().size() << "\n";
+		cout << "b2.addTarget(&lambo1);\n";
 		b2.addTarget(&lambo1);
-		cout << "lambo1:\t" << lambo1.behaviorList.size() << endl;
-		cout << "b2:    \t" << b2.getTargetList().size() << endl;
-		cout << "b2.removeTarget(&lambo1);" << endl;
+		cout << "lambo1:\t" << lambo1.behaviorList.size() << "\n";
+		cout << "b2:    \t" << b2.getTargetList().size() << "\n";
+		cout << "b2.removeTarget(&lambo1);\n";
 		b2.removeTarget(&lambo1);
-		cout << "lambo1:\t" << lambo1.behaviorList.size() << endl;
-		cout << "b2:    \t" << b2.getTargetList().size() << endl;
+		cout << "lambo1:\t" << lambo1.behaviorList.size() << "\n";
+		cout << "b2:    \t" << b2.getTargetList().size() << "\n";
 
-		cout << "------------" << endl;
-		cout << "lambo1:\t" << lambo1.behaviorList.size() << endl;
-		cout << "b2:    \t" << b2.getTargetList().size() << endl;
-		cout << "lambo1.addBehavior(&b2);" << endl;
+		cout << "------------\n";
+		cout << "lambo1:\t" << lambo1.behaviorList.size() << "\n";
+		cout << "b2:    \t" << b2.getTargetList().size() << "\n";
+		cout << "lambo1.addBehavior(&b2);\n";
 		lambo1.addBehavior(&b2);
-		cout << "lambo1:\t" << lambo1.behaviorList.size() << endl;
-		cout << "b2:    \t" << b2.getTargetList().size() << endl;
-		cout << "lambo1.removeBehavior(&b2);" << endl;
+		cout << "lambo1:\t" << lambo1.behaviorList.size() << "\n";
+		cout << "b2:    \t" << b2.getTargetList().size() << "\n";
+		cout << "lambo1.removeBehavior(&b2);\n";
 		lambo1.removeBehavior(&b2);
-		cout << "lambo1:\t" << lambo1.behaviorList.size() << endl;
-		cout << "b2:    \t" << b2.getTargetList().size() << endl;
+		cout << "lambo1:\t" << lambo1.behaviorList.size() << "\n";
+		cout << "b2:    \t" << b2.getTargetList().size() << "\n";
 	}
 #endif
 	// exit(0);
@@ -413,7 +422,7 @@ void	scene1() {
 #endif
 
 #ifndef RENDER
-	cout << "Begin while loop" << endl;
+	cout << "Begin while loop\n";
 	// cam.local.setScale(s,s,s);//bad, undefined behavior
 	while (!glfwWindowShouldClose(glfw._window)) {
 		if (defaultFps->wait_for_next_frame()) {
@@ -422,24 +431,24 @@ void	scene1() {
 				if (false) {
 					Math::Matrix4	matRocket = rocket1.getWorldMatrix();
 					matRocket.printData();
-					cout << "---------------" << endl;
+					cout << "---------------\n";
 				}
 				if (false) {
 					the42_1.getWorldMatrix().printData();
 				}
 				if (false) {
-					cout << "---rocket1" << endl;
+					cout << "---rocket1\n";
 					rocket1.local.getScale().printData();
 					// rocket1.getWorldMatrix().printData();
-					cout << "---lambo2" << endl;
+					cout << "---lambo2\n";
 					lambo2.local.getScale().printData();
 					// lambo2.getWorldMatrix().printData();
-					cout << "---lambo3" << endl;
+					cout << "---lambo3\n";
 					lambo3.local.getScale().printData();
 					// lambo3.getWorldMatrix().printData();
-					cout << "---------------" << endl;
+					cout << "---------------\n";
 					lamboBP.getDimensions().printData();
-					cout << "---------------" << endl;
+					cout << "---------------\n";
 				}
 			}
 			////////////////////////////////////////// motion/behaviors
@@ -477,10 +486,10 @@ void	scene1() {
 				glfwSetWindowShouldClose(glfw._window, GLFW_TRUE);
 		}
 	}
-	cout << "End while loop" << endl;
+	cout << "End while loop\n";
 #endif
 
-	cout << "deleting textures..." << endl;
+	cout << "deleting textures...\n";
 	delete texture1;
 	delete texture2;
 	delete texture3;
@@ -538,7 +547,7 @@ void scene2() {
 	cam.lockedOrientation = false;
 
 	glfw.setMouseAngle(-1);
-	std::cout << "MouseAngle: " << glfw.getMouseAngle() << std::endl;
+	std::cout << "MouseAngle: " << glfw.getMouseAngle() << "\n";
 	//exit(0);
 
 	//cam.local.setPos(0, 1.5f, 3.5f);
@@ -556,7 +565,7 @@ void scene2() {
 
 	float	mvt = 30.0f * defaultFps->getTick();
 
-	std::cout << "Begin while loop" << endl;
+	std::cout << "Begin while loop\n";
 	int c = 0;
 	while (!glfwWindowShouldClose(glfw._window)) {
 		if (defaultFps->wait_for_next_frame()) {
@@ -572,17 +581,17 @@ void scene2() {
 					c = 0;
 					system("cls");
 					if (true) {
-						std::cout << "--- ROCKET" << endl;
+						std::cout << "--- ROCKET\n";
 						//rocket.local.getScale().printData();
 						rocket.local.getRot().printData();
 						rocket.getWorldMatrix().printData();
 					}
 					if (true) {
-						std::cout << "--- CAM" << endl;
+						std::cout << "--- CAM\n";
 						cam.local.getRot().printData();
-						std::cout << "- local" << endl;
+						std::cout << "- local\n";
 						cam.getLocalProperties().getMatrix().printData();
-						std::cout << "- world" << endl;
+						std::cout << "- world\n";
 						cam.getWorldMatrix().printData();
 					}
 				}
@@ -639,9 +648,9 @@ void scene2() {
 				glfwSetWindowShouldClose(glfw._window, GLFW_TRUE);
 		}
 	}
-	std::cout << "End while loop" << endl;
+	std::cout << "End while loop\n";
 
-	std::cout << "deleting textures..." << endl;
+	std::cout << "deleting textures...\n";
 	delete texture3;
 	delete texture5;
 }
@@ -654,22 +663,22 @@ void	fillData(uint8_t* dst, QuadNode* node, int* leafAmount, int baseWidth, bool
 	//if (node->isLeaf()) {
 	if (node->detail <= threshold) {
 		//(*leafAmount)++;
-		//std::cout << "leaf: " << node->width << "x" << node->height << " at " << node->x << ":" << node->y << std::endl;
+		//std::cout << "leaf: " << node->width << "x" << node->height << " at " << node->x << ":" << node->y << "\n";
 		if (node->width == 0 || node->height == 0) {
 			std::cout << "error with tree data\n"; exit(2);
 		}
 		if (node->width * node->height >= DEBUG_LEAF_AREA && DEBUG_LEAF && *leafAmount == 0 && DEBUG_FILL_TOO) {
 			std::cout << "Fill new leaf: " << node->width << "x" << node->height << " at " << node->x << ":" << node->y << "\t";
-			std::cout << (int)node->pixel.r << "  \t" << (int)node->pixel.g << "  \t" << (int)node->pixel.b << std::endl;
+			std::cout << (int)node->pixel.r << "  \t" << (int)node->pixel.g << "  \t" << (int)node->pixel.b << "\n";
 		}
 		for (int j = 0; j < node->height; j++) {
 			for (int i = 0; i < node->width; i++) {
 				unsigned int posx = node->x + i;
 				unsigned int posy = node->y + j;
 				unsigned int index = (posy * baseWidth + posx) * 3;
-				//std::cout << ((posy * baseWidth + posx) * 3 + 0) << std::endl;
-				//std::cout << ((posy * baseWidth + posx) * 3 + 1) << std::endl;
-				//std::cout << ((posy * baseWidth + posx) * 3 + 2) << std::endl;
+				//std::cout << ((posy * baseWidth + posx) * 3 + 0) << "\n";
+				//std::cout << ((posy * baseWidth + posx) * 3 + 1) << "\n";
+				//std::cout << ((posy * baseWidth + posx) * 3 + 2) << "\n";
 				if (draw_borders && (i == 0 || j == 0)) {
 					dst[index + 0] = 0;
 					dst[index + 1] = 0;
@@ -711,10 +720,10 @@ QuadNode* textureToQuadTree(Texture* tex) {
 			pix[j][i].b = data[(j * w + i) * 3 + 2];
 		}
 	}
-	std::cout << "pixel: " << sizeof(Pixel) << std::endl;
+	std::cout << "pixel: " << sizeof(Pixel) << "\n";
 
 	QuadNode* root = new QuadNode(pix, 0, 0, w, h, THRESHOLD);
-	std::cout << "root is leaf: " << (root->isLeaf() ? "true" : "false") << std::endl;
+	std::cout << "root is leaf: " << (root->isLeaf() ? "true" : "false") << "\n";
 
 	return root;
 }
@@ -732,13 +741,13 @@ public:
 
 static void		keyCallback_quadTree(GLFWwindow* window, int key, int scancode, int action, int mods) {
 	(void)window; (void)key; (void)scancode; (void)action; (void)mods;
-	//std::cout << __PRETTY_FUNCTION__ << std::endl;
+	//std::cout << __PRETTY_FUNCTION__ << "\n";
 
 	if (action == GLFW_PRESS) {
-		//std::cout << "GLFW_PRESS" << std::endl;
+		//std::cout << "GLFW_PRESS\n";
 		QuadTreeManager* manager = static_cast<QuadTreeManager*>(glfwGetWindowUserPointer(window));
 		if (!manager) {
-			std::cout << "static_cast failed" << std::endl;
+			std::cout << "static_cast failed\n";
 		}
 		else if (manager->glfw) {
 			if (key == GLFW_KEY_EQUAL) {
@@ -792,7 +801,7 @@ void	scene_4Tree() {
 	Fps	fps60(60);
 	Fps* defaultFps = &fps144;
 
-	std::cout << "Begin while loop" << endl;
+	std::cout << "Begin while loop\n";
 	int	leafAmount = 0;
 	while (!glfwWindowShouldClose(manager.glfw->_window)) {
 		if (defaultFps->wait_for_next_frame()) {
@@ -803,8 +812,8 @@ void	scene_4Tree() {
 
 			fillData(dataOctree, root, &leafAmount, w, manager.draw_borders, manager.threshold, Math::Vector3(0, 0, 0));
 			leafAmount = -1;
-			//std::cout << "leafs: " << leafAmount << std::endl;
-			//std::cout << "w * h * 3 = " << w << " * " << h << " * 3 = " << w * h * 3 << std::endl;
+			//std::cout << "leafs: " << leafAmount << "\n";
+			//std::cout << "w * h * 3 = " << w << " * " << h << " * 3 = " << w * h * 3 << "\n";
 			image4Tree->updateData(dataOctree, root->width, root->height);
 
 			// printFps();
@@ -818,8 +827,8 @@ void	scene_4Tree() {
 		}
 	}
 
-	std::cout << "End while loop" << endl;
-	std::cout << "deleting textures..." << endl;
+	std::cout << "End while loop\n";
+	std::cout << "deleting textures...\n";
 	delete lena;
 	delete red;
 	delete rgbtest;
@@ -830,7 +839,7 @@ public:
 	ProceduralManager() : GameManager() {
 		this->perlin = nullptr;
 		this->core_amount = std::thread::hardware_concurrency();
-		std::cout << " number of cores: " << this->core_amount << endl;
+		std::cout << " number of cores: " << this->core_amount << "\n";
 		this->seed = 888;
 		std::srand(this->seed);
 		this->frequency = 4;
@@ -963,7 +972,7 @@ void	th_buildData(uint8_t* data, ProceduralManager& manager, int yStart, int yEn
 	playerPosY = WINY - manager.mouseY - (WINY / 2);//center of screen is 0:0   //invert glfw Y to match opengl image
 	playerPosX += manager.posOffsetX;
 	playerPosY += manager.posOffsetY;
-	//std::cout << playerPosX << " : " << playerPosY << std::endl;
+	//std::cout << playerPosX << " : " << playerPosY << "\n";
 	int screenCornerX, screenCornerY;
 	screenCornerX = playerPosX - (manager.areaWidth / 2);
 	screenCornerY = playerPosY - (manager.areaHeight / 2);
@@ -982,7 +991,7 @@ void	th_buildData(uint8_t* data, ProceduralManager& manager, int yStart, int yEn
 				manager.octaves);
 			value = std::pow(value, manager.flattering);
 			Math::Vector3	vec(posX, posY, 0);
-			double dist = (double(vec.magnitude()) / double(WINY / 2));//normalized 0..1
+			double dist = (double(vec.len()) / double(WINY / 2));//normalized 0..1
 			value = std::clamp(value + manager.island * (0.5 - dist), 0.0, 1.0);
 
 			int index = (y * manager.areaWidth + x) * 3;
@@ -1036,8 +1045,8 @@ void	scene_procedural() {
 
 	int repeatX = WINX / manager.areaWidth;
 	int repeatY = WINY / manager.areaHeight;
-	std::cout << "repeatX: " << repeatX << std::endl;
-	std::cout << "repeatZ: " << repeatY << std::endl;
+	std::cout << "repeatX: " << repeatX << "\n";
+	std::cout << "repeatZ: " << repeatY << "\n";
 	float size_coef = float(WINX) / float(image->getWidth()) / float(repeatX < repeatY ? repeatX : repeatY);
 	size_coef = 1;
 	UIImage	uiImage(image);
@@ -1052,7 +1061,7 @@ void	scene_procedural() {
 	int thread_amount = manager.core_amount - 1;
 	std::thread* threads_list = new std::thread[thread_amount];
 
-	std::cout << "Begin while loop" << endl;
+	std::cout << "Begin while loop\n";
 	while (!glfwWindowShouldClose(manager.glfw->_window)) {
 		if (defaultFps->wait_for_next_frame()) {
 
@@ -1066,13 +1075,13 @@ void	scene_procedural() {
 			int playerPosX = manager.mouseX - (WINX / 2);//center of screen is 0:0
 			int playerPosY = WINY - manager.mouseY - (WINY / 2);//center of screen is 0:0   //invert glfw Y to match opengl image
 			Math::Vector3	vec(playerPosX, playerPosY, 0);
-			double dist = (double(vec.magnitude()) / double(WINY * 2));
-			std::cout << playerPosX << ":" << playerPosY << "  \t" << dist << std::endl;
+			double dist = (double(vec.len()) / double(WINY * 2));
+			std::cout << playerPosX << ":" << playerPosY << "  \t" << dist << "\n";
 
 			for (size_t i = 0; i < thread_amount; i++) {//compute data with threads
 				int start = ((manager.areaHeight * (i + 0)) / thread_amount);
 				int end = ((manager.areaHeight * (i + 1)) / thread_amount);
-				//std::cout << start << "\t->\t" << end << "\t" << end - start << std::endl;
+				//std::cout << start << "\t->\t" << end << "\t" << end - start << "\n";
 				threads_list[i] = std::thread(th_buildData, std::ref(data), std::ref(manager), start, end);
 			}
 			for (size_t i = 0; i < thread_amount; i++) {
@@ -1136,8 +1145,8 @@ void	scene_procedural() {
 	}
 	delete[] threads_list;
 
-	std::cout << "End while loop" << endl;
-	std::cout << "deleting textures..." << endl;
+	std::cout << "End while loop\n";
+	std::cout << "deleting textures...\n";
 }
 
 void		buildChunk(ProceduralManager& manager, QuadNode* node, int chunkI, int chunkJ, int threshold) {//can be used for every tree node
@@ -1145,13 +1154,13 @@ void		buildChunk(ProceduralManager& manager, QuadNode* node, int chunkI, int chu
 		return;
 	//if (node->isLeaf()) {
 	if (node->detail <= threshold) {
-		//std::cout << "leaf: " << node->width << "x" << node->height << " at " << node->x << ":" << node->y << std::endl;
+		//std::cout << "leaf: " << node->width << "x" << node->height << " at " << node->x << ":" << node->y << "\n";
 		if (node->width == 0 || node->height == 0) {
 			std::cout << "error with tree data\n"; exit(2);
 		}
 		if (node->width * node->height >= DEBUG_LEAF_AREA && DEBUG_LEAF && DEBUG_BUILD_TOO) {
 			std::cout << "Display new leaf: " << node->width << "x" << node->height << " at " << node->x << ":" << node->y << "\t";
-			std::cout << (int)node->pixel.r << "  \t" << (int)node->pixel.g << "  \t" << (int)node->pixel.b << std::endl;
+			std::cout << (int)node->pixel.r << "  \t" << (int)node->pixel.g << "  \t" << (int)node->pixel.b << "\n";
 		}
 #ifndef RENDER_WORLD // make a special render func for that (or change buildChunk)
 		Obj3d* cube = manager.renderlist.front();
@@ -1194,10 +1203,10 @@ void		buildWorld(ProceduralManager& manager, QuadNode*** memory4Tree) {
 	int endMid = startMid + 20;
 	int start = (manager.range_chunk_memory / 2) - (manager.range_chunk_display / 2);
 	int end = start + manager.range_chunk_display;
-	std::cout << start << " -> " << end << "\t/ " << manager.range_chunk_memory << std::endl;
+	std::cout << start << " -> " << end << "\t/ " << manager.range_chunk_memory << "\n";
 	for (size_t j = 0; j < manager.range_chunk_memory; j++) {
 		for (size_t i = 0; i < manager.range_chunk_memory; i++) {
-			//std::cout << j << ":" << i << std::endl;
+			//std::cout << j << ":" << i << "\n";
 			if (i >= start && i < end && j >= start && j < end)//around player
 				threshold = manager.threshold;
 			else if (i >= startMid && i < endMid && j >= startMid && j < endMid)//around player
@@ -1222,7 +1231,7 @@ uint8_t* generatePerlinNoise(ProceduralManager& manager, int posX, int posY, int
 
 			value = std::pow(value, manager.flattering);
 			Math::Vector3	vec(x, y, 0);
-			double dist = (double(vec.magnitude()) / double(WINY / 2));//normalized 0..1
+			double dist = (double(vec.len()) / double(WINY / 2));//normalized 0..1
 			value = std::clamp(value + manager.island * (0.5 - dist), 0.0, 1.0);
 
 			uint8_t color = (uint8_t)(value * 255.0);
@@ -1237,7 +1246,7 @@ uint8_t* generatePerlinNoise(ProceduralManager& manager, int posX, int posY, int
 
 void	updateChunksX(ProceduralManager& manager, QuadNode*** chunkMemory4Tree, uint8_t*** chunkMemory, int change) {
 	if (abs(change) > 1) {
-		std::cout << "player went too fast on X, or teleported" << std::endl;
+		std::cout << "player went too fast on X, or teleported\n";
 		exit(1);
 	}
 
@@ -1254,11 +1263,11 @@ void	updateChunksX(ProceduralManager& manager, QuadNode*** chunkMemory4Tree, uin
 					delete[] chunkMemory[j][i];
 					delete chunkMemory4Tree[j][i];
 					if (displayDebug)
-						std::cout << "delete first column on line " << j << " column " << i << std::endl;
+						std::cout << "delete first column on line " << j << " column " << i << "\n";
 				}
 				if (i == manager.range_chunk_memory - 1) {//last column, rebuild
 					if (displayDebug)
-						std::cout << "rebuild last column on line " << j << " column " << i << std::endl;
+						std::cout << "rebuild last column on line " << j << " column " << i << "\n";
 					int x, y, w, h;
 					x = startX + manager.chunk_size * i;
 					y = startY + manager.chunk_size * j;
@@ -1269,7 +1278,7 @@ void	updateChunksX(ProceduralManager& manager, QuadNode*** chunkMemory4Tree, uin
 				}
 				else {//shift on left
 					if (displayDebug)
-						std::cout << "shift on left on line " << j << " column " << i << std::endl;
+						std::cout << "shift on left on line " << j << " column " << i << "\n";
 					chunkMemory[j][i] = chunkMemory[j][i + 1];
 					chunkMemory4Tree[j][i] = chunkMemory4Tree[j][i + 1];
 				}
@@ -1285,11 +1294,11 @@ void	updateChunksX(ProceduralManager& manager, QuadNode*** chunkMemory4Tree, uin
 					delete[] chunkMemory[j][i];
 					delete chunkMemory4Tree[j][i];
 					if (displayDebug)
-						std::cout << "delete last column on line " << j << " column " << i << std::endl;
+						std::cout << "delete last column on line " << j << " column " << i << "\n";
 				}
 				if (i == 0) {//first column, rebuild
 					if (displayDebug)
-						std::cout << "rebuild first column on line " << j << " column " << i << std::endl;
+						std::cout << "rebuild first column on line " << j << " column " << i << "\n";
 					int x, y, w, h;
 					x = startX + manager.chunk_size * i;
 					y = startY + manager.chunk_size * j;
@@ -1300,7 +1309,7 @@ void	updateChunksX(ProceduralManager& manager, QuadNode*** chunkMemory4Tree, uin
 				}
 				else {//shift on right
 					if (displayDebug)
-						std::cout << "shift on right on line " << j << " column " << i << std::endl;
+						std::cout << "shift on right on line " << j << " column " << i << "\n";
 					chunkMemory[j][i] = chunkMemory[j][i - 1];
 					chunkMemory4Tree[j][i] = chunkMemory4Tree[j][i - 1];
 				}
@@ -1314,7 +1323,7 @@ void	updateChunksX(ProceduralManager& manager, QuadNode*** chunkMemory4Tree, uin
 
 void	updateChunksY(ProceduralManager& manager, QuadNode*** chunkMemory4Tree, uint8_t*** chunkMemory, int change) {
 	if (abs(change) > 1) {
-		std::cout << "player went too fast on Y, or teleported" << std::endl;
+		std::cout << "player went too fast on Y, or teleported\n";
 		exit(1);
 	}
 
@@ -1331,11 +1340,11 @@ void	updateChunksY(ProceduralManager& manager, QuadNode*** chunkMemory4Tree, uin
 					delete[] chunkMemory[j][i];
 					delete chunkMemory4Tree[j][i];
 					if (displayDebug)
-						std::cout << "delete first line on column " << i << " line " << j << std::endl;
+						std::cout << "delete first line on column " << i << " line " << j << "\n";
 				}
 				if (j == manager.range_chunk_memory - 1) {//last line, rebuild
 					if (displayDebug)
-						std::cout << "rebuild last line on column " << i << " line " << j << std::endl;
+						std::cout << "rebuild last line on column " << i << " line " << j << "\n";
 					int x, y, w, h;
 					x = startX + manager.chunk_size * i;
 					y = startY + manager.chunk_size * j;
@@ -1346,7 +1355,7 @@ void	updateChunksY(ProceduralManager& manager, QuadNode*** chunkMemory4Tree, uin
 				}
 				else {//shift on top
 					if (displayDebug)
-						std::cout << "shift on top on column " << i << " line " << j << std::endl;
+						std::cout << "shift on top on column " << i << " line " << j << "\n";
 					chunkMemory[j][i] = chunkMemory[j + 1][i];
 					chunkMemory4Tree[j][i] = chunkMemory4Tree[j + 1][i];
 				}
@@ -1362,11 +1371,11 @@ void	updateChunksY(ProceduralManager& manager, QuadNode*** chunkMemory4Tree, uin
 					delete[] chunkMemory[j][i];
 					delete chunkMemory4Tree[j][i];
 					if (displayDebug)
-						std::cout << "delete first line on column " << i << " line " << j << std::endl;
+						std::cout << "delete first line on column " << i << " line " << j << "\n";
 				}
 				if (j == 0) {//first column, rebuild
 					if (displayDebug)
-						std::cout << "rebuild last line on column " << i << " line " << j << std::endl;
+						std::cout << "rebuild last line on column " << i << " line " << j << "\n";
 					int x, y, w, h;
 					x = startX + manager.chunk_size * i;
 					y = startY + manager.chunk_size * j;
@@ -1377,7 +1386,7 @@ void	updateChunksY(ProceduralManager& manager, QuadNode*** chunkMemory4Tree, uin
 				}
 				else {//shift on bottom
 					if (displayDebug)
-						std::cout << "shift on top on column " << i << " line " << j << std::endl;
+						std::cout << "shift on top on column " << i << " line " << j << "\n";
 					chunkMemory[j][i] = chunkMemory[j - 1][i];
 					chunkMemory4Tree[j][i] = chunkMemory4Tree[j - 1][i];
 				}
@@ -1391,13 +1400,13 @@ void	updateChunksY(ProceduralManager& manager, QuadNode*** chunkMemory4Tree, uin
 
 static void		keyCallback_vox(GLFWwindow* window, int key, int scancode, int action, int mods) {
 	(void)window; (void)key; (void)scancode; (void)action; (void)mods;
-	//std::cout << __PRETTY_FUNCTION__ << std::endl;
+	//std::cout << __PRETTY_FUNCTION__ << "\n";
 
 	if (action == GLFW_PRESS) {
-		//std::cout << "GLFW_PRESS" << std::endl;
+		//std::cout << "GLFW_PRESS\n";
 		ProceduralManager* manager = static_cast<ProceduralManager*>(glfwGetWindowUserPointer(window));
 		if (!manager) {
-			std::cout << "static_cast failed" << std::endl;
+			std::cout << "static_cast failed\n";
 		}
 		else if (manager->glfw) {
 			if (key == GLFW_KEY_EQUAL) {
@@ -1451,7 +1460,7 @@ void	scene_vox() {
 	cam.lockedMovement = false;
 	cam.lockedOrientation = false;
 	//manager.glfw->setMouseAngle(-1);//?
-	std::cout << "MouseAngle: " << manager.glfw->getMouseAngle() << std::endl;
+	std::cout << "MouseAngle: " << manager.glfw->getMouseAngle() << "\n";
 	manager.cam = &cam;
 
 	Fps	fps144(144);
@@ -1484,9 +1493,9 @@ void	scene_vox() {
 
 #ifndef CHUNKS
 	// build the heightmaps depending of tile size (for now 7x7 tiles, tile is 30x30 cubes)
-	std::cout << "manager.chunk_size " << manager.chunk_size << std::endl;
-	std::cout << "manager.range_chunk_memory " << manager.range_chunk_memory << std::endl;
-	std::cout << "manager.range_chunk_display " << manager.range_chunk_display << std::endl;
+	std::cout << "manager.chunk_size " << manager.chunk_size << "\n";
+	std::cout << "manager.range_chunk_memory " << manager.range_chunk_memory << "\n";
+	std::cout << "manager.range_chunk_display " << manager.range_chunk_display << "\n";
 
 	uint8_t*** chunkMemory = new uint8_t * *[manager.range_chunk_memory];
 	QuadNode*** chunkMemory4Tree = new QuadNode * *[manager.range_chunk_memory];
@@ -1499,7 +1508,7 @@ void	scene_vox() {
 		chunkMemory[j] = new uint8_t * [manager.range_chunk_memory];
 		chunkMemory4Tree[j] = new QuadNode * [manager.range_chunk_memory];
 		for (size_t i = 0; i < manager.range_chunk_memory; i++) {
-			//std::cout << i << ":" << j << std::endl;
+			//std::cout << i << ":" << j << "\n";
 			chunkMemory[j][i] = nullptr;
 			chunkMemory4Tree[j][i] = nullptr;
 			int x, y, w, h;
@@ -1538,7 +1547,7 @@ void	scene_vox() {
 	//int thread_amount = manager.core_amount - 1;
 	//std::thread* threads_list = new std::thread[thread_amount];
 
-	std::cout << "Begin while loop" << endl;
+	std::cout << "Begin while loop\n";
 	while (!glfwWindowShouldClose(manager.glfw->_window)) {
 		if (defaultFps->wait_for_next_frame()) {
 
@@ -1625,7 +1634,7 @@ void	scene_vox() {
 				currentchunkY--;
 			if (currentchunkX != manager.playerChunkX) {
 				updateChunksX(manager, chunkMemory4Tree, chunkMemory, currentchunkX - manager.playerChunkX);
-				std::cout << "===<<< Player changed chunk X: " << manager.playerChunkX << ":" << manager.playerChunkY << std::endl;
+				std::cout << "===<<< Player changed chunk X: " << manager.playerChunkX << ":" << manager.playerChunkY << "\n";
 				std::cout << "filling data to texture... ";
 				for (size_t j = 0; j < manager.range_chunk_memory; j++) {
 					for (size_t i = 0; i < manager.range_chunk_memory; i++) {
@@ -1637,7 +1646,7 @@ void	scene_vox() {
 							chunkMemory4Tree[j][i], &leafamount, memoryTotalRange, false, THRESHOLD, color);
 					}
 				}
-				std::cout << "Done" << std::endl;
+				std::cout << "Done\n";
 				gridPanel.getTexture()->updateData(dataChunkMemory, memoryTotalRange, memoryTotalRange);
 				playerPos = player1.local.getPos();
 				gridPanel.setPos((WINX / 2) + manager.playerChunkX * manager.chunk_size - (manager.range_chunk_memory / 2 * manager.chunk_size),
@@ -1646,7 +1655,7 @@ void	scene_vox() {
 			}
 			if (currentchunkY != manager.playerChunkY) {
 				updateChunksY(manager, chunkMemory4Tree, chunkMemory, currentchunkY - manager.playerChunkY);
-				std::cout << "===<<< Player changed chunk Y: " << manager.playerChunkX << ":" << manager.playerChunkY << std::endl;
+				std::cout << "===<<< Player changed chunk Y: " << manager.playerChunkX << ":" << manager.playerChunkY << "\n";
 				std::cout << "filling data to texture... ";
 				for (size_t j = 0; j < manager.range_chunk_memory; j++) {
 					for (size_t i = 0; i < manager.range_chunk_memory; i++) {
@@ -1658,7 +1667,7 @@ void	scene_vox() {
 							chunkMemory4Tree[j][i], &leafamount, memoryTotalRange, false, THRESHOLD, color);
 					}
 				}
-				std::cout << "Done" << std::endl;
+				std::cout << "Done\n";
 				gridPanel.getTexture()->updateData(dataChunkMemory, memoryTotalRange, memoryTotalRange);
 				playerPos = player1.local.getPos();
 				gridPanel.setPos((WINX / 2) + manager.playerChunkX * manager.chunk_size - (manager.range_chunk_memory / 2 * manager.chunk_size),
@@ -1670,8 +1679,8 @@ void	scene_vox() {
 	}
 	//delete[] threads_list;
 
-	std::cout << "End while loop" << endl;
-	std::cout << "deleting textures..." << endl;
+	std::cout << "End while loop\n";
+	std::cout << "deleting textures...\n";
 	delete tex_skybox;
 }
 
@@ -1709,7 +1718,7 @@ public:
 		this->chunk_size = Math::Vector3(s * 2,
 										s * 2,
 										s * 2);
-		int	g = 31;
+		int	g = 5;
 		int	d = g * 2 / 3;
 		d = g;
 		if (d % 2 == 0)
@@ -1758,20 +1767,21 @@ public:
 #define M_PERLIN_GENERATION		1
 #define M_OCTREE_OPTIMISATION	1
 #define M_DISPLAY_BLACK			1
-#define M_DRAW_GRID_CHUNK		0
+#define M_DRAW_GRID_CHUNK		1
+#define M_DRAW_MINIMAP			0
 
 static void		keyCallback_ocTree(GLFWwindow* window, int key, int scancode, int action, int mods) {
 	(void)window; (void)key; (void)scancode; (void)action; (void)mods;
-	//std::cout << __PRETTY_FUNCTION__ << std::endl;
+	//std::cout << __PRETTY_FUNCTION__ << "\n";
 
 	float	move = 150;
 	OctreeManager* manager = static_cast<OctreeManager*>(glfwGetWindowUserPointer(window));
 	if (!manager) {
-		std::cout << "static_cast failed" << std::endl;
+		std::cout << "static_cast failed\n";
 		return;
 	}
 	if (action == GLFW_PRESS) {
-		std::cout << "GLFW_PRESS:" << key << std::endl;
+		std::cout << "GLFW_PRESS:" << key << "\n";
 		if (manager->glfw) {
 			if (key == GLFW_KEY_EQUAL) {
 				manager->threshold++;
@@ -1797,10 +1807,10 @@ static void		keyCallback_ocTree(GLFWwindow* window, int key, int scancode, int a
 			}
 		}
 	} else if (action == GLFW_RELEASE) {
-		std::cout << "GLFW_RELEASE:" << key << std::endl;
+		std::cout << "GLFW_RELEASE:" << key << "\n";
 		if (manager->glfw) {
 			if (key == GLFW_KEY_LEFT_SHIFT) {
-				std::cout << "GLFW_KEY_LEFT_SHIFT" << std::endl;
+				std::cout << "GLFW_KEY_LEFT_SHIFT\n";
 				manager->shiftPressed = false;
 				manager->cam->speed = manager->playerSpeed;
 			}
@@ -1809,9 +1819,9 @@ static void		keyCallback_ocTree(GLFWwindow* window, int key, int scancode, int a
 }
 
 void	grabObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager, Obj3dBP& cubebp, Obj3dPG& obj3d_prog, Texture* tex_lena) {
-	std::cout << "_ " << __PRETTY_FUNCTION__ << std::endl;
+	std::cout << "_ " << __PRETTY_FUNCTION__ << "\n";
 
-
+#if M_DRAW_MINIMAP == 1
 	//assemble minimap (currently inverted on the Y axis)
 	float	zmax = generator.gridSize.z * generator.chunkSize.z;//for gl convertion
 	for (unsigned int k = 0; k < generator.gridSize.z; k++) {
@@ -1827,6 +1837,7 @@ void	grabObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager, 
 		}
 	}
 	//blitToWindow(nullptr, GL_COLOR_ATTACHMENT0, &uiBaseImage);
+#endif
 
 	//todo use smart pointers (not for renderlistVoxels)
 	for (auto i : manager.renderlist)
@@ -1842,7 +1853,7 @@ void	grabObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager, 
 	manager.renderlistGrid.clear();
 	for (size_t i = 0; i < 6; i++) {
 		manager.renderlistVoxels[i].clear();
-		std::cout << "clear: " << i << std::endl;
+		std::cout << "clear: " << i << "\n";
 	}
 	manager.renderlistChunk.clear();
 
@@ -1883,7 +1894,7 @@ void	grabObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager, 
 						Math::Vector3	siz(1, 1, 1);
 						Octree* root = chunkPtr->root->getRoot(chunkPtr->root->pos, siz);
 						if (root) {
-							if (root->size.magnitude() != siz.magnitude())
+							if (root->size.len() != siz.len())
 								root->pixel = Pixel(254, 0, 0);
 							else
 								root->pixel = Pixel(0, 255, 0);
@@ -1903,9 +1914,9 @@ void	grabObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager, 
 					if (1) {
 						if (chunkPtr->mesh) {
 							manager.renderlistChunk.push_back(chunkPtr->mesh);
-							int pol = chunkPtr->mesh->getBlueprint().getPolygonAmount();
 							chunkPtr->mesh->setTexture(tex_lena);
 							chunkPtr->mesh->displayTexture = false;
+							int pol = chunkPtr->mesh->getBlueprint().getPolygonAmount();
 							total_polygons += pol;
 							polygon_debug << pol << " ";
 						}
@@ -1969,12 +1980,12 @@ void	grabObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager, 
 			}
 		}
 	}
-	//std::cout << polygon_debug.str() << std::endl;
-	std::cout << "total polygons:\t" << total_polygons << std::endl;
-	std::cout << "hiddenBlocks:\t" << hiddenBlocks << std::endl;
+	//std::cout << polygon_debug.str() << "\n";
+	std::cout << "total polygons:\t" << total_polygons << "\n";
+	std::cout << "hiddenBlocks:\t" << hiddenBlocks << "\n";
 	for (auto i : manager.renderlistVoxels)
-		std::cout << "renderlistVoxels[]: " << i.size() << std::endl;
-	std::cout << "renderlistOctree: " << manager.renderlistOctree.size() << std::endl;
+		std::cout << "renderlistVoxels[]: " << i.size() << "\n";
+	std::cout << "renderlistOctree: " << manager.renderlistOctree.size() << "\n";
 }
 
 void	scene_benchmarks() {
@@ -2023,7 +2034,7 @@ void	scene_benchmarks() {
 	Obj3dPG* renderer = &rendererObj3d;
 	if (input[0] >= '3') {
 		renderer = &rendererObj3dInstanced;
-		std::cout << "Instanced rendering enabled" << std::endl;
+		std::cout << "Instanced rendering enabled\n";
 	}
 
 	//texture edit
@@ -2093,8 +2104,8 @@ void	scene_benchmarks() {
 #define BUFFER_OFFSET(i) ((char *)NULL + (i))
 	glfwSwapInterval(0);//0 = disable vsynx
 	glDisable(GL_CULL_FACE);
-	std::cout << "renderlist: " << m.renderlist.size() << std::endl;
-	std::cout << "Begin while loop" << endl;
+	std::cout << "renderlist: " << m.renderlist.size() << "\n";
+	std::cout << "Begin while loop\n";
 	while (!glfwWindowShouldClose(m.glfw->_window)) {
 		if (defaultFps->wait_for_next_frame()) {
 			m.glfw->setTitle(std::to_string(defaultFps->getFps()) + " fps");
@@ -2149,20 +2160,32 @@ void	scene_benchmarks() {
 		}
 	}
 
-	std::cout << "End while loop" << endl;
+	std::cout << "End while loop\n";
 }
 
 void	th1_mapGeneration(ChunkGenerator& generator, OctreeManager& manager, Obj3dBP& cubebp, Obj3dPG& renderer, Texture* tex_lena) {
-	while (1) {
-		generator.updateGrid(manager.cam->local.getPos());
+	Math::Vector3 playerPos;
+	while (!generator.terminateBuilders.try_lock()) {
+		generator.mutex_cam.lock();
+		playerPos = manager.cam->local.getPos();
+		generator.mutex_cam.unlock();
+		if (generator.updateGrid(playerPos)) {//player changed chunk
+			generator.updateChunkJobsToDo();
+			std::cout << "jobsToDo updated\n";
+		}
+		generator.updateChunkJobsDone();
+		std::cout << "jobs done updated\n";
+		std::cout << "grid updated with player pos\n";
 		std::this_thread::sleep_for(1s);
 	}
+	std::cout << "[helper0] exiting...\n";
+	generator.terminateBuilders.unlock();
 }
 
 void	scene_octree() {
 #ifndef INIT_GLFW
 	OctreeManager	m;
-	std::cout << "threads: " << m.cpu_coreAmount << std::endl;
+	std::cout << "threads: " << m.cpu_coreAmount << "\n";
 	std::this_thread::sleep_for(1s);
 	//m.glfw = new Glfw(WINX, WINY);
 	m.glfw = new Glfw(1600, 900);
@@ -2173,7 +2196,7 @@ void	scene_octree() {
 	glGetIntegerv(GL_NUM_EXTENSIONS, &n);
 	for (GLint i = 0; i < n; i++) {
 		const char* extension = (const char*)glGetStringi(GL_EXTENSIONS, i);
-		std::cout << extension << std::endl;
+		std::cout << extension << "\n";
 	}
 #endif
 	//exit(0);
@@ -2225,9 +2248,9 @@ void	scene_octree() {
 	cam.lockedMovement = false;
 	cam.lockedOrientation = false;
 	//m.glfw->setMouseAngle(-1);//?
-	std::cout << "MouseAngle: " << m.glfw->getMouseAngle() << std::endl;
+	std::cout << "MouseAngle: " << m.glfw->getMouseAngle() << "\n";
 	m.cam = &cam;
-#endif
+#endif //INIT_GLFW
 	//QuadNode* root = new QuadNode(baseImage->getData(), w, 0, 0, w, h, THRESHOLD);
 	//uint8_t* dataOctree = new uint8_t[w * h * 3];
 
@@ -2253,74 +2276,79 @@ void	scene_octree() {
 	//playerList.push_back(&player1);
 #endif
 #ifndef OCTREE
-	cam.local.setPos(28, 150, 90);
+	cam.local.setPos(28, 50, 65);//buried close to the surface
+	cam.local.setPos(280, 50, 65);//
+	//cam.local.setPos(-13, 76, 107);//instant crash
 	//chunk generator
 	Math::Vector3	playerPos = cam.local.getPos();
 	ChunkGenerator	generator(playerPos, *m.ps, m.chunk_size, m.gridSize, m.gridSizeDisplayed);
 //	generator.buildMeshesAndMapTiles();
-	//grabObjectFromGenerator(generator, m, cubebp, *renderer, tex_lena);
+	generator.updateChunkJobsToDo();
+	grabObjectFromGenerator(generator, m, cubebp, *renderer, tex_lena);
 
 #endif
-	Fps	fps(60);
+	Fps	fps(135);
 
-	//threads
+//#define MINIMAP // need to build a framebuffer with the entire map, update it each time the player changes chunk
 #define USE_THREADS
 #ifdef USE_THREADS
 	//void	th1_mapGeneration(ChunkGenerator& generator, OctreeManager& manager, Obj3dBP& cubebp, Obj3dPG& renderer, Texture* tex_lena, Cam& cam, ) {
 	std::thread helper0(th1_mapGeneration, std::ref(generator), std::ref(m), std::ref(cubebp), std::ref(*renderer), tex_lena);
 
 	//chunks builder
-	std::thread builder1(std::bind(&ChunkGenerator::th_builders, &generator));
-	std::thread builder2(std::bind(&ChunkGenerator::th_builders, &generator));
-	std::thread builder3(std::bind(&ChunkGenerator::th_builders, &generator));
-	std::thread builder4(std::bind(&ChunkGenerator::th_builders, &generator));
-	std::thread builder5(std::bind(&ChunkGenerator::th_builders, &generator));
-	std::thread builder6(std::bind(&ChunkGenerator::th_builders, &generator));
+	std::unique_lock<std::mutex> chunks_lock(generator.chunks_mutex, std::defer_lock);
+	generator.terminateBuilders.lock();
+	//glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+	const uint8_t	threadAmount = 1;
+	generator.builderAmount = threadAmount;
+	GLFWwindow* contexts[threadAmount];
+	std::thread* builders[threadAmount];
+	for (size_t i = 0; i < threadAmount; i++) {
+		contexts[i] = glfwCreateWindow(500, 30, std::to_string(i).c_str(), NULL, m.glfw->_window);
+		glfwSetWindowPos(contexts[i], 2000, 50 + 30 * i );
+		builders[i] = new std::thread(std::bind(&ChunkGenerator::th_builders, &generator, contexts[i]));
+	}
+	glfwWindowHint(GLFW_VISIBLE, GLFW_TRUE);
+	glfwFocusWindow(m.glfw->_window);
+
 	std::this_thread::sleep_for(1s);
-	std::cout << "notifying threads to build data..." << std::endl;
+	std::cout << "notifying threads to build data...\n";
 	generator._chunksReadyForMeshes = false;
 	generator.cv.notify_all();
 	//std::this_thread::sleep_for(5s);
 
-#endif
-	std::cout << "Begin while loop" << endl;
+	unsigned int frames = 0;
+	std::cout << "cam: "; cam.local.getPos().printData();
+	std::cout << "Begin while loop\n";
 	while (!glfwWindowShouldClose(m.glfw->_window)) {
 		if (fps.wait_for_next_frame()) {
-			//std::cout << ">>>>>>>>>>>>>>>>>>>> NEW FRAME <<<<<<<<<<<<<<<<<<<<" << std::endl;
+			//std::this_thread::sleep_for(1s);
+			frames++;
+			if (frames % 500 == 0) {
+				std::cout << ">>>>>>>>>>>>>>>>>>>> " << frames << " FRAMES <<<<<<<<<<<<<<<<<<<<\n";
+				std::cout << "cam: "; cam.local.getPos().printData();
+			}
 			m.glfw->setTitle(std::to_string(fps.getFps()) + " fps");
 
 			glfwPollEvents();
 			m.glfw->updateMouse();//to do before cam's events
 			{
-				std::lock_guard<std::mutex> guard(generator.mutex1);//?
+				std::lock_guard<std::mutex> guard(generator.mutex_cam);
 				m.cam->events(*m.glfw, float(fps.getTick()));
 			}
-#ifndef USE_THREADS
-			if (1 && generator.updateGrid(m.cam->local.getPos())) {
-				generator.buildMeshesAndMapTiles();
-				grabObjectFromGenerator(generator, m, cubebp, *renderer, tex_lena);
-			}
-#else
-			if (generator.chunks_mutex.try_lock()) {
-				//std::cout << "[renderer] lock chunks_mutex" << std::endl;
-				if (generator.playerChangedChunk) {
-
-					//std::cout << "building meshes... ";
-					double start = glfwGetTime();
-					if (generator.buildMeshesAndMapTiles()) {
-						start = glfwGetTime() - start;
-						std::cout << "built in " << start << " seconds\n";
-
-					start = glfwGetTime(); std::cout << "grabing meshes... ";
-					grabObjectFromGenerator(generator, m, cubebp, *renderer, tex_lena);
-					start = glfwGetTime() - start; std::cout << "grabed in " << start << " seconds\n";
-					generator.playerChangedChunk = false;
-					}
-					// the generator can do what he want with the grid, the renderer has what he need for the current frame
+			if (generator.job_mutex.try_lock()) {
+				if (generator.chunksChanged && chunks_lock.try_lock()) {
+					//std::cout << "[renderer] lock chunks_mutex\n";
+						double start = glfwGetTime();
+						std::cout << "grabing meshes... ";
+						grabObjectFromGenerator(generator, m, cubebp, *renderer, tex_lena);
+						start = glfwGetTime() - start; std::cout << "grabed in " << start << " seconds\n";
+						generator.chunksChanged = false;
+						chunks_lock.unlock();
+						// the generator can do what he want with the grid, the renderer has what he need for the current frame
 				}
-				generator.chunks_mutex.unlock();
+				generator.job_mutex.unlock();
 			}
-#endif
 
 			//GLuint	mode = m.polygon_mode;
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -2335,7 +2363,109 @@ void	scene_octree() {
 			} else if (0) {//whole cube
 				renderer->renderObjects(m.renderlist, cam, PG_FORCE_DRAW);
 			} else { // converted to mesh
-				Chunk::renderer->renderObjects(m.renderlistChunk, cam, PG_FORCE_DRAW);
+				if (chunks_lock.try_lock()) {//should be another mutex?
+					//chunks_lock.lock();
+					//std::cout << "Rendering objects... ";
+					Chunk::renderer->renderObjects(m.renderlistChunk, cam, PG_FORCE_DRAW);//PG_FRUSTUM_CULLING
+					//std::cout << "Done\n";
+					chunks_lock.unlock();
+				}
+			}
+			//std::cout << "octreeDisplay\n";
+			//renderer->renderObjects(m.renderlistOctree, cam, PG_FORCE_DRAW);
+			#if true
+			glDisable(GL_CULL_FACE);
+			renderer->renderObjects(m.renderlistGrid, cam, PG_FORCE_DRAW);
+			glEnable(GL_CULL_FACE);
+			#endif
+			rendererSkybox.renderObjects(m.renderlistSkybox, cam, PG_FORCE_DRAW);
+
+#ifdef MINIMAP
+			if (chunks_lock.try_lock() && generator.grid[0][0][0]) {
+				std::cout << "[Main] Minimap lock\n";
+				//thread player management?
+				// coo in 3d world
+				playerPos = cam.local.getPos();
+				float	zmax = generator.gridSize.z * generator.chunkSize.z;//for gl convertion
+				float	px_topleftChunk = generator.grid[0][0][0]->pos.x;//need to setup a mutex or it will crash
+				float	pz_topleftChunk = generator.grid[0][0][0]->pos.z;
+
+				// coo on 2d screen
+				float	px = (playerPos.x - px_topleftChunk) * m.minimapCoef;
+				float	pz = (zmax - (playerPos.z - pz_topleftChunk)) * m.minimapCoef;
+				m.playerMinimap->setPos(px, pz);
+				m.playerMinimap->setPos2(px + m.playerMinimap->getTexture()->getWidth() * m.minimapCoef,
+					pz + m.playerMinimap->getTexture()->getHeight() * m.minimapCoef);
+				//build minimap
+				//too many blit, build a single image for all the minimap! for all the UI?
+				for (unsigned int z = 0; z < generator.gridSize.z; z++) {
+					for (unsigned int x = 0; x < generator.gridSize.x; x++) {
+						if (generator.heightMaps[z][x])
+							blitToWindow(nullptr, GL_COLOR_ATTACHMENT0, generator.heightMaps[z][x]->panel);
+					}
+				}
+				blitToWindow(nullptr, GL_COLOR_ATTACHMENT0, m.playerMinimap);
+				std::cout << "[Main] Minimap unlock\n";
+				chunks_lock.unlock();
+			}
+#endif
+			glfwSwapBuffers(m.glfw->_window);
+			//generator.try_deleteUnusedData();
+
+			if (GLFW_PRESS == glfwGetKey(m.glfw->_window, GLFW_KEY_ESCAPE))
+				glfwSetWindowShouldClose(m.glfw->_window, GLFW_TRUE);
+		}
+	}
+	std::cout << "End while loop\n";
+	std::cout << "deleting textures...\n";
+	//generator._chunksReadyForMeshes = false;
+	generator.terminateBuilders.unlock();
+	generator.cv.notify_all();
+	std::cout << "[Main] need to join builders... " << (int)threadAmount << "\n";
+	for (size_t i = 0; i < threadAmount; i++) {
+		//builders[i]->detach();
+		builders[i]->join();
+		std::cout << "[Main] joined builder " << i << "\n";
+	}
+	glfwMakeContextCurrent(nullptr);
+	helper0.join();
+	std::cout << "[Main] joined helper0\n";
+	std::cout << "[Main] exiting...\n";
+#else  // not USE_THREADS
+
+	std::cout << "Begin while loop\n";
+	while (!glfwWindowShouldClose(m.glfw->_window)) {
+		if (fps.wait_for_next_frame()) {
+			//std::cout << ">>>>>>>>>>>>>>>>>>>> NEW FRAME <<<<<<<<<<<<<<<<<<<<\n";
+			m.glfw->setTitle(std::to_string(fps.getFps()) + " fps");
+
+			glfwPollEvents();
+			m.glfw->updateMouse();//to do before cam's events
+			{
+				std::lock_guard<std::mutex> guard(generator.mutex1);//?
+				m.cam->events(*m.glfw, float(fps.getTick()));
+			}
+			if (1 && generator.updateGrid(m.cam->local.getPos())) {
+				generator.buildMeshesAndMapTiles();
+				grabObjectFromGenerator(generator, m, cubebp, *renderer, tex_lena);
+			}
+
+			//GLuint	mode = m.polygon_mode;
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			//std::cout << "renderlist\n";
+			if (0) { // opti faces, not converted to mesh
+				float speed = cam.speed;//save
+				for (size_t i = 0; i < 6; i++) {
+					cam.speed = i;//use this as a flag for the renderer, tmp
+					renderer->renderObjects(m.renderlistVoxels[i], cam, PG_FORCE_DRAW);
+				}
+				cam.speed = speed;//restore
+			}
+			else if (0) {//whole cube
+				renderer->renderObjects(m.renderlist, cam, PG_FORCE_DRAW);
+			}
+			else { // converted to mesh
+				Chunk::renderer->renderObjects(m.renderlistChunk, cam, PG_FORCE_DRAW);//PG_FRUSTUM_CULLING
 			}
 			//std::cout << "octreeDisplay\n";
 			//renderer->renderObjects(m.renderlistOctree, cam, PG_FORCE_DRAW);
@@ -2347,53 +2477,30 @@ void	scene_octree() {
 #endif
 			rendererSkybox.renderObjects(m.renderlistSkybox, cam, PG_FORCE_DRAW);
 
-			if (generator.chunks_mutex.try_lock()) {
-				//thread player management?
-				// coo in 3d world
-				playerPos = cam.local.getPos();
-				float	zmax = generator.gridSize.z * generator.chunkSize.z;//for gl convertion
-				float	px_topleftChunk = generator.grid[0][0][0]->pos.x;//need to setup a mutex or it will crash
-				float	pz_topleftChunk = generator.grid[0][0][0]->pos.z;
-//#define MINIMAP
-#ifdef MINIMAP
-				// coo on 2d screen
-				float	px = (playerPos.x - px_topleftChunk) * m.minimapCoef;
-				float	pz = (zmax - (playerPos.z - pz_topleftChunk)) * m.minimapCoef;
-				m.playerMinimap->setPos(px, pz);
-				m.playerMinimap->setPos2(px + m.playerMinimap->getTexture()->getWidth() * m.minimapCoef,
-										pz + m.playerMinimap->getTexture()->getHeight() * m.minimapCoef);
-				//build minimap
-				//too many blit, build a single image for all the minimap! for all the UI?
-				for (unsigned int k = 0; k < generator.gridSize.z; k++) {
-					for (unsigned int i = 0; i < generator.gridSize.x; i++) {
-						blitToWindow(nullptr, GL_COLOR_ATTACHMENT0, generator.heightMaps[k][i]->panel);
-					}
-				}
-				blitToWindow(nullptr, GL_COLOR_ATTACHMENT0, m.playerMinimap);
-#endif
-				generator.chunks_mutex.unlock();
-			}
 			glfwSwapBuffers(m.glfw->_window);
 			generator.try_deleteUnusedData();
 
 			if (GLFW_PRESS == glfwGetKey(m.glfw->_window, GLFW_KEY_ESCAPE))
 				glfwSetWindowShouldClose(m.glfw->_window, GLFW_TRUE);
 		}
-
 	}
+	std::cout << "End while loop\n";
+	std::cout << "deleting textures...\n";
+	generator._chunksReadyForMeshes = false;
+	std::cout << "[Main] exiting...\n";
 
-	std::cout << "End while loop" << endl;
-	std::cout << "deleting textures..." << endl;
+#endif // USE_THREADS
+	//////////////////////////////////////////////////////////////////
 }
 
 void	maxUniforms() {
-	std::cout << "GL_MAX_VERTEX_UNIFORM_COMPONENTS\t" << GL_MAX_VERTEX_UNIFORM_COMPONENTS << std::endl;
-	std::cout << "GL_MAX_GEOMETRY_UNIFORM_COMPONENTS\t" << GL_MAX_GEOMETRY_UNIFORM_COMPONENTS << std::endl;
-	std::cout << "GL_MAX_FRAGMENT_UNIFORM_COMPONENTS\t" << GL_MAX_FRAGMENT_UNIFORM_COMPONENTS << std::endl;
-	std::cout << "GL_MAX_TESS_CONTROL_UNIFORM_COMPONENTS\t" << GL_MAX_TESS_CONTROL_UNIFORM_COMPONENTS << std::endl;
-	std::cout << "GL_MAX_TESS_EVALUATION_UNIFORM_COMPONENTS\t" << GL_MAX_TESS_EVALUATION_UNIFORM_COMPONENTS << std::endl;
-	std::cout << "GL_MAX_COMPUTE_UNIFORM_COMPONENTS\t" << GL_MAX_COMPUTE_UNIFORM_COMPONENTS << std::endl;
-	std::cout << "GL_MAX_UNIFORM_LOCATIONS\t" << GL_MAX_UNIFORM_LOCATIONS << std::endl;
+	std::cout << "GL_MAX_VERTEX_UNIFORM_COMPONENTS\t" << GL_MAX_VERTEX_UNIFORM_COMPONENTS << "\n";
+	std::cout << "GL_MAX_GEOMETRY_UNIFORM_COMPONENTS\t" << GL_MAX_GEOMETRY_UNIFORM_COMPONENTS << "\n";
+	std::cout << "GL_MAX_FRAGMENT_UNIFORM_COMPONENTS\t" << GL_MAX_FRAGMENT_UNIFORM_COMPONENTS << "\n";
+	std::cout << "GL_MAX_TESS_CONTROL_UNIFORM_COMPONENTS\t" << GL_MAX_TESS_CONTROL_UNIFORM_COMPONENTS << "\n";
+	std::cout << "GL_MAX_TESS_EVALUATION_UNIFORM_COMPONENTS\t" << GL_MAX_TESS_EVALUATION_UNIFORM_COMPONENTS << "\n";
+	std::cout << "GL_MAX_COMPUTE_UNIFORM_COMPONENTS\t" << GL_MAX_COMPUTE_UNIFORM_COMPONENTS << "\n";
+	std::cout << "GL_MAX_UNIFORM_LOCATIONS\t" << GL_MAX_UNIFORM_LOCATIONS << "\n";
 	std::exit(0);
 }
 
@@ -2402,25 +2509,25 @@ void	scene_checkMemory() {
 	Glfw* glfw = new Glfw(WINX, WINY);
 	std::string	pathPrefix("SimpleGL/");
 
-	std::cout << "Texture build... ENTER" << std::endl;
+	std::cout << "Texture build... ENTER\n";
 	std::cin >> input;
 	Texture* tex_bigass = new Texture(pathPrefix + "images/skybox4096.bmp");
-	std::cout << ">> Texture loaded" << std::endl;
+	std::cout << ">> Texture loaded\n";
 	//Textrues
 	#if 0
-		std::cout << "Texture unload load loop... ENTER" << std::endl;
+		std::cout << "Texture unload load loop... ENTER\n";
 		std::cin >> input;
 
 		for (size_t i = 0; i < 100; i++) {
 			//unload
 			tex_bigass->unloadTexture();
 			glfwSwapBuffers(glfw->_window);
-			std::cout << ">> Texture unloaded" << std::endl;
+			std::cout << ">> Texture unloaded\n";
 
 			//load
 			tex_bigass->loadTexture();
 			glfwSwapBuffers(glfw->_window);
-			std::cout << ">> Texture loaded" << std::endl;
+			std::cout << ">> Texture loaded\n";
 		}
 	#endif
 	//Skybox
@@ -2436,13 +2543,13 @@ void	scene_checkMemory() {
 	#if 1
 	#endif
 	//exit
-	std::cout << "end... ENTER" << std::endl;
+	std::cout << "end... ENTER\n";
 	std::cin >> input;
 	std::exit(0);
 
 }
 
-#endif
+#endif //end all
 
 ///////////////////////////////////////
 #if 0
@@ -2554,8 +2661,11 @@ void	playertest() {
 #define _CRTDBG_MAP_ALLOC
 #include <stdlib.h>
 #include <crtdbg.h>
+
+//thread safe cout : https://stackoverflow.com/questions/14718124/how-to-easily-make-stdcout-thread-safe
 //multithread monitor example : https://stackoverflow.com/questions/51668477/c-lock-a-mutex-as-if-from-another-thread
 int		main(int ac, char **av) {
+
 	//playertest();
 	//_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 	//_CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_DEBUG);
@@ -2571,7 +2681,7 @@ int		main(int ac, char **av) {
 	//test_mult_mat4(); exit(0);
 	//	test_obj_loader();
 
-	std::cout << "____START____ : " << Misc::getCurrentDirectory() << std::endl;
+	std::cout << "____START____ :" << Misc::getCurrentDirectory() << "\n";
 	//scene1();
 	//scene2();
 	//scene_4Tree();
@@ -2583,7 +2693,7 @@ int		main(int ac, char **av) {
 	scene_octree();
 	// while(1);
 
-	std::cout << "____END____ : " << std::endl;
+	std::cout << "____END____ : \n";
 	_CrtMemCheckpoint(&sNew); //take a snapchot 
 	if (_CrtMemDifference(&sDiff, &sOld, &sNew)) // if there is a difference
 	{
@@ -2594,7 +2704,270 @@ int		main(int ac, char **av) {
 		OutputDebugStringA("-----------_CrtDumpMemoryLeaks ---------");
 		_CrtDumpMemoryLeaks();
 	} else {
-		std::cout << "no diff for memory check" << std::endl;
+		std::cout << "no diff for memory check\n";
 	}
 	return (EXIT_SUCCESS);
 }
+
+#ifndef EXGLSHARE
+//========================================================================
+// Context sharing example
+// Copyright (c) Camilla Löwy <elmindreda@glfw.org>
+//
+// This software is provided 'as-is', without any express or implied
+// warranty. In no event will the authors be held liable for any damages
+// arising from the use of this software.
+//
+// Permission is granted to anyone to use this software for any purpose,
+// including commercial applications, and to alter it and redistribute it
+// freely, subject to the following restrictions:
+//
+// 1. The origin of this software must not be misrepresented; you must not
+//    claim that you wrote the original software. If you use this software
+//    in a product, an acknowledgment in the product documentation would
+//    be appreciated but is not required.
+//
+// 2. Altered source versions must be plainly marked as such, and must not
+//    be misrepresented as being the original software.
+//
+// 3. This notice may not be removed or altered from any source
+//    distribution.
+//
+//========================================================================
+
+//#include <glad/gl.h>
+#define GLFW_INCLUDE_NONE
+#include <GLFW/glfw3.h>
+
+#include <stdio.h>
+#include <stdlib.h>
+
+//#include "getopt.h"
+//#include "linmath.h"
+
+static const char* vertex_shader_text =
+"#version 110\n"
+"uniform mat4 MVP;\n"
+"attribute vec2 vPos;\n"
+"varying vec2 texcoord;\n"
+"void main()\n"
+"{\n"
+"    gl_Position = MVP * vec4(vPos, 0.0, 1.0);\n"
+"    texcoord = vPos;\n"
+"}\n";
+
+static const char* fragment_shader_text =
+"#version 110\n"
+"uniform sampler2D texture;\n"
+"uniform vec3 color;\n"
+"varying vec2 texcoord;\n"
+"void main()\n"
+"{\n"
+"    gl_FragColor = vec4(color * texture2D(texture, texcoord).rgb, 1.0);\n"
+"}\n";
+
+struct vec2 {
+	float x;
+	float y;
+};
+struct vec3 {
+	float x;
+	float y;
+	float z;
+};
+
+static const vec2 vertices[4] =
+{
+	{ 0.f, 0.f },
+	{ 1.f, 0.f },
+	{ 1.f, 1.f },
+	{ 0.f, 1.f }
+};
+
+static void error_callback(int error, const char* description)
+{
+	fprintf(stderr, "Error: %s\n", description);
+}
+
+static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+	if (action == GLFW_PRESS && key == GLFW_KEY_ESCAPE)
+		glfwSetWindowShouldClose(window, GLFW_TRUE);
+}
+
+int main2(int argc, char** argv)
+{
+	Glfw::initDefaultState();
+
+	GLFWwindow* windows[2];
+	GLuint texture, program, vertex_buffer;
+	GLint mvp_location, vpos_location, color_location, texture_location;
+
+	glfwSetErrorCallback(error_callback);
+
+	if (!glfwInit())
+		exit(EXIT_FAILURE);
+
+	//glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
+	//glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+
+	windows[0] = glfwCreateWindow(400, 400, "First", NULL, NULL);
+	if (!windows[0])
+	{
+		glfwTerminate();
+		exit(EXIT_FAILURE);
+	}
+	//
+	glfwSetInputMode(windows[0], GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	glfwSetInputMode(windows[0], GLFW_STICKY_KEYS, 1);
+	glfwSetInputMode(windows[0], GLFW_STICKY_MOUSE_BUTTONS, 1);
+	//
+
+	glfwSetKeyCallback(windows[0], key_callback);
+	glfwMakeContextCurrent(windows[0]);
+
+	//
+	//glew
+	glewExperimental = GL_TRUE;
+	if (glewInit() != GLEW_OK) {
+		std::cerr << "glewInit failed\n";
+		Misc::breakExit(GL_ERROR);
+	}
+
+	//
+
+	// Only enable vsync for the first of the windows to be swapped to
+	// avoid waiting out the interval for each window
+	glfwSwapInterval(1);
+
+	// The contexts are created with the same APIs so the function
+	// pointers should be re-usable between them
+	//gladLoadGL(glfwGetProcAddress);
+
+	// Create the OpenGL objects inside the first context, created above
+	// All objects will be shared with the second context, created below
+	{
+		int x, y;
+		char pixels[16 * 16];
+		GLuint vertex_shader, fragment_shader;
+
+		glGenTextures(1, &texture);
+		glBindTexture(GL_TEXTURE_2D, texture);
+
+		srand((unsigned int)glfwGetTimerValue());
+
+		for (y = 0; y < 16; y++)
+		{
+			for (x = 0; x < 16; x++)
+				pixels[y * 16 + x] = rand() % 256;
+		}
+
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, 16, 16, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, pixels);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+		vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+		glShaderSource(vertex_shader, 1, &vertex_shader_text, NULL);
+		glCompileShader(vertex_shader);
+
+		fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+		glShaderSource(fragment_shader, 1, &fragment_shader_text, NULL);
+		glCompileShader(fragment_shader);
+
+		program = glCreateProgram();
+		glAttachShader(program, vertex_shader);
+		glAttachShader(program, fragment_shader);
+		glLinkProgram(program);
+
+		mvp_location = glGetUniformLocation(program, "MVP");
+		color_location = glGetUniformLocation(program, "color");
+		texture_location = glGetUniformLocation(program, "texture");
+		vpos_location = glGetAttribLocation(program, "vPos");
+
+		glGenBuffers(1, &vertex_buffer);
+		glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+	}
+
+	glUseProgram(program);
+	glUniform1i(texture_location, 0);
+
+	glEnable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, texture);
+
+	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
+	glEnableVertexAttribArray(vpos_location);
+	glVertexAttribPointer(vpos_location, 2, GL_FLOAT, GL_FALSE,
+		sizeof(vertices[0]), (void*)0);
+
+	windows[1] = glfwCreateWindow(400, 400, "Second", NULL, windows[0]);
+	if (!windows[1])
+	{
+		glfwTerminate();
+		exit(EXIT_FAILURE);
+	}
+
+	// Place the second window to the right of the first
+	{
+		int xpos, ypos, left, right, width;
+
+		glfwGetWindowSize(windows[0], &width, NULL);
+		glfwGetWindowFrameSize(windows[0], &left, NULL, &right, NULL);
+		glfwGetWindowPos(windows[0], &xpos, &ypos);
+
+		glfwSetWindowPos(windows[1], xpos + width + left + right, ypos);
+	}
+
+	glfwSetKeyCallback(windows[1], key_callback);
+
+	glfwMakeContextCurrent(windows[1]);
+
+	// While objects are shared, the global context state is not and will
+	// need to be set up for each context
+
+	glUseProgram(program);
+
+	glEnable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, texture);
+
+	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
+	glEnableVertexAttribArray(vpos_location);
+	glVertexAttribPointer(vpos_location, 2, GL_FLOAT, GL_FALSE,
+		sizeof(vertices[0]), (void*)0);
+
+	while (!glfwWindowShouldClose(windows[0]) &&
+		!glfwWindowShouldClose(windows[1]))
+	{
+		int i;
+		const vec3 colors[2] =
+		{
+			{ 0.8f, 0.4f, 1.f },
+			{ 0.3f, 0.4f, 1.f }
+		};
+
+		for (i = 0; i < 2; i++)
+		{
+			int width, height;
+
+			glfwGetFramebufferSize(windows[i], &width, &height);
+			glfwMakeContextCurrent(windows[i]);
+
+			glViewport(0, 0, width, height);
+
+			Math::Matrix4	mvp;
+			mvp.identity();
+			//mat4x4_ortho(mvp, 0.f, 1.f, 0.f, 1.f, 0.f, 1.f);
+			glUniformMatrix4fv(mvp_location, 1, GL_FALSE, (const GLfloat*)mvp.getData());
+			glUniform3fv(color_location, 1, (float*)(&colors[i].x));
+			glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+
+			glfwSwapBuffers(windows[i]);
+		}
+
+		glfwWaitEvents();
+	}
+
+	glfwTerminate();
+	exit(EXIT_SUCCESS);
+}
+#endif

@@ -114,7 +114,7 @@ public:
 	//	this->map = nullptr;
 	//}
 	~PerlinSettings() {
-		std::cout << "_ " << __PRETTY_FUNCTION__ << std::endl;
+		//std::cout << "_ " << __PRETTY_FUNCTION__ << std::endl;
 		//this->deleteMap();
 	}
 
