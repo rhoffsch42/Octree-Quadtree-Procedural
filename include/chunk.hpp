@@ -17,7 +17,7 @@ public:
 
 	Chunk(const Math::Vector3& tile_number, Math::Vector3 chunk_size, PerlinSettings& perlinSettings, HeightMap* map = nullptr);//if a hmap is specified, its sizes must fit, undefined behavior if sizes are too small
 	~Chunk();
-	void	printData();
+	std::string	toString() const;
 
 	Math::Vector3	tile;
 	Math::Vector3	pos;

@@ -4,7 +4,6 @@
 #include "trees.h"
 
 void	pdebug(bool reset = false) {
-	return;
 	const char *s = "0123456789`~!@#$%^&*()_+-=[]{}\\|;:'\",./<>?";
 	static unsigned int i = 0;
 	std::cout << s[i];
@@ -437,17 +436,13 @@ void	scene1() {
 					the42_1.getWorldMatrix().printData();
 				}
 				if (false) {
-					cout << "---rocket1\n";
-					rocket1.local.getScale().printData();
+					cout << "---rocket1\n" << rocket1.local.getScale().toString() << "\n";
 					// rocket1.getWorldMatrix().printData();
-					cout << "---lambo2\n";
-					lambo2.local.getScale().printData();
+					cout << "---lambo2\n" << lambo2.local.getScale().toString() << "\n";
 					// lambo2.getWorldMatrix().printData();
-					cout << "---lambo3\n";
-					lambo3.local.getScale().printData();
+					cout << "---lambo3\n" << lambo3.local.getScale().toString() << "\n";
 					// lambo3.getWorldMatrix().printData();
-					cout << "---------------\n";
-					lamboBP.getDimensions().printData();
+					cout << "---------------\n" << lamboBP.getDimensions().toString() << "\n";
 					cout << "---------------\n";
 				}
 			}
@@ -582,13 +577,12 @@ void scene2() {
 					system("cls");
 					if (true) {
 						std::cout << "--- ROCKET\n";
-						//rocket.local.getScale().printData();
-						rocket.local.getRot().printData();
+						//rocket.local.getScale().toString() << "\n";
+						std::cout << rocket.local.getRot().toString() << "\n";
 						rocket.getWorldMatrix().printData();
 					}
 					if (true) {
-						std::cout << "--- CAM\n";
-						cam.local.getRot().printData();
+						std::cout << "--- CAM\n" << cam.local.getRot().toString();
 						std::cout << "- local\n";
 						cam.getLocalProperties().getMatrix().printData();
 						std::cout << "- world\n";
@@ -1820,6 +1814,7 @@ static void		keyCallback_ocTree(GLFWwindow* window, int key, int scancode, int a
 
 void	grabObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager, Obj3dBP& cubebp, Obj3dPG& obj3d_prog, Texture* tex_lena) {
 	std::cout << "_ " << __PRETTY_FUNCTION__ << "\n";
+	std::cout << generator.getGridChecks() << "\n";
 
 #if M_DRAW_MINIMAP == 1
 	//assemble minimap (currently inverted on the Y axis)
@@ -2165,21 +2160,28 @@ void	scene_benchmarks() {
 
 void	th1_mapGeneration(ChunkGenerator& generator, OctreeManager& manager, Obj3dBP& cubebp, Obj3dPG& renderer, Texture* tex_lena) {
 	Math::Vector3 playerPos;
-	while (!generator.terminateBuilders.try_lock()) {
+	while (!generator.terminateThreads) {//no mutex for reading?
 		generator.mutex_cam.lock();
 		playerPos = manager.cam->local.getPos();
 		generator.mutex_cam.unlock();
-		if (generator.updateGrid(playerPos)) {//player changed chunk
+		generator.updateChunkJobsDone();//before updateChunkJobsToDo()
+		std::cout << "[helper0] jobs done updated\n";
+		generator.job_mutex.lock();
+		if (generator.jobsToDo.size() == 0) {
+			generator.job_mutex.unlock();
 			generator.updateChunkJobsToDo();
-			std::cout << "jobsToDo updated\n";
+			std::cout << " [helper0] jobsToDo updated\n";
 		}
-		generator.updateChunkJobsDone();
-		std::cout << "jobs done updated\n";
-		std::cout << "grid updated with player pos\n";
+		else {
+			generator.job_mutex.unlock();
+		}
+		if (generator.updateGrid(playerPos)) {//player changed chunk
+
+		}
+		std::cout << "[helper0] grid updated with player pos\n";
 		std::this_thread::sleep_for(1s);
 	}
 	std::cout << "[helper0] exiting...\n";
-	generator.terminateBuilders.unlock();
 }
 
 void	scene_octree() {
@@ -2297,9 +2299,8 @@ void	scene_octree() {
 
 	//chunks builder
 	std::unique_lock<std::mutex> chunks_lock(generator.chunks_mutex, std::defer_lock);
-	generator.terminateBuilders.lock();
 	//glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
-	const uint8_t	threadAmount = 1;
+	const uint8_t	threadAmount = 8;
 	generator.builderAmount = threadAmount;
 	GLFWwindow* contexts[threadAmount];
 	std::thread* builders[threadAmount];
@@ -2313,12 +2314,11 @@ void	scene_octree() {
 
 	std::this_thread::sleep_for(1s);
 	std::cout << "notifying threads to build data...\n";
-	generator._chunksReadyForMeshes = false;
 	generator.cv.notify_all();
 	//std::this_thread::sleep_for(5s);
 
 	unsigned int frames = 0;
-	std::cout << "cam: "; cam.local.getPos().printData();
+	std::cout << "cam: " << cam.local.getPos().toString() << "\n";
 	std::cout << "Begin while loop\n";
 	while (!glfwWindowShouldClose(m.glfw->_window)) {
 		if (fps.wait_for_next_frame()) {
@@ -2326,7 +2326,7 @@ void	scene_octree() {
 			frames++;
 			if (frames % 500 == 0) {
 				std::cout << ">>>>>>>>>>>>>>>>>>>> " << frames << " FRAMES <<<<<<<<<<<<<<<<<<<<\n";
-				std::cout << "cam: "; cam.local.getPos().printData();
+				std::cout << "cam: " << cam.local.getPos().toString() << "\n";
 			}
 			m.glfw->setTitle(std::to_string(fps.getFps()) + " fps");
 
@@ -2417,11 +2417,9 @@ void	scene_octree() {
 		}
 	}
 	std::cout << "End while loop\n";
-	std::cout << "deleting textures...\n";
-	//generator._chunksReadyForMeshes = false;
-	generator.terminateBuilders.unlock();
+	generator.terminateThreads = true;
 	generator.cv.notify_all();
-	std::cout << "[Main] need to join builders... " << (int)threadAmount << "\n";
+	std::cout << "[Main] Notifying cv to wake up waiters, need to join " << (int)threadAmount << " builders...\n";
 	for (size_t i = 0; i < threadAmount; i++) {
 		//builders[i]->detach();
 		builders[i]->join();

@@ -155,7 +155,9 @@ int	Chunk::buildVertexArrayFromOctree(Octree* root, Math::Vector3 pos_offset) {
 }
 
 
-void	Chunk::printData() {
-	std::cout << "tile: "; this->tile.printData();
-	std::cout << "pos: "; this->pos.printData();
+std::string		Chunk::toString() const {
+	std::stringstream ss;
+	ss << "tile: " << this->tile.toString() << "\n";
+	ss << "pos: " << this->pos.toString() << "\n";
+	return ss.str();
 }

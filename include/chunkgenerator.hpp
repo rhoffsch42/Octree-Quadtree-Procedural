@@ -24,66 +24,20 @@ typedef UIImage*	minimapTile;
 		- void operator delete( void * ) {} // make a custom bool object.tryDelete(bool forceDelete = false)
 */
 
-// generator.gridIter([]) hmapIter
+// why there is #include "chunk.hpp" in Obj3dPG.cpp ??
+// generator.gridIter([]) hmapIter([])
 // class tab with iter xyzwabcdef...uv 24 dimensions
 //		or indexes as a vector[], with .size() beeing the # of dimensions
 
-class Job
-{
-public:
-	Job() : assigned(false), done(false) {}
-	//virtual bool	execute() = 0;
-	//args could differ, make a struct with args and a dyn_cast in execute()?
-	//can lambda expressions [] work?
-
-	bool	assigned;
-	bool	done;
-};
-
-class JobBuildChunk : public Job
-{
-public:
-	JobBuildChunk(Math::Vector3 chunk_index, HeightMap* hmap_ptr)
-		: index(chunk_index), hmap(hmap_ptr)
-	{
-	}
-	bool execute(PerlinSettings& perlinSettings, Math::Vector3 gridPos, Math::Vector3 halfGrid, Math::Vector3 chunk_size) {
-		Math::Vector3	chunkWorldIndex(
-			gridPos.x - halfGrid.x + this->index.x,
-			gridPos.y - halfGrid.y + this->index.y,
-			gridPos.z - halfGrid.z + this->index.z);
-		if (!this->hmap) {//for now it create hmap here, leading to multiple identical hmaps for the same y coordinate
-			this->hmap = new HeightMap(perlinSettings,
-				chunkWorldIndex.x * chunk_size.x, chunkWorldIndex.z * chunk_size.z,
-				chunk_size.x, chunk_size.z);
-			this->hmap->glth_buildPanel();
-		}
-		this->chunk = new Chunk(chunkWorldIndex, chunk_size, perlinSettings, this->hmap);
-		this->chunk->buildMesh();
-
-		this->done = true;
-		return this->done;
-	}
-
-	Math::Vector3	index;
-	HeightMap*		hmap = nullptr;//do a different job for this, repush back jobsToDo if hmap not ready
-	Chunk*			chunk = nullptr;
-};
+class JobBuildGenerator;
 
 class ChunkGenerator
 {
 public:
-	std::condition_variable	cv;
-	std::mutex	chunks_mutex;
-	std::mutex	job_mutex;
-	std::mutex	mutex_cam;// cam mutex
-	// lock/unlock helper0 (player pos thread)
-	// lock_guard main() -> render loop before calling cam.events()
-	// //lock_guard ChunkGenerator::updateGrid() -> ChunkGenerator::updatePlayerPos() 
-
 	//grid_size_displayed will be clamped between 1 -> grid_size
 	ChunkGenerator(Math::Vector3 player_pos, const PerlinSettings& perlin_settings, Math::Vector3 chunk_size, Math::Vector3 grid_size, Math::Vector3 grid_size_displayed);
 	~ChunkGenerator();
+	std::string getGridChecks() const;
 	bool	updateGrid_old(Math::Vector3 player_pos);
 	bool	updateGrid(Math::Vector3 player_pos);
 	void	updateChunkJobsToDo();
@@ -93,7 +47,7 @@ public:
 	bool	buildMeshesAndMapTiles();
 	bool	try_deleteUnusedData();
 
-	void	printData();
+	std::string	toString() const;
 
 	Math::Vector3	chunkSize;
 
@@ -112,13 +66,22 @@ public:
 	uint8_t			builderAmount;
 	bool			playerChangedChunk;
 
+	std::condition_variable	cv;
+	std::mutex		chunks_mutex;
+	std::mutex		job_mutex;
+	std::mutex		terminateBuilders;//old code
+	std::mutex		mutex_cam;// cam mutex
+	// lock/unlock helper0 (player pos thread)
+	// lock_guard main() -> render loop before calling cam.events()
+	// //lock_guard ChunkGenerator::updateGrid() -> ChunkGenerator::updatePlayerPos() 
 
-
+	bool			terminateThreads = false;
 	bool			chunksChanged;//related to: job_mutex
 	bool			_chunksReadyForMeshes;
 	bool			gridMemoryMoved;//not used for now
 	uint8_t			threadsReadyToBuildChunks;
-	std::mutex		terminateBuilders;
+	std::list<JobBuildGenerator*>	jobsToDo;
+	std::list<JobBuildGenerator*>	jobsDone;
 private:
 	void	updatePlayerPos(Math::Vector3 player_pos);
 	ChunkGenerator();
@@ -127,9 +90,6 @@ private:
 	std::mutex					trash_mutex;
 	std::vector<HeightMap*>		trashHeightMaps;
 	std::vector<Chunk*>			trashChunks;
-
-	std::list<JobBuildChunk*>	jobsToDo;
-	std::list<JobBuildChunk*>	jobsDone;
 };
 
 /*
@@ -140,3 +100,100 @@ private:
 	on genere seulement les chunk voisins (3*3*3 - 1)
 	on diplay seulement les nodes en dessous d'un certain range en adaptant les threshold
 */
+
+
+class Job
+{
+public:
+	Job() : assigned(false), done(false) {}
+	//virtual bool	execute() = 0;
+	//args could differ, make a struct with args and a dyn_cast in execute()?
+	//can lambda expressions [] work?
+
+	bool	assigned;
+	bool	done;
+};
+
+class JobBuildGenerator : public Job
+{
+public:
+	Math::Vector3	index;
+	virtual bool	execute(PerlinSettings& perlinSettings, Math::Vector3 gridPos, Math::Vector3 halfGrid, Math::Vector3 chunk_size) = 0;
+	virtual void	dispatch(ChunkGenerator& generator) const = 0;
+protected:
+	JobBuildGenerator(Math::Vector3 ind) : index(ind) {}
+};
+
+class JobBuildHeighMap : public JobBuildGenerator
+{
+public:
+	JobBuildHeighMap(Math::Vector3 chunk_index)
+		: JobBuildGenerator(chunk_index) {}
+	virtual bool execute(PerlinSettings& perlinSettings, Math::Vector3 gridPos, Math::Vector3 halfGrid, Math::Vector3 chunk_size) {
+		Math::Vector3	worldIndex(
+			gridPos.x - halfGrid.x + this->index.x,
+			0,//dont need it actually
+			gridPos.z - halfGrid.z + this->index.z);
+		this->hmap = new HeightMap(perlinSettings,
+			worldIndex.x * chunk_size.x, worldIndex.z * chunk_size.z,
+			chunk_size.x, chunk_size.z);
+		this->hmap->glth_buildPanel();
+
+		this->done = true;
+		return this->done;
+	}
+	virtual void	dispatch(ChunkGenerator& generator) const {
+		int x = this->index.x;
+		int z = this->index.z;
+		if (generator.heightMaps[z][x]) {
+			std::cout << "Heightmap " << this->hmap << " overriding " << generator.heightMaps[z][x] << "\n";
+			std::cout << this->index.toString() << "\n";
+			std::cout << "This shouldn't happen, exiting...\n";
+			std::exit(-14);
+		}
+		generator.heightMaps[z][x] = this->hmap;
+		std::cout << "hmap plugged in x:z " << x << ":" << z << " " << this->hmap << "\n";
+	}
+
+	HeightMap* hmap = nullptr;
+};
+
+class JobBuildChunk : public JobBuildGenerator
+{
+public:
+	JobBuildChunk(Math::Vector3 chunk_index, HeightMap* hmap_ptr)
+		: JobBuildGenerator(chunk_index), hmap(hmap_ptr) {}
+	virtual bool execute(PerlinSettings& perlinSettings, Math::Vector3 gridPos, Math::Vector3 halfGrid, Math::Vector3 chunk_size) {
+		if (!this->hmap) {// should not be possible
+			std::cout << "JobBuildChunk error: HeightMap nullptr, for index:\n";
+			std::cout << this->index.toString() << "\n";
+			std::exit(-14);
+			this->done = false;//should already be false, better be sure
+			return this->done;
+		}
+		Math::Vector3	worldIndex(
+			gridPos.x - halfGrid.x + this->index.x,
+			gridPos.y - halfGrid.y + this->index.y,
+			gridPos.z - halfGrid.z + this->index.z);
+		this->chunk = new Chunk(worldIndex, chunk_size, perlinSettings, hmap);
+		this->chunk->buildMesh();
+		this->done = true;
+		return this->done;
+	}
+	virtual void	dispatch(ChunkGenerator& generator) const {
+		int x = this->index.x;
+		int y = this->index.y;
+		int z = this->index.z;
+		if (generator.grid[z][y][x]) {
+			std::cout << "Chunk " << this->chunk << " overriding " << generator.grid[z][y][x] << "\n";
+			std::cout << this->index.toString() << "\n";
+			std::cout << "This shouldn't happen, exiting...\n";
+			std::exit(-14);
+		}
+		generator.grid[z][y][x] = this->chunk;
+		std::cout << "chunk plugged in x:y:z " << x << ":" << y << ":" << z << " " << this->chunk << "\n";
+	}
+
+	HeightMap* hmap = nullptr;
+	Chunk* chunk = nullptr;
+};

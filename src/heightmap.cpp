@@ -12,6 +12,7 @@ HeightMap::HeightMap(PerlinSettings& perlin_settings, int posx, int posz, int si
 }
 
 HeightMap::~HeightMap() {
+	//std::cout << __PRETTY_FUNCTION__ << this << "\n";
 	if (this->texture)
 		delete this->texture;
 	if (this->panel)

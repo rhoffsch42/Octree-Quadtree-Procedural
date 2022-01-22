@@ -227,10 +227,10 @@ Octree* Octree::getRoot(Math::Vector3 target_pos, Math::Vector3 target_size) {
 			//std::cout << ">>4";
 		} else {
 			std::cout << "Problem with data in " << __PRETTY_FUNCTION__ << std::endl;
-			std::cout << "\ttarget pos: \t"; target_pos.printData();
-			std::cout << "\ttarget size:\t"; target_size.printData();
-			std::cout << "\troot pos:   \t"; this->pos.printData();
-			std::cout << "\troot size:  \t"; this->size.printData();
+			std::cout << "\ttarget pos: \t" << target_pos.toString() << "\n";
+			std::cout << "\ttarget size:\t" << target_size.toString() << "\n";
+			std::cout << "\troot pos:   \t" << this->pos.toString() << "\n";
+			std::cout << "\troot size:  \t" << this->size.toString() << "\n";
 			exit(0);
 			return nullptr;
 		}

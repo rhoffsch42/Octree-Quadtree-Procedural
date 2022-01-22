@@ -143,8 +143,7 @@ bool	ChunkGenerator::updateGrid_old(Math::Vector3 player_pos) {
 	diff.sub(old_tile);
 
 	if (diff.len()) {//gridDisplayed
-		std::cout << "diff: ";
-		diff.printData();
+		std::cout << "diff: " << diff.toString() << "\n";
 
 		//calculate if we need to move the memory grid and load new chunks
 		Math::Vector3	diffGrid;
@@ -152,10 +151,10 @@ bool	ChunkGenerator::updateGrid_old(Math::Vector3 player_pos) {
 		diffGrid.y = calcExceed(this->gridPos.y, this->gridSize.y, this->currentChunk.y, this->gridDisplaySize.y);
 		diffGrid.z = calcExceed(this->gridPos.z, this->gridSize.z, this->currentChunk.z, this->gridDisplaySize.z);
 		this->gridPos.add(diffGrid);
-		std::cout << "\t--diff        \t"; diff.printData();
-		std::cout << "\t--diffGrid    \t"; diffGrid.printData();
-		std::cout << "\t--gridPos     \t"; this->gridPos.printData();
-		std::cout << "\t--currentChunk\t"; this->currentChunk.printData();
+		std::cout << "\t--diff        \t" << diff.toString() << "\n";
+		std::cout << "\t--diffGrid    \t" << diffGrid.toString() << "\n";
+		std::cout << "\t--gridPos     \t" << this->gridPos.toString() << "\n";
+		std::cout << "\t--currentChunk\t" << this->currentChunk.toString() << "\n";
 
 		this->gridDisplayIndex.add(diff);
 		this->gridDisplayIndex.sub(diffGrid);
@@ -169,7 +168,7 @@ bool	ChunkGenerator::updateGrid_old(Math::Vector3 player_pos) {
 			Math::Vector3	intersection(this->gridSize);
 			intersection.sub(absdiff);
 
-			std::cout << "size of intersection cube dimension:\n";	intersection.printData();
+			std::cout << "size of intersection cube dimension:\n" << intersection.toString() << "\n";
 
 			//now we define the incrementers, start points and end points to shift the intersection cube and delete unused data
 			Math::Vector3	inc, start, end, endShift;
@@ -228,20 +227,21 @@ bool	ChunkGenerator::updateGrid_old(Math::Vector3 player_pos) {
 }
 
 //tmp debug
-void   gridChecks(Chunk**** grid, HeightMap*** heightMaps, Math::Vector3 gridSize) {
+std::string		ChunkGenerator::getGridChecks() const {
+	std::stringstream ss;
 	int		nonulls = 0;
 	int		hmnonulls = 0;
 	int nulls = 0;
 	int hmnulls = 0;
-	for (int k = 0; k < gridSize.z; k++) {
-		for (int j = 0; j < gridSize.y; j++) {
-			for (int i = 0; i < gridSize.x; i++) {
+	for (int k = 0; k < this->gridSize.z; k++) {
+		for (int j = 0; j < this->gridSize.y; j++) {
+			for (int i = 0; i < this->gridSize.x; i++) {
 				if (grid[k][j][i])
 					nonulls++;
 				else
 					nulls++;
 				if (j == 0) {
-					if (heightMaps[k][i])
+					if (this->heightMaps[k][i])
 						hmnonulls++;
 					else {
 						hmnulls++;
@@ -250,14 +250,14 @@ void   gridChecks(Chunk**** grid, HeightMap*** heightMaps, Math::Vector3 gridSiz
 			}
 		}
 	}
-	std::cout << " > grid checks\n";
-	std::cout << " > nonull: " << nonulls << "\n";
-	std::cout << " > nulls: " << nulls << "\n";
-	std::cout << " >> total: " << nonulls + nulls << "\n";
-	std::cout << " > hmap nonull: " << hmnonulls << "\n";
-	std::cout << " > hmnulls: " << hmnulls << "\n";
-	std::cout << " >> total: " << hmnonulls + hmnulls << "\n";
-
+	ss << " > grid checks\n";
+	ss << " > nonull: " << nonulls << "\n";
+	ss << " > nulls: " << nulls << "\n";
+	ss << " >> total: " << nonulls + nulls << "\n";
+	ss << " > hmap nonull: " << hmnonulls << "\n";
+	ss << " > hmnulls: " << hmnulls << "\n";
+	ss << " >> total: " << hmnonulls + hmnulls << "\n";
+	return ss.str();
 }
 
 //return true if player step in another chunk
@@ -273,8 +273,7 @@ bool	ChunkGenerator::updateGrid(Math::Vector3 player_pos) {
 		return false;
 	//gridDisplayed
 	this->playerChangedChunk = true;
-	std::cout << "diff: ";
-	diff.printData();
+	std::cout << "diff: " << diff.toString() << "\n";
 
 	//calculate if we need to move the memory grid and load new chunks
 	Math::Vector3	diffGrid;
@@ -282,14 +281,16 @@ bool	ChunkGenerator::updateGrid(Math::Vector3 player_pos) {
 	diffGrid.y = calcExceed(this->gridPos.y, this->gridSize.y, this->currentChunk.y, this->gridDisplaySize.y);
 	diffGrid.z = calcExceed(this->gridPos.z, this->gridSize.z, this->currentChunk.z, this->gridDisplaySize.z);
 	this->gridPos.add(diffGrid);
-	std::cout << "\t--diff        \t"; diff.printData();
-	std::cout << "\t--diffGrid    \t"; diffGrid.printData();
-	std::cout << "\t--gridPos     \t"; this->gridPos.printData();
-	std::cout << "\t--currentChunk\t"; this->currentChunk.printData();
+	//std::cout << "\t--gridSize       \t" << this->gridSize.toString() << "\n";
+	//std::cout << "\t--gridDisplaySize\t" << this->gridDisplaySize.toString() << "\n";
+	std::cout << "\t--diff           \t" << diff.toString() << "\n";
+	std::cout << "\t--diffGrid       \t" << diffGrid.toString() << "\n";
+	std::cout << "\t--gridPos        \t" << this->gridPos.toString() << "\n";
+	std::cout << "\t--currentChunk   \t" << this->currentChunk.toString() << "\n";
 
 	this->gridDisplayIndex.add(diff);
 	this->gridDisplayIndex.sub(diffGrid); //should be inside the next block? yes, test it after the refacto
-	std::cout << "\t--gridDisplayIndex        \t"; this->gridDisplayIndex.printData();
+	std::cout << "\t--gridDisplayIndex        \t" << this->gridDisplayIndex.toString() << "\n";
 
 	if (diffGrid.len() == 0)
 		return true;
@@ -323,16 +324,6 @@ bool	ChunkGenerator::updateGrid(Math::Vector3 player_pos) {
 			}
 		}
 	}
-
-	/*
-		on mettait a null tout le grid, pour que quand on reassign les chuck et heightmap, il reste des nulls
-		ces null devaient etre regeneres par les builders
-		pb: entre temps, le thread render accedait aux pointers null, car les buidlers n'ont pas encore tafé
-
-		est-ce que le renderer ignore les null? check dyn_cast<Obj3d*>(nullptr)
-	*/
-
-
 	std::cout << "chunks referenced: " << chunks.size() << "\n";
 	std::cout << "hmaps referenced (with nulls): " << hmaps.size() << "\n";
 
@@ -345,13 +336,21 @@ bool	ChunkGenerator::updateGrid(Math::Vector3 player_pos) {
 		}
 		else {//is outside of the memory grid
 			chunksToDelete.push_back(chunks[n]);
+			//meaning the opposite side has to be nulled
+			//int x = indexX[n] + this->gridSize.x * (indexX[n] < 0 ? 1 : -1)
+			//int y = indexY[n] + this->gridSize.y * (indexY[n] < 0 ? 1 : -1)
+			//int iz = indexZ[n] + this->gridSize.z * (indexZ[n] < 0 ? 1 : -1)
+			int x = int(indexX[n] + this->gridSize.x) % int(this->gridSize.x);
+			int y = int(indexY[n] + this->gridSize.y) % int(this->gridSize.y);
+			int z = int(indexZ[n] + this->gridSize.z) % int(this->gridSize.z);
+			this->grid[z][y][x] = nullptr;
 		}
 	}
 	std::cout << " OK\n";
 
 	//reassign the heightmaps
 	std::cout << "reassigning heightmaps...";
-	for (size_t n = 0; n < hmaps.size(); n++) {
+	for (size_t n = 0; n < hmaps.size(); n = n + 4) {
 		if (hmaps[n]) {
 			if (indexZ[n] < this->gridSize.z && indexX[n] < this->gridSize.x \
 				&& indexZ[n] >= 0 && indexX[n] >= 0) {
@@ -359,16 +358,20 @@ bool	ChunkGenerator::updateGrid(Math::Vector3 player_pos) {
 			}
 			else {//is outside of the memory grid
 				hmapsToDelete.push_back(hmaps[n]);
+				//meaning the opposite side has to be nulled
+				//int x = indexX[n] + this->gridSize.x * (indexX[n] < 0 ? 1 : -1)
+				//int z = indexZ[n] + this->gridSize.z * (indexZ[n] < 0 ? 1 : -1)
+				int x = int(indexX[n] + this->gridSize.x) % int(this->gridSize.x);
+				int z = int(indexZ[n] + this->gridSize.z) % int(this->gridSize.z);
+				this->heightMaps[z][x] = nullptr;
 			}
 		}
 	}
 	std::cout << " OK\n";
 
 	//debug checks before rebuild
-	std::cout << "checks...\n";
-	gridChecks(this->grid, this->heightMaps, this->gridSize);
+	std::cout << "checks...\n" << this->getGridChecks();
 	std::cout << " OK\n";
-
 
 	//send useless data to bins
 	this->trash_mutex.lock();
@@ -384,72 +387,73 @@ bool	ChunkGenerator::updateGrid(Math::Vector3 player_pos) {
 
 void	ChunkGenerator::updateChunkJobsToDo() {
 	//build jobs
+	unsigned int cn = 0;
+	unsigned int hn = 0;
+	std::thread::id threadID = std::this_thread::get_id();
 	this->job_mutex.lock();
+	this->chunks_mutex.lock();
 	for (int z = 0; z < this->gridSize.z; z++) {
-		for (int y = 0; y < this->gridSize.y; y++) {
-			for (int x = 0; x < this->gridSize.x; x++) {
-				if (!this->grid[z][y][x]) {
+		for (int x = 0; x < this->gridSize.x; x++) {
+			if (!this->heightMaps[z][x]) {
+				JobBuildHeighMap* job = new JobBuildHeighMap(Math::Vector3(x, 0, z));
+				this->jobsToDo.push_back(job);
+				hn++;
+				std::cout << "new JobBuildHeighMap: " << x << ":" << z << " " << this->heightMaps[z][x] << "\n";
+			}
+			for (int y = 0; y < this->gridSize.y; y++) {
+				if (!this->grid[z][y][x] && this->heightMaps[z][x]) {
 					JobBuildChunk* job = new JobBuildChunk(Math::Vector3(x, y, z), this->heightMaps[z][x]);
 					this->jobsToDo.push_back(job);
+					cn++;
 					std::cout << "new JobBuildChunk: " << x << ":" << y << ":" << z << " hmap: " << this->heightMaps[z][x] << "\n";
 				}
 			}
 		}
 	}
+	std::cout << "[helper0 " << threadID << "] new jobs: " << cn << " chunks, " << hn << " hmaps, total: " << this->jobsToDo.size() << "\n";
+	this->chunks_mutex.unlock();
 	this->job_mutex.unlock();
+	if (this->jobsToDo.size()) {
+		std::cout << "[helper0 " << threadID << "] notifying all...\n";
+		this->cv.notify_all();
+	}
 }
+
 void	ChunkGenerator::updateChunkJobsDone() {
+	this->chunks_mutex.lock();
 	this->job_mutex.lock();
 	//process jobs done
 	if (this->jobsDone.empty()) {
+		std::cout << "No jobs to dispatch...\n";
+		this->chunks_mutex.unlock();
 		this->job_mutex.unlock();
 		return ;
 	}
-	for (JobBuildChunk* j : this->jobsDone) {
-		if (!j->done) {
-			std::cout << "job not done but is in the jobsDone list: " << j << "\n";
-			j->index.printData();
+	JobBuildGenerator* job = nullptr;
+
+	while (this->jobsDone.size()) {
+		job = this->jobsDone.front();
+		this->jobsDone.pop_front();
+
+		if (!job->done) {
+			std::cout << "job not done but is in the jobsDone list: " << job << job->index.toString() << "\n";
 			std::cout << "exiting...\n";
 			std::exit(-14);
 		}
-		int x = j->index.x;
-		int y = j->index.y;
-		int z = j->index.z;
 
-		//cant do that now as there are jobs with hmap already generated
-		//if (this->heightMaps[z][x]) {
-		//	std::cout << "heightMap " << j->hmap << " overriding " << this->heightMaps[z][x] << "\n";
-		//	printData();
-		//	std::cout << "This shouldn't happen, exiting...\n";
-		//	std::exit(-14);
-		//}
-
-		if (this->grid[z][y][x]) {
-			std::cout << "chunk " << j->hmap << " overriding " << this->heightMaps[z][x] << "\n";
-			j->index.printData();
-			std::cout << "This shouldn't happen, exiting...\n";
-			std::exit(-14);
-		}
-		//tmp check with already generated hmap in a job: the hmap should be the same as in the grid
-		if (this->heightMaps[z][x] && this->heightMaps[z][x] != j->hmap) {
-			std::cout << "heightMap " << j->hmap << " different from initial " << this->heightMaps[z][x] << "\n";
-			j->index.printData();
-			std::cout << "This shouldn't happen, indexes are wrong? exiting...\n";
-			//std::exit(-14);
-		}
-		this->heightMaps[z][x] = j->hmap;
-		this->grid[z][y][x] = j->chunk;
-		std::cout << "chunk/hmap plugged in grid: " << x << ":" << y << ":" << z << "\n";
+		job->dispatch(*this);
 	}
+
 	//all the list should be erased, as all jobs should be done, but we check...
-	this->jobsDone.erase(std::remove_if(this->jobsDone.begin(), this->jobsDone.end(),
-		[](JobBuildChunk* elem) { return (elem->done); }),
-		this->jobsDone.end());
+	//this->jobsDone.erase(std::remove_if(this->jobsDone.begin(), this->jobsDone.end(),
+		//[](JobBuildGenerator* elem) { return (elem->done); }),
+		//this->jobsDone.end());
 	if (!this->jobsDone.empty()) {
 		std::cout << "jobsDone not empty, wth? : " << this->jobsDone.size() << "\nexiting...\n";
 		std::exit(-14);
 	}
 	this->chunksChanged = true;
+	this->chunks_mutex.unlock();
 	this->job_mutex.unlock();
 }
 
@@ -465,44 +469,49 @@ void	ChunkGenerator::th_builders(GLFWwindow* context) {
 	std::unique_lock<std::mutex> job_lock(this->job_mutex);
 
 	//build job variables
-	PerlinSettings	perlinSettings(this->settings);//if they change later, we have to update them, cpy them when finding a job?
-	Math::Vector3	halfGrid = Math::Vector3(int(this->gridSize.x / 2), int(this->gridSize.y / 2), int(this->gridSize.z / 2)); // same
-	Math::Vector3	chunk_size(this->chunkSize);//same
-	JobBuildChunk*	job = nullptr;
+	PerlinSettings		perlinSettings(this->settings);//if they change later, we have to update them, cpy them when finding a job?
+	Math::Vector3		halfGrid = Math::Vector3(int(this->gridSize.x / 2), int(this->gridSize.y / 2), int(this->gridSize.z / 2)); // same
+	Math::Vector3		chunk_size(this->chunkSize);//same
+	JobBuildGenerator*	job = nullptr;
 
 
-	while (!this->terminateBuilders.try_lock()) {
-		std::cout << "[" << threadID << "] waiting \n";
-		glfwSetWindowTitle(context, (threadIDstr + "waiting").c_str());
-		this->cv.wait(job_lock, [this] { return !this->jobsToDo.empty(); });//wait until jobs list in not empty
-		// this has to be done to allow other threads to access joblist
+	while (!this->terminateThreads) {
+		if (!this->jobsToDo.empty()) {
+			// grab job
+			std::cout << threadIDstr << "grabbing job\n";
+			job = this->jobsToDo.front();
+			job->assigned = true;
+			this->jobsToDo.pop_front();
 
-		// grab job
-		std::cout << "[" << threadID << "] grabbing job\n";
-		job = this->jobsToDo.front();
-		job->assigned = true;
-		this->jobsToDo.pop_front();
+			job_lock.unlock();
+			this->chunks_mutex.lock();
+			job->execute(perlinSettings, this->gridPos, halfGrid, chunk_size);
+			this->chunks_mutex.unlock();
+			job_lock.lock();
 
-		job_lock.unlock();
-		job->execute(perlinSettings, this->gridPos, halfGrid, this->chunkSize);
-		job_lock.lock();
+			if (job->done)
+				this->jobsDone.push_back(job);
+			else
+				this->jobsToDo.push_back(job);
+			job->assigned = false;
 
-		if (job->done)
-			this->jobsDone.push_back(job);
-		else
-			this->jobsToDo.push_back(job);
-		job->assigned = false;
+			std::cout << threadIDstr << "job done " << job->index.toString() << "\n";
+			glfwSetWindowTitle(context, (threadIDstr + "job done: chunk built").c_str());
+			job = nullptr;
+		} else {
+			std::cout << threadIDstr << "no job found... \n";
+		}
 
-		std::cout << "[" << threadID << "] job done: chunk built\n";
-		job->index.printData();
-		glfwSetWindowTitle(context, (threadIDstr + "job done: chunk built").c_str());
-		job = nullptr;
+		std::cout << threadIDstr << "waiting \n";
+			glfwSetWindowTitle(context, (threadIDstr + "waiting").c_str());
+		this->cv.wait(job_lock, [this] { return (!this->jobsToDo.empty() || this->terminateThreads); });//wait until jobs list in not empty
+		std::cout << threadIDstr << "waking up from cv.wait() \n";
 	}
+	job_lock.unlock();
 
-	std::cout << "[" << threadID << "] exiting...\n";
+	std::cout << threadIDstr << " exiting...\n";
 	glfwSetWindowShouldClose(context, GLFW_TRUE);
 	glfwMakeContextCurrent(nullptr);
-	this->terminateBuilders.unlock();
 }
 
 void	ChunkGenerator::th_builders_old(GLFWwindow* context) {
@@ -649,20 +658,19 @@ void	ChunkGenerator::updatePlayerPos(Math::Vector3 player_pos) {
 		this->currentChunk.z--;
 }
 
-void	ChunkGenerator::printData() {
-	std::cout << "currentChunk:"; this->currentChunk.printData();
-	std::cout << "\n";
+std::string	ChunkGenerator::toString() const {
+	std::stringstream ss;
+	ss << "currentChunk: " << this->currentChunk.toString() << "\n";
 	for (int k = 0; k < this->gridSize.z; k++) {
 		for (int j = 0; j < this->gridSize.y; j++) {
 			for (int i = 0; i < this->gridSize.x; i++) {
-				std::cout << "[" << k << "]";
-				std::cout << "[" << j << "]";
-				std::cout << "[" << i << "]\t";
-				this->grid[k][j][i]->printData();
-				std::cout << "\n";
+				ss << "[" << k << "]";
+				ss << "[" << j << "]";
+				ss << "[" << i << "]\t" << this->grid[k][j][i]->toString() << "\n";
 			}
 		}
 	}
+	return ss.str();
 }
 
 bool	ChunkGenerator::try_deleteUnusedData() {
