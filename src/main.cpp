@@ -1,10 +1,914 @@
 #include <compiler_settings.h>
+
+#if 0 // test mutex
+#include <iostream>
+#include <mutex>
+#include <condition_variable>
+#include <thread>
+#include <functional>
+
+//using namespace std::chrono_literals;
+
+struct Player
+{
+private:
+	std::mutex mtx;
+	std::condition_variable cv;
+	std::thread thr;
+
+	enum State
+	{
+		Stopped,
+		Paused,
+		Playing,
+		Quit
+	};
+
+	State state;
+	int counter;
+
+	void signal_state(State st)
+	{
+		std::unique_lock<std::mutex> lock(mtx);
+		if (st != state)
+		{
+			state = st;
+			cv.notify_one();
+		}
+	}
+
+	// main player monitor
+	void monitor()
+	{
+		std::unique_lock<std::mutex> lock(mtx);
+		bool bQuit = false;
+
+		while (!bQuit)
+		{
+			switch (state)
+			{
+			case Playing:
+				std::cout << ++counter << '.';
+				cv.wait_for(lock, 200ms, [this]() { return state != Playing; });
+				break;
+
+			case Stopped:
+				cv.wait(lock, [this]() { return state != Stopped; });
+				std::cout << '\n';
+				counter = 0;
+				break;
+
+			case Paused:
+				cv.wait(lock, [this]() { return state != Paused; });
+				break;
+
+			case Quit:
+				bQuit = true;
+				break;
+			}
+		}
+	}
+
+public:
+	Player() : state(Stopped), counter(0)
+	{
+		thr = std::thread(std::bind(&Player::monitor, this));
+	}
+
+	~Player()
+	{
+		quit();
+		thr.join();
+	}
+
+	void stop() { signal_state(Stopped); }
+	void play() { signal_state(Playing); }
+	void pause() { signal_state(Paused); }
+	void quit() { signal_state(Quit); }
+};
+
+void	playertest() {
+	Player player;
+	player.play();
+	std::this_thread::sleep_for(2s);
+	player.pause();
+	std::this_thread::sleep_for(2s);
+	player.play();
+	std::this_thread::sleep_for(2s);
+	player.stop();
+	std::this_thread::sleep_for(2s);
+	player.play();
+	std::this_thread::sleep_for(2s);
+
+	std::exit(0);
+}
+#endif // test mutex
+
+#if 0 //example context sharing
+//========================================================================
+// Context sharing example
+// Copyright (c) Camilla Löwy <elmindreda@glfw.org>
+//
+// This software is provided 'as-is', without any express or implied
+// warranty. In no event will the authors be held liable for any damages
+// arising from the use of this software.
+//
+// Permission is granted to anyone to use this software for any purpose,
+// including commercial applications, and to alter it and redistribute it
+// freely, subject to the following restrictions:
+//
+// 1. The origin of this software must not be misrepresented; you must not
+//    claim that you wrote the original software. If you use this software
+//    in a product, an acknowledgment in the product documentation would
+//    be appreciated but is not required.
+//
+// 2. Altered source versions must be plainly marked as such, and must not
+//    be misrepresented as being the original software.
+//
+// 3. This notice may not be removed or altered from any source
+//    distribution.
+//
+//========================================================================
+
+//#include <glad/gl.h>
+#define GLFW_INCLUDE_NONE
+#include <GLFW/glfw3.h>
+
+#include <stdio.h>
+#include <stdlib.h>
+
+//#include "getopt.h"
+//#include "linmath.h"
+
+static const char* vertex_shader_text =
+"#version 110\n"
+"uniform mat4 MVP;\n"
+"attribute vec2 vPos;\n"
+"varying vec2 texcoord;\n"
+"void main()\n"
+"{\n"
+"    gl_Position = MVP * vec4(vPos, 0.0, 1.0);\n"
+"    texcoord = vPos;\n"
+"}\n";
+
+static const char* fragment_shader_text =
+"#version 110\n"
+"uniform sampler2D texture;\n"
+"uniform vec3 color;\n"
+"varying vec2 texcoord;\n"
+"void main()\n"
+"{\n"
+"    gl_FragColor = vec4(color * texture2D(texture, texcoord).rgb, 1.0);\n"
+"}\n";
+
+struct vec2 {
+	float x;
+	float y;
+};
+struct vec3 {
+	float x;
+	float y;
+	float z;
+};
+
+static const vec2 vertices[4] =
+{
+	{ 0.f, 0.f },
+	{ 1.f, 0.f },
+	{ 1.f, 1.f },
+	{ 0.f, 1.f }
+};
+
+static void error_callback(int error, const char* description)
+{
+	fprintf(stderr, "Error: %s\n", description);
+}
+
+static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+	if (action == GLFW_PRESS && key == GLFW_KEY_ESCAPE)
+		glfwSetWindowShouldClose(window, GLFW_TRUE);
+}
+
+int main2(int argc, char** argv)
+{
+	//Glfw::initDefaultState();
+
+	GLFWwindow* windows[2];
+	GLuint texture, program, vertex_buffer;
+	GLint mvp_location, vpos_location, color_location, texture_location;
+
+	glfwSetErrorCallback(error_callback);
+
+	if (!glfwInit())
+		std::exit(EXIT_FAILURE);
+
+	//glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
+	//glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+
+	windows[0] = glfwCreateWindow(400, 400, "First", NULL, NULL);
+	if (!windows[0])
+	{
+		glfwTerminate();
+		std::exit(EXIT_FAILURE);
+	}
+	//
+	glfwSetInputMode(windows[0], GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	glfwSetInputMode(windows[0], GLFW_STICKY_KEYS, 1);
+	glfwSetInputMode(windows[0], GLFW_STICKY_MOUSE_BUTTONS, 1);
+	//
+
+	glfwSetKeyCallback(windows[0], key_callback);
+	glfwMakeContextCurrent(windows[0]);
+
+	//
+	//glew
+	glewExperimental = GL_TRUE;
+	if (glewInit() != GLEW_OK) {
+		std::cerr << "glewInit failed\n";
+		Misc::breakExit(-1);
+	}
+
+	//
+
+	// Only enable vsync for the first of the windows to be swapped to
+	// avoid waiting out the interval for each window
+	glfwSwapInterval(1);
+
+	// The contexts are created with the same APIs so the function
+	// pointers should be re-usable between them
+	//gladLoadGL(glfwGetProcAddress);
+
+	// Create the OpenGL objects inside the first context, created above
+	// All objects will be shared with the second context, created below
+	{
+		int x, y;
+		char pixels[16 * 16];
+		GLuint vertex_shader, fragment_shader;
+
+		glGenTextures(1, &texture);
+		glBindTexture(GL_TEXTURE_2D, texture);
+
+		srand((unsigned int)glfwGetTimerValue());
+
+		for (y = 0; y < 16; y++)
+		{
+			for (x = 0; x < 16; x++)
+				pixels[y * 16 + x] = rand() % 256;
+		}
+
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, 16, 16, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, pixels);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+		vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+		glShaderSource(vertex_shader, 1, &vertex_shader_text, NULL);
+		glCompileShader(vertex_shader);
+
+		fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+		glShaderSource(fragment_shader, 1, &fragment_shader_text, NULL);
+		glCompileShader(fragment_shader);
+
+		program = glCreateProgram();
+		glAttachShader(program, vertex_shader);
+		glAttachShader(program, fragment_shader);
+		glLinkProgram(program);
+
+		mvp_location = glGetUniformLocation(program, "MVP");
+		color_location = glGetUniformLocation(program, "color");
+		texture_location = glGetUniformLocation(program, "texture");
+		vpos_location = glGetAttribLocation(program, "vPos");
+
+		glGenBuffers(1, &vertex_buffer);
+		glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+	}
+
+	glUseProgram(program);
+	glUniform1i(texture_location, 0);
+
+	glEnable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, texture);
+
+	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
+	glEnableVertexAttribArray(vpos_location);
+	glVertexAttribPointer(vpos_location, 2, GL_FLOAT, GL_FALSE,
+		sizeof(vertices[0]), (void*)0);
+
+	windows[1] = glfwCreateWindow(400, 400, "Second", NULL, windows[0]);
+	if (!windows[1])
+	{
+		glfwTerminate();
+		std::exit(EXIT_FAILURE);
+	}
+
+	// Place the second window to the right of the first
+	{
+		int xpos, ypos, left, right, width;
+
+		glfwGetWindowSize(windows[0], &width, NULL);
+		glfwGetWindowFrameSize(windows[0], &left, NULL, &right, NULL);
+		glfwGetWindowPos(windows[0], &xpos, &ypos);
+
+		glfwSetWindowPos(windows[1], xpos + width + left + right, ypos);
+	}
+
+	glfwSetKeyCallback(windows[1], key_callback);
+
+	glfwMakeContextCurrent(windows[1]);
+
+	// While objects are shared, the global context state is not and will
+	// need to be set up for each context
+
+	glUseProgram(program);
+
+	glEnable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, texture);
+
+	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
+	glEnableVertexAttribArray(vpos_location);
+	glVertexAttribPointer(vpos_location, 2, GL_FLOAT, GL_FALSE,
+		sizeof(vertices[0]), (void*)0);
+
+	while (!glfwWindowShouldClose(windows[0]) &&
+		!glfwWindowShouldClose(windows[1]))
+	{
+		int i;
+		const vec3 colors[2] =
+		{
+			{ 0.8f, 0.4f, 1.f },
+			{ 0.3f, 0.4f, 1.f }
+		};
+
+		for (i = 0; i < 2; i++)
+		{
+			int width, height;
+
+			glfwGetFramebufferSize(windows[i], &width, &height);
+			glfwMakeContextCurrent(windows[i]);
+
+			glViewport(0, 0, width, height);
+
+			Math::Matrix4	mvp;
+			mvp.identity();
+			//mat4x4_ortho(mvp, 0.f, 1.f, 0.f, 1.f, 0.f, 1.f);
+			glUniformMatrix4fv(mvp_location, 1, GL_FALSE, (const GLfloat*)mvp.getData());
+			glUniform3fv(color_location, 1, (float*)(&colors[i].x));
+			glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+
+			glfwSwapBuffers(windows[i]);
+		}
+
+		glfwWaitEvents();
+	}
+
+	glfwTerminate();
+	std::exit(EXIT_SUCCESS);
+}
+#endif ////example context sharing
+
+#if 0 //text test
+
+#include "misc.hpp"
+
+//shader
+#include <iostream>
+#include <map>
+#include <string>
+
+#include <GL/glew.h>
+#include <GLFW/glfw3.h>
+
+#ifndef SHADER_H
+#define SHADER_H
+
+#include <glm/glm.hpp>
+
+#include <string>
+#include <fstream>
+#include <sstream>
+#include <iostream>
+
+class Shader
+{
+public:
+	unsigned int ID;
+	// constructor generates the shader on the fly
+	// ------------------------------------------------------------------------
+	Shader(const char* vertexPath, const char* fragmentPath, const char* geometryPath = nullptr)
+	{
+		// 1. retrieve the vertex/fragment source code from filePath
+		std::string vertexCode;
+		std::string fragmentCode;
+		std::string geometryCode;
+		std::ifstream vShaderFile;
+		std::ifstream fShaderFile;
+		std::ifstream gShaderFile;
+		// ensure ifstream objects can throw exceptions:
+		vShaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+		fShaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+		gShaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+		try
+		{
+			// open files
+			vShaderFile.open(vertexPath);
+			fShaderFile.open(fragmentPath);
+			std::stringstream vShaderStream, fShaderStream;
+			// read file's buffer contents into streams
+			vShaderStream << vShaderFile.rdbuf();
+			fShaderStream << fShaderFile.rdbuf();
+			// close file handlers
+			vShaderFile.close();
+			fShaderFile.close();
+			// convert stream into string
+			vertexCode = vShaderStream.str();
+			fragmentCode = fShaderStream.str();
+			// if geometry shader path is present, also load a geometry shader
+			if (geometryPath != nullptr)
+			{
+				gShaderFile.open(geometryPath);
+				std::stringstream gShaderStream;
+				gShaderStream << gShaderFile.rdbuf();
+				gShaderFile.close();
+				geometryCode = gShaderStream.str();
+			}
+		}
+		catch (std::ifstream::failure& e)
+		{
+			std::cout << "ERROR::SHADER::FILE_NOT_SUCCESFULLY_READ: " << e.what() << std::endl;
+		}
+		const char* vShaderCode = vertexCode.c_str();
+		const char* fShaderCode = fragmentCode.c_str();
+		// 2. compile shaders
+		unsigned int vertex, fragment;
+		// vertex shader
+		vertex = glCreateShader(GL_VERTEX_SHADER);
+		glShaderSource(vertex, 1, &vShaderCode, NULL);
+		glCompileShader(vertex);
+		checkCompileErrors(vertex, "VERTEX");
+		// fragment Shader
+		fragment = glCreateShader(GL_FRAGMENT_SHADER);
+		glShaderSource(fragment, 1, &fShaderCode, NULL);
+		glCompileShader(fragment);
+		checkCompileErrors(fragment, "FRAGMENT");
+		// if geometry shader is given, compile geometry shader
+		unsigned int geometry;
+		if (geometryPath != nullptr)
+		{
+			const char* gShaderCode = geometryCode.c_str();
+			geometry = glCreateShader(GL_GEOMETRY_SHADER);
+			glShaderSource(geometry, 1, &gShaderCode, NULL);
+			glCompileShader(geometry);
+			checkCompileErrors(geometry, "GEOMETRY");
+		}
+		// shader Program
+		ID = glCreateProgram();
+		glAttachShader(ID, vertex);
+		glAttachShader(ID, fragment);
+		if (geometryPath != nullptr)
+			glAttachShader(ID, geometry);
+		glLinkProgram(ID);
+		checkCompileErrors(ID, "PROGRAM");
+		// delete the shaders as they're linked into our program now and no longer necessery
+		glDeleteShader(vertex);
+		glDeleteShader(fragment);
+		if (geometryPath != nullptr)
+			glDeleteShader(geometry);
+
+	}
+	// activate the shader
+	// ------------------------------------------------------------------------
+	void use()
+	{
+		glUseProgram(ID);
+	}
+	// utility uniform functions
+	// ------------------------------------------------------------------------
+	void setBool(const std::string& name, bool value) const
+	{
+		glUniform1i(glGetUniformLocation(ID, name.c_str()), (int)value);
+	}
+	// ------------------------------------------------------------------------
+	void setInt(const std::string& name, int value) const
+	{
+		glUniform1i(glGetUniformLocation(ID, name.c_str()), value);
+	}
+	// ------------------------------------------------------------------------
+	void setFloat(const std::string& name, float value) const
+	{
+		glUniform1f(glGetUniformLocation(ID, name.c_str()), value);
+	}
+	// ------------------------------------------------------------------------
+	void setVec2(const std::string& name, const glm::vec2& value) const
+	{
+		glUniform2fv(glGetUniformLocation(ID, name.c_str()), 1, &value[0]);
+	}
+	void setVec2(const std::string& name, float x, float y) const
+	{
+		glUniform2f(glGetUniformLocation(ID, name.c_str()), x, y);
+	}
+	// ------------------------------------------------------------------------
+	void setVec3(const std::string& name, const glm::vec3& value) const
+	{
+		glUniform3fv(glGetUniformLocation(ID, name.c_str()), 1, &value[0]);
+	}
+	void setVec3(const std::string& name, float x, float y, float z) const
+	{
+		glUniform3f(glGetUniformLocation(ID, name.c_str()), x, y, z);
+	}
+	// ------------------------------------------------------------------------
+	void setVec4(const std::string& name, const glm::vec4& value) const
+	{
+		glUniform4fv(glGetUniformLocation(ID, name.c_str()), 1, &value[0]);
+	}
+	void setVec4(const std::string& name, float x, float y, float z, float w)
+	{
+		glUniform4f(glGetUniformLocation(ID, name.c_str()), x, y, z, w);
+	}
+	// ------------------------------------------------------------------------
+	void setMat2(const std::string& name, const glm::mat2& mat) const
+	{
+		glUniformMatrix2fv(glGetUniformLocation(ID, name.c_str()), 1, GL_FALSE, &mat[0][0]);
+	}
+	// ------------------------------------------------------------------------
+	void setMat3(const std::string& name, const glm::mat3& mat) const
+	{
+		glUniformMatrix3fv(glGetUniformLocation(ID, name.c_str()), 1, GL_FALSE, &mat[0][0]);
+	}
+	// ------------------------------------------------------------------------
+	void setMat4(const std::string& name, const glm::mat4& mat) const
+	{
+		glUniformMatrix4fv(glGetUniformLocation(ID, name.c_str()), 1, GL_FALSE, &mat[0][0]);
+	}
+
+private:
+	// utility function for checking shader compilation/linking errors.
+	// ------------------------------------------------------------------------
+	void checkCompileErrors(GLuint shader, std::string type)
+	{
+		GLint success;
+		GLchar infoLog[1024];
+		if (type != "PROGRAM")
+		{
+			glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+			if (!success)
+			{
+				glGetShaderInfoLog(shader, 1024, NULL, infoLog);
+				std::cout << "ERROR::SHADER_COMPILATION_ERROR of type: " << type << "\n" << infoLog << "\n -- --------------------------------------------------- -- " << std::endl;
+			}
+		}
+		else
+		{
+			glGetProgramiv(shader, GL_LINK_STATUS, &success);
+			if (!success)
+			{
+				glGetProgramInfoLog(shader, 1024, NULL, infoLog);
+				std::cout << "ERROR::PROGRAM_LINKING_ERROR of type: " << type << "\n" << infoLog << "\n -- --------------------------------------------------- -- " << std::endl;
+			}
+		}
+	}
+};
+#endif
+
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
+#include <ft2build.h>
+#include FT_FREETYPE_H
+
+
+//#include <learnopengl/shader.h>
+
+void framebuffer_size_callback(GLFWwindow* window, int width, int height);
+void processInput(GLFWwindow* window);
+void RenderText(Shader& shader, std::string text, float x, float y, float scale, glm::vec3 color);
+
+// settings
+const unsigned int SCR_WIDTH = 800;
+const unsigned int SCR_HEIGHT = 600;
+
+/// Holds all state information relevant to a character as loaded using FreeType
+struct Character {
+	unsigned int TextureID; // ID handle of the glyph texture
+	glm::ivec2   Size;      // Size of glyph
+	glm::ivec2   Bearing;   // Offset from baseline to left/top of glyph
+	unsigned int Advance;   // Horizontal offset to advance to next glyph
+};
+
+std::map<GLchar, Character> Characters;
+unsigned int VAO, VBO;
+
+int main()
+{
+	// glfw: initialize and configure
+	// ------------------------------
+	glfwInit();
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+#ifdef __APPLE__
+	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+#endif
+
+	// glfw window creation
+	// --------------------
+	GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
+	if (window == NULL)
+	{
+		std::cout << "Failed to create GLFW window" << std::endl;
+		glfwTerminate();
+		return -1;
+	}
+	glfwMakeContextCurrent(window);
+	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+
+	// glad: load all OpenGL function pointers
+	// ---------------------------------------
+	//if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+	//{
+	//	std::cout << "Failed to initialize GLAD" << std::endl;
+	//	return -1;
+	//}
+
+	//glew
+	glewExperimental = GL_TRUE;
+	if (glewInit() != GLEW_OK) {
+		std::cerr << "glewInit failed\n";
+		Misc::breakExit(-1);
+	}
+
+	// OpenGL state
+	// ------------
+	glEnable(GL_CULL_FACE);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+	// compile and setup the shader
+	// ----------------------------
+	Shader shader("SimpleGL/shaders/text.vs.glsl", "SimpleGL/shaders/text.fs.glsl");
+	glm::mat4 projection = glm::ortho(0.0f, static_cast<float>(SCR_WIDTH), 0.0f, static_cast<float>(SCR_HEIGHT));
+	shader.use();
+	glUniformMatrix4fv(glGetUniformLocation(shader.ID, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
+
+	// FreeType
+	// --------
+	FT_Library ft;
+	// All functions return a value different than 0 whenever an error occurred
+	if (FT_Init_FreeType(&ft))
+	{
+		std::cout << "ERROR::FREETYPE: Could not init FreeType Library" << std::endl;
+		return -1;
+	}
+
+	// find path to font
+	std::string font_name = Misc::getCurrentDirectory() + "SimpleGL/fonts/arial.ttf"; // FileSystem("resources/fonts/Antonio-Bold.ttf");
+	if (font_name.empty())
+	{
+		std::cout << "ERROR::FREETYPE: Failed to load font_name" << std::endl;
+		return -1;
+	}
+
+	// load font as face
+	FT_Face face;
+	if (FT_New_Face(ft, font_name.c_str(), 0, &face)) {
+		std::cout << "ERROR::FREETYPE: Failed to load font" << std::endl;
+		return -1;
+	}
+	else {
+		// set size to load glyphs as
+		FT_Set_Pixel_Sizes(face, 0, 48);
+
+		// disable byte-alignment restriction
+		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+		// load first 128 characters of ASCII set
+		for (unsigned char c = 0; c < 128; c++)
+		{
+			// Load character glyph 
+			if (FT_Load_Char(face, c, FT_LOAD_RENDER))
+			{
+				std::cout << "ERROR::FREETYTPE: Failed to load Glyph" << std::endl;
+				continue;
+			}
+			// generate texture
+			unsigned int texture;
+			glGenTextures(1, &texture);
+			glBindTexture(GL_TEXTURE_2D, texture);
+			glTexImage2D(
+				GL_TEXTURE_2D,
+				0,
+				GL_RED,
+				face->glyph->bitmap.width,
+				face->glyph->bitmap.rows,
+				0,
+				GL_RED,
+				GL_UNSIGNED_BYTE,
+				face->glyph->bitmap.buffer
+			);
+			// set texture options
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			// now store character for later use
+			Character character = {
+				texture,
+				glm::ivec2(face->glyph->bitmap.width, face->glyph->bitmap.rows),
+				glm::ivec2(face->glyph->bitmap_left, face->glyph->bitmap_top),
+				static_cast<unsigned int>(face->glyph->advance.x)
+			};
+			Characters.insert(std::pair<char, Character>(c, character));
+		}
+		glBindTexture(GL_TEXTURE_2D, 0);
+	}
+	// destroy FreeType once we're finished
+	FT_Done_Face(face);
+	FT_Done_FreeType(ft);
+
+
+	// configure VAO/VBO for texture quads
+	// -----------------------------------
+	glGenVertexArrays(1, &VAO);
+	glGenBuffers(1, &VBO);
+	glBindVertexArray(VAO);
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 6 * 4, NULL, GL_DYNAMIC_DRAW);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), 0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+
+	// render loop
+	// -----------
+	while (!glfwWindowShouldClose(window))
+	{
+		// input
+		// -----
+		processInput(window);
+
+		// render
+		// ------
+		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT);
+
+		RenderText(shader, "This is sample text", 25.0f, 25.0f, 1.0f, glm::vec3(0.5, 0.8f, 0.2f));
+		RenderText(shader, "(C) LearnOpenGL.com", 540.0f, 570.0f, 0.5f, glm::vec3(0.3, 0.7f, 0.9f));
+
+		// glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
+		// -------------------------------------------------------------------------------
+		glfwSwapBuffers(window);
+		glfwPollEvents();
+	}
+
+	glfwTerminate();
+	return 0;
+}
+
+// process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
+// ---------------------------------------------------------------------------------------------------------
+void processInput(GLFWwindow* window)
+{
+	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+		glfwSetWindowShouldClose(window, true);
+}
+
+// glfw: whenever the window size changed (by OS or user resize) this callback function executes
+// ---------------------------------------------------------------------------------------------
+void framebuffer_size_callback(GLFWwindow* window, int width, int height)
+{
+	// make sure the viewport matches the new window dimensions; note that width and 
+	// height will be significantly larger than specified on retina displays.
+	glViewport(0, 0, width, height);
+}
+
+
+// render line of text
+// -------------------
+void RenderText(Shader& shader, std::string text, float x, float y, float scale, glm::vec3 color)
+{
+	// activate corresponding render state	
+	shader.use();
+	glUniform3f(glGetUniformLocation(shader.ID, "textColor"), color.x, color.y, color.z);
+	glActiveTexture(GL_TEXTURE0);
+	glBindVertexArray(VAO);
+
+	// iterate through all characters
+	std::string::const_iterator c;
+	for (c = text.begin(); c != text.end(); c++)
+	{
+		Character ch = Characters[*c];
+
+		float xpos = x + ch.Bearing.x * scale;
+		float ypos = y - (ch.Size.y - ch.Bearing.y) * scale;
+
+		float w = ch.Size.x * scale;
+		float h = ch.Size.y * scale;
+		// update VBO for each character
+		float vertices[6][4] = {
+			{ xpos,     ypos + h,   0.0f, 0.0f },
+			{ xpos,     ypos,       0.0f, 1.0f },
+			{ xpos + w, ypos,       1.0f, 1.0f },
+
+			{ xpos,     ypos + h,   0.0f, 0.0f },
+			{ xpos + w, ypos,       1.0f, 1.0f },
+			{ xpos + w, ypos + h,   1.0f, 0.0f }
+		};
+		// render glyph texture over quad
+		glBindTexture(GL_TEXTURE_2D, ch.TextureID);
+		// update content of VBO memory
+		glBindBuffer(GL_ARRAY_BUFFER, VBO);
+		glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices); // be sure to use glBufferSubData and not glBufferData
+
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		// render quad
+		glDrawArrays(GL_TRIANGLES, 0, 6);
+		// now advance cursors for next glyph (note that advance is number of 1/64 pixels)
+		x += (ch.Advance >> 6) * scale; // bitshift by 6 to get value in pixels (2^6 = 64 (divide amount of 1/64th pixels by 64 to get amount of pixels))
+	}
+	glBindVertexArray(0);
+	glBindTexture(GL_TEXTURE_2D, 0);
+}
+#endif//text test
+
 #if 1
 #include "simplegl.h"
 #include "trees.h"
+#include <typeinfo>
+
+void	test_poe() {
+	float	crit_chance = 1;
+	float	crit_multi = 5;
+	float	min_frenzy = 0;
+	float	max_frenzy = 9;
+	float	frenzy_dmg_bonus = 0.05;
+	float	chance_frenzy_on_crit = 0.4;
+	float	chance_max_frenzy = 0.15;
+	float	add_arrow = 3; //2deadeye + 1quiver
+	float	barrage_arrows = 3;//3 for barrage supp, 4 for barrage attack
+	float	base_damage = 1000;
+
+	//conf print
+	std::cout << "% crit              \t" << (crit_chance * 100) << "%\n";
+	std::cout << "% crit_multi        \t" << (crit_multi * 100) << "%\n";
+	std::cout << "minimum frenzy      \t" << min_frenzy << "\n";
+	std::cout << "maximum frenzy      \t" << max_frenzy << "\n";
+	std::cout << "% frenzy on crit    \t" << (chance_frenzy_on_crit * 100) << "%\n";
+	std::cout << "add. arrows         \t" << add_arrow << "\n";
+	std::cout << "barrage add. arrows \t" << barrage_arrows << "\n";
+	std::cout << "base damage         \t" << base_damage << "\n\n";
+	std::cout << "context : single target\n";
+	std::cout << "not counting chance to get max frenzy, or frenzy reset on reaching max frenzy\n";
+	std::cout << "bows have same base damage\n";
+	std::cout << "assuming we are max frenzy for the usual bow attack\n";
+	std::cout << "assuming we reached max frenzy for the gluttonous tide attack\n";
+	std::cout << "\n";
+
+	float	final_damage_usual = 0;
+	{
+		//usual bow always max frenzy
+		float	bonus_damage = (1 + crit_chance) * crit_multi * (1 + max_frenzy * frenzy_dmg_bonus);
+		float	total_arrows = (1 + barrage_arrows + add_arrow);
+		final_damage_usual = base_damage * total_arrows * bonus_damage;
+		std::cout << "average usual bow damage : " << final_damage_usual << "\n";
+	}
+	float	final_damage_gluttonous = 0;
+	{
+		// the gluttonous tide, assuming we reached max frenzy
+		float	total_arrows_base = (1 + barrage_arrows + add_arrow);
+		float	total_arrows = total_arrows_base + max_frenzy;
+		float	chance_frenzy_on_hit = chance_frenzy_on_crit * crit_chance;
+
+		float	total_damage = 0;
+		for (size_t i = 0; i < total_arrows; i++) {// 1 barrage(d) attack
+			float	base_frenzy = min_frenzy + i;
+			float	average_frenzy_bonus_dmg = base_frenzy * chance_frenzy_on_hit * frenzy_dmg_bonus;
+			float	average_multi_bonus = std::pow(chance_frenzy_on_hit, base_frenzy) * 0.45;
+			float	bonus_crit_damage = (1 + crit_chance) * (crit_multi + base_frenzy * average_multi_bonus);
+			float	arrow_damage = base_damage * bonus_crit_damage * (1 + average_frenzy_bonus_dmg);
+			final_damage_gluttonous += arrow_damage;
+		}
+		std::cout << "average weird bow damage : " << final_damage_gluttonous << "\n";
+	}
+	float	bonus_damage = final_damage_gluttonous / final_damage_usual - 1;
+	std::cout << "bonus damage : " << (bonus_damage * 100) << " %\n";
+	std::exit(0);
+	/*
+		dmg * (1 + bonus*0.4)
+		dmg * (1 + bonus*0.4 + bonus*0.4)
+		dmg * (1 + bonus*0.4 + bonus*0.4 + bonus*0.4)
+		dmg * (1 + bonus*0.4 + bonus*0.4 + bonus*0.4 + bonus*0.4)
+		dmg * (1 + bonus*0.4 + bonus*0.4 + bonus*0.4 + bonus*0.4 + bonus*0.4)
+		dmg * (1 + bonus*0.4 + bonus*0.4 + bonus*0.4 + bonus*0.4 + bonus*0.4 + bonus*0.4)
+		dmg * (1 + bonus*0.4 + bonus*0.4 + bonus*0.4 + bonus*0.4 + bonus*0.4 + bonus*0.4 + bonus*0.4)
+
+		---
+	*/
+}
 
 void	pdebug(bool reset = false) {
-	const char *s = "0123456789`~!@#$%^&*()_+-=[]{}\\|;:'\",./<>?";
+	const char* s = "0123456789`~!@#$%^&*()_+-=[]{}\\|;:'\",./<>?";
 	static unsigned int i = 0;
 	std::cout << s[i];
 	i++;
@@ -16,7 +920,8 @@ void	blitToWindow(FrameBuffer* readFramebuffer, GLenum attachmentPoint, UIPanel*
 	GLuint fbo;
 	if (readFramebuffer) {
 		fbo = readFramebuffer->fbo;
-	} else {
+	}
+	else {
 		fbo = panel->getFbo();
 	}
 	// glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -33,10 +938,12 @@ void	blitToWindow(FrameBuffer* readFramebuffer, GLenum attachmentPoint, UIPanel*
 	if (readFramebuffer) {
 		w = readFramebuffer->getWidth();
 		h = readFramebuffer->getHeight();
-	} else if (panel->getTexture()) {
+	}
+	else if (panel->getTexture()) {
 		w = panel->getTexture()->getWidth();
 		h = panel->getTexture()->getHeight();
-	} else {
+	}
+	else {
 		std::cout << "FUCK " << __PRETTY_FUNCTION__ << "\n";
 		std::exit(2);
 	}
@@ -52,7 +959,7 @@ void	blitToWindow(FrameBuffer* readFramebuffer, GLenum attachmentPoint, UIPanel*
 }
 
 void	check_paddings() {
-	//	cout << sizeof(BITMAPINFOHEADER) << " = " << sizeof(BMPINFOHEADER) << "\n";
+	//	std::cout << sizeof(BITMAPINFOHEADER) << " = " << sizeof(BMPINFOHEADER) << "\n";
 #ifdef _WIN322
 	std::cout << sizeof(BITMAPFILEHEADER) << " = " << sizeof(BMPFILEHEADER) << "\n";
 	std::cout << "bfType\t" << offsetof(BMPINFOHEADERBITMAPFILEHEADER, bfType) << "\n";
@@ -87,7 +994,7 @@ void	check_paddings() {
 		std::cout << "biYPelsPerMeter\t" << offsetof(BMPINFOHEADER, biYPelsPerMeter) << "\n";
 		std::cout << "biClrUsed\t" << offsetof(BMPINFOHEADER, biClrUsed) << "\n";
 		std::cout << "biClrImportant\t" << offsetof(BMPINFOHEADER, biClrImportant) << "\n";
-		exit(ERROR_PADDING);
+		std::exit(ERROR_PADDING);
 	}
 }
 
@@ -107,11 +1014,11 @@ public:
 	}
 	void	behaveOnTarget(BehaviorManaged* target) {
 		if (this->_anchor) {
-			Object*	speAnchor = dynamic_cast<Object*>(this->_anchor);//specialisation part
+			Object* speAnchor = dynamic_cast<Object*>(this->_anchor);//specialisation part
 			// turn this in Obj3d to get the BP, to get the size of the ovject,
 			// to position the camera relatively to the obj's size.
 
-			Cam*	speTarget = dynamic_cast<Cam*>(target);//specialisation part
+			Cam* speTarget = dynamic_cast<Cam*>(target);//specialisation part
 
 			Math::Vector3	forward(0, -15, -35);
 			if (this->copyRotation) {
@@ -122,7 +1029,7 @@ public:
 			}
 			forward.mult(-1);// invert the forward to position the cam on the back, a bit up
 			Math::Vector3	pos = speAnchor->local.getPos();
-			pos.translate(forward);
+			pos += forward;
 			speTarget->local.setPos(pos);
 		}
 	}
@@ -138,7 +1045,7 @@ public:
 
 	bool			copyRotation;
 private:
-	Object*			_anchor;
+	Object* _anchor;
 	Math::Vector3	_offset;
 
 };
@@ -165,7 +1072,7 @@ void	scene1() {
 	Obj3dBP			rocketBP("obj3d/ARSENAL_VG33/Arsenal_VG33.obj");
 	// Obj3dBP			lamboBP("obj3d/lambo/Lamborginhi_Aventador_OBJ/Lamborghini_Aventador.obj");
 	Obj3dBP			lamboBP("obj3d/lambo/Lamborginhi_Aventador_OBJ/Lamborghini_Aventador_no_collider.obj");
-	cout << "======\n";
+	std::cout << "======\n";
 #endif
 #ifndef TEXTURES
 	Texture* texture1 = new Texture("images/lena.bmp");
@@ -297,14 +1204,14 @@ void	scene1() {
 
 	// Properties::defaultSize = PP_DEFAULT_SIZE;
 
-	cout << &rocket1 << "\n";
+	std::cout << &rocket1 << "\n";
 	// test_behaviors(rocket1);
 
-	cout << "Object # : " << Object::getInstanceAmount() << "\n";
-	cout << "Obj3d # : " << Obj3d::getInstanceAmount() << "\n";
-	cout << "\n";
-	cout << "GL_MAX_CUBE_MAP_TEXTURE_SIZE " << GL_MAX_CUBE_MAP_TEXTURE_SIZE << "\n";
-	cout << "GL_MAX_TEXTURE_SIZE " << GL_MAX_TEXTURE_SIZE << "\n";
+	std::cout << "Object # : " << Object::getInstanceAmount() << "\n";
+	std::cout << "Obj3d # : " << Obj3d::getInstanceAmount() << "\n";
+	std::cout << "\n";
+	std::cout << "GL_MAX_CUBE_MAP_TEXTURE_SIZE " << GL_MAX_CUBE_MAP_TEXTURE_SIZE << "\n";
+	std::cout << "GL_MAX_TEXTURE_SIZE " << GL_MAX_TEXTURE_SIZE << "\n";
 
 	SkyboxPG	sky_pg(CUBEMAP_VS_FILE, CUBEMAP_FS_FILE);
 	Skybox		skybox(*texture3, sky_pg);
@@ -337,7 +1244,7 @@ void	scene1() {
 
 
 #ifndef BEHAVIORS
-	cout << "behavior:\n";
+	std::cout << "behavior:\n";
 	TransformBH		b1;
 	b1.transform.rot.setUnit(ROT_DEG);
 	b1.transform.rot.z = 10 * defaultFps->getTick();
@@ -345,7 +1252,7 @@ void	scene1() {
 	float ss = 1.0f + 0.1f * defaultFps->getTick();
 	//b1.transform.scale = Math::Vector3(ss, ss, ss);
 //	b1.modeScale = MULTIPLICATIVE;
-	cout << "___ adding rocket1: " << &rocket1 << "\n";
+	std::cout << "___ adding rocket1: " << &rocket1 << "\n";
 	b1.addTarget(&rocket1);
 	b1.addTarget(&lambo1);
 	b1.removeTarget(&lambo1);
@@ -371,8 +1278,8 @@ void	scene1() {
 	b3.transform.rot.y = 102.0f * defaultFps->getTick();
 	b3.addTarget(&lambo2);
 
-	cout << "b1: " << b1.getTargetList().size() << "\n";
-	cout << "b2: " << b2.getTargetList().size() << "\n";
+	std::cout << "b1: " << b1.getTargetList().size() << "\n";
+	std::cout << "b2: " << b2.getTargetList().size() << "\n";
 
 	TransformBH		b4;// = b1;//bug
 	b4.transform.scale = Math::Vector3(0, 0, 0);
@@ -383,30 +1290,30 @@ void	scene1() {
 
 	if (false) {// check behavior target, add remove
 
-		cout << "behaviorsActive: " << (empty1.behaviorsActive ? "true" : "false") << "\n";
-		cout << "------------\n";
-		cout << "lambo1:\t" << lambo1.behaviorList.size() << "\n";
-		cout << "b2:    \t" << b2.getTargetList().size() << "\n";
-		cout << "b2.addTarget(&lambo1);\n";
+		std::cout << "behaviorsActive: " << (empty1.behaviorsActive ? "true" : "false") << "\n";
+		std::cout << "------------\n";
+		std::cout << "lambo1:\t" << lambo1.behaviorList.size() << "\n";
+		std::cout << "b2:    \t" << b2.getTargetList().size() << "\n";
+		std::cout << "b2.addTarget(&lambo1);\n";
 		b2.addTarget(&lambo1);
-		cout << "lambo1:\t" << lambo1.behaviorList.size() << "\n";
-		cout << "b2:    \t" << b2.getTargetList().size() << "\n";
-		cout << "b2.removeTarget(&lambo1);\n";
+		std::cout << "lambo1:\t" << lambo1.behaviorList.size() << "\n";
+		std::cout << "b2:    \t" << b2.getTargetList().size() << "\n";
+		std::cout << "b2.removeTarget(&lambo1);\n";
 		b2.removeTarget(&lambo1);
-		cout << "lambo1:\t" << lambo1.behaviorList.size() << "\n";
-		cout << "b2:    \t" << b2.getTargetList().size() << "\n";
+		std::cout << "lambo1:\t" << lambo1.behaviorList.size() << "\n";
+		std::cout << "b2:    \t" << b2.getTargetList().size() << "\n";
 
-		cout << "------------\n";
-		cout << "lambo1:\t" << lambo1.behaviorList.size() << "\n";
-		cout << "b2:    \t" << b2.getTargetList().size() << "\n";
-		cout << "lambo1.addBehavior(&b2);\n";
+		std::cout << "------------\n";
+		std::cout << "lambo1:\t" << lambo1.behaviorList.size() << "\n";
+		std::cout << "b2:    \t" << b2.getTargetList().size() << "\n";
+		std::cout << "lambo1.addBehavior(&b2);\n";
 		lambo1.addBehavior(&b2);
-		cout << "lambo1:\t" << lambo1.behaviorList.size() << "\n";
-		cout << "b2:    \t" << b2.getTargetList().size() << "\n";
-		cout << "lambo1.removeBehavior(&b2);\n";
+		std::cout << "lambo1:\t" << lambo1.behaviorList.size() << "\n";
+		std::cout << "b2:    \t" << b2.getTargetList().size() << "\n";
+		std::cout << "lambo1.removeBehavior(&b2);\n";
 		lambo1.removeBehavior(&b2);
-		cout << "lambo1:\t" << lambo1.behaviorList.size() << "\n";
-		cout << "b2:    \t" << b2.getTargetList().size() << "\n";
+		std::cout << "lambo1:\t" << lambo1.behaviorList.size() << "\n";
+		std::cout << "b2:    \t" << b2.getTargetList().size() << "\n";
 	}
 #endif
 	// exit(0);
@@ -421,7 +1328,7 @@ void	scene1() {
 #endif
 
 #ifndef RENDER
-	cout << "Begin while loop\n";
+	std::cout << "Begin while loop\n";
 	// cam.local.setScale(s,s,s);//bad, undefined behavior
 	while (!glfwWindowShouldClose(glfw._window)) {
 		if (defaultFps->wait_for_next_frame()) {
@@ -430,20 +1337,20 @@ void	scene1() {
 				if (false) {
 					Math::Matrix4	matRocket = rocket1.getWorldMatrix();
 					matRocket.printData();
-					cout << "---------------\n";
+					std::cout << "---------------\n";
 				}
 				if (false) {
 					the42_1.getWorldMatrix().printData();
 				}
 				if (false) {
-					cout << "---rocket1\n" << rocket1.local.getScale().toString() << "\n";
+					std::cout << "---rocket1\n" << rocket1.local.getScale().toString() << "\n";
 					// rocket1.getWorldMatrix().printData();
-					cout << "---lambo2\n" << lambo2.local.getScale().toString() << "\n";
+					std::cout << "---lambo2\n" << lambo2.local.getScale().toString() << "\n";
 					// lambo2.getWorldMatrix().printData();
-					cout << "---lambo3\n" << lambo3.local.getScale().toString() << "\n";
+					std::cout << "---lambo3\n" << lambo3.local.getScale().toString() << "\n";
 					// lambo3.getWorldMatrix().printData();
-					cout << "---------------\n" << lamboBP.getDimensions().toString() << "\n";
-					cout << "---------------\n";
+					std::cout << "---------------\n" << lamboBP.getDimensions().toString() << "\n";
+					std::cout << "---------------\n";
 				}
 			}
 			////////////////////////////////////////// motion/behaviors
@@ -481,10 +1388,10 @@ void	scene1() {
 				glfwSetWindowShouldClose(glfw._window, GLFW_TRUE);
 		}
 	}
-	cout << "End while loop\n";
+	std::cout << "End while loop\n";
 #endif
 
-	cout << "deleting textures...\n";
+	std::cout << "deleting textures...\n";
 	delete texture1;
 	delete texture2;
 	delete texture3;
@@ -659,7 +1566,7 @@ void	fillData(uint8_t* dst, QuadNode* node, int* leafAmount, int baseWidth, bool
 		//(*leafAmount)++;
 		//std::cout << "leaf: " << node->width << "x" << node->height << " at " << node->x << ":" << node->y << "\n";
 		if (node->width == 0 || node->height == 0) {
-			std::cout << "error with tree data\n"; exit(2);
+			std::cout << "error with tree data\n"; std::exit(2);
 		}
 		if (node->width * node->height >= DEBUG_LEAF_AREA && DEBUG_LEAF && *leafAmount == 0 && DEBUG_FILL_TOO) {
 			std::cout << "Fill new leaf: " << node->width << "x" << node->height << " at " << node->x << ":" << node->y << "\t";
@@ -1143,14 +2050,14 @@ void	scene_procedural() {
 	std::cout << "deleting textures...\n";
 }
 
-void		buildChunk(ProceduralManager& manager, QuadNode* node, int chunkI, int chunkJ, int threshold) {//can be used for every tree node
+void	buildChunk(ProceduralManager& manager, QuadNode* node, int chunkI, int chunkJ, int threshold) {//can be used for every tree node
 	if (!node)
 		return;
 	//if (node->isLeaf()) {
 	if (node->detail <= threshold) {
 		//std::cout << "leaf: " << node->width << "x" << node->height << " at " << node->x << ":" << node->y << "\n";
 		if (node->width == 0 || node->height == 0) {
-			std::cout << "error with tree data\n"; exit(2);
+			std::cout << "error with tree data\n"; std::exit(2);
 		}
 		if (node->width * node->height >= DEBUG_LEAF_AREA && DEBUG_LEAF && DEBUG_BUILD_TOO) {
 			std::cout << "Display new leaf: " << node->width << "x" << node->height << " at " << node->x << ":" << node->y << "\t";
@@ -1186,7 +2093,7 @@ void		buildChunk(ProceduralManager& manager, QuadNode* node, int chunkI, int chu
 	}
 }
 
-void		buildWorld(ProceduralManager& manager, QuadNode*** memory4Tree) {
+void	buildWorld(ProceduralManager& manager, QuadNode*** memory4Tree) {
 	//std::cout << "building world...\n";
 
 	int longTreshold = 12;
@@ -1241,7 +2148,7 @@ uint8_t* generatePerlinNoise(ProceduralManager& manager, int posX, int posY, int
 void	updateChunksX(ProceduralManager& manager, QuadNode*** chunkMemory4Tree, uint8_t*** chunkMemory, int change) {
 	if (abs(change) > 1) {
 		std::cout << "player went too fast on X, or teleported\n";
-		exit(1);
+		std::exit(1);
 	}
 
 	bool displayDebug = false;
@@ -1318,7 +2225,7 @@ void	updateChunksX(ProceduralManager& manager, QuadNode*** chunkMemory4Tree, uin
 void	updateChunksY(ProceduralManager& manager, QuadNode*** chunkMemory4Tree, uint8_t*** chunkMemory, int change) {
 	if (abs(change) > 1) {
 		std::cout << "player went too fast on Y, or teleported\n";
-		exit(1);
+		std::exit(1);
 	}
 
 	bool displayDebug = false;
@@ -1708,17 +2615,12 @@ public:
 		this->player = nullptr;
 		this->playerSpeed = 20;//unit/s
 		this->shiftPressed = false;
-		int s = 16;
-		this->chunk_size = Math::Vector3(s * 2,
-										s * 2,
-										s * 2);
-		int	g = 5;
-		int	d = g * 2 / 3;
-		d = g;
-		if (d % 2 == 0)
-			d++;
+		int s = 32;
+		this->chunk_size = Math::Vector3(s, s, s);
+		int	g = 3;
+		int	d = g;// *2 / 3;
 		this->gridSize = Math::Vector3(g, g, g);
-		this->gridSizeDisplayed = Math::Vector3(d, d, d); //7 - 3 = 4 // 2 each side
+		this->gridSizeDisplayed = Math::Vector3(d, d, d);
 
 		this->minimapCenterX = this->chunk_size.x * this->gridSize.x * 0.5f * this->minimapCoef;
 		this->minimapCenterZ = this->chunk_size.z * this->gridSize.z * 0.5f * this->minimapCoef;
@@ -1733,21 +2635,21 @@ public:
 	~OctreeManager() {}
 
 	unsigned int		seed;
-	siv::PerlinNoise*	perlin;
-	PerlinSettings*		ps;
+	siv::PerlinNoise* perlin;
+	PerlinSettings* ps;
 	std::list<Object*>	renderlist;
 	std::list<Object*>	renderlistOctree;
 	std::list<Object*>	renderlistGrid;
 	std::list<Object*>	renderlistVoxels[6];//6faces
 	std::list<Object*>	renderlistChunk;
 	std::list<Object*>	renderlistSkybox;
-	UIPanel* **			minimapPanels;
-	UIImage*			playerMinimap;
+	UIPanel*** minimapPanels;
+	UIImage* playerMinimap;
 	float				minimapCoef;
 	int					minimapCenterX;
 	int					minimapCenterZ;
 	GLuint				polygon_mode;
-	Obj3d*				player;
+	Obj3d* player;
 	float				playerSpeed;
 	bool				shiftPressed;
 	Math::Vector3		chunk_size;
@@ -1758,6 +2660,179 @@ public:
 	unsigned int		cpu_coreAmount;
 };
 
+void	scene_benchmarks() {
+	char input[100];
+	std::cout << "Choose:\n\t";
+	std::cout << "1 - glDrawArrays\n\t";
+	std::cout << "2 - glDrawElements\n\t";
+	std::cout << "3 - glDrawArraysInstanced\n\t";
+	std::cout << "4 - glDrawElementsInstanced\n";
+	input[0] = '1';	input[1] = 0;
+	std::cin >> input;
+	OctreeManager	m;
+	m.glfw = new Glfw(WINX, WINY);
+
+	//Blueprint global settings
+	Obj3dBP::defaultSize = 1;
+	Obj3dBP::rescale = true;
+	Obj3dBP::center = false;
+	Obj3dBP::defaultDataMode = BP_INDICES;
+	if (input[0] % 2 == 1)
+		Obj3dBP::defaultDataMode = BP_LINEAR;
+	Obj3dBP		cubebp(SIMPLEGL_FOLDER + "obj3d/cube.obj");
+	Obj3dBP		lambobp(SIMPLEGL_FOLDER + "obj3d/lambo/Lamborginhi_Aventador_OBJ/Lamborghini_Aventador_no_collider.obj");
+
+	Texture* lenatex = new Texture(SIMPLEGL_FOLDER + "images/lena.bmp");
+	Texture* lambotex = new Texture(SIMPLEGL_FOLDER + "obj3d/lambo/Lamborginhi_Aventador_OBJ/Lamborginhi_Aventador_diffuse.bmp");
+	Texture* tex_skybox = new Texture(SIMPLEGL_FOLDER + "images/skybox4.bmp");
+
+	Obj3dPG		rendererObj3d(SIMPLEGL_FOLDER + OBJ3D_VS_FILE, SIMPLEGL_FOLDER + OBJ3D_FS_FILE);
+	Obj3dIPG	rendererObj3dInstanced(SIMPLEGL_FOLDER + OBJ3D_INSTANCED_VS_FILE, SIMPLEGL_FOLDER + OBJ3D_FS_FILE);
+	SkyboxPG	rendererSkybox(SIMPLEGL_FOLDER + CUBEMAP_VS_FILE, SIMPLEGL_FOLDER + CUBEMAP_FS_FILE);
+
+	Skybox		skybox(*tex_skybox, rendererSkybox);
+	m.renderlistSkybox.push_back(&skybox);
+
+	Cam		cam(m.glfw->getWidth(), m.glfw->getHeight());
+	cam.local.setPos(-5, -5, -5);
+	cam.speed = 5;
+	cam.printProperties();
+	cam.lockedMovement = false;
+	cam.lockedOrientation = false;
+	//m.glfw->setMouseAngle(-1);//?
+	m.cam = &cam;
+
+	Obj3dPG* renderer = &rendererObj3d;
+	if (input[0] >= '3') {
+		renderer = &rendererObj3dInstanced;
+		std::cout << "Instanced rendering enabled\n";
+	}
+
+	//texture edit
+	uint8_t* tex_data = lenatex->getData();
+	unsigned int w = lenatex->getWidth();
+	unsigned int h = lenatex->getHeight();
+	int	maxs = w * h * 3;
+	for (int i = 0; i < maxs; i++) {
+		if (i % 3 == 0)
+			tex_data[i] = 255;
+	}
+	lenatex->updateData(tex_data, w, h);
+
+
+	if (1) {//cubes
+		for (size_t i = 0; i < 10; i++) {
+			for (size_t j = 0; j < 10; j++) {
+				Obj3d* cube = new Obj3d(cubebp, *renderer);
+				cube->local.setPos(-10 + float(i) * -1.1, j * 1.1, 0);
+				cube->local.setScale(1, 1, 1);
+				cube->setColor(2.5 * i, 0, 0);
+				cube->displayTexture = true;
+				cube->setTexture(lenatex);
+				cube->setPolygonMode(GL_FILL);
+				m.renderlist.push_back(cube);
+			}
+		}
+	}
+	if (1) {//lambos
+		for (size_t k = 0; k < 1; k++) {
+			for (size_t j = 0; j < 50; j++) {
+				for (size_t i = 0; i < 50; i++) {
+					Obj3d* lambo = new Obj3d(lambobp, *renderer);
+					lambo->local.setPos(i * 3, j * 1.5, k);
+					lambo->local.enlarge(5, 5, 5);
+					lambo->setColor(222, 0, 222);
+					lambo->setTexture(lambotex);
+					lambo->displayTexture = true;
+					lambo->setPolygonMode(GL_FILL);
+					m.renderlist.push_back(lambo);
+				}
+			}
+		}
+	}
+
+	Fps	fps(135);
+	Fps* defaultFps = &fps;
+
+	Obj3d* frontobj = static_cast<Obj3d*>(m.renderlist.front());
+	Obj3dBP& frontbp = frontobj->getBlueprint();
+#ifndef SHADER_INIT
+	for (auto o : m.renderlist)
+		o->update();
+	glUseProgram(renderer->_program);
+	glUniform1i(renderer->_dismod, 0);// 1 = display plain_color, 0 = vertex_color
+	glUniform3f(renderer->_plain_color, 200, 0, 200);
+
+	glUniform1f(renderer->_tex_coef, 1.0f);
+	glBindVertexArray(frontbp.getVao());
+	glBindTexture(GL_TEXTURE_2D, lambotex->getId());
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	int	vertices_amount = frontbp.getPolygonAmount() * 3;
+#endif
+#define BUFFER_OFFSET(i) ((char *)NULL + (i))
+	glfwSwapInterval(0);//0 = disable vsynx
+	glDisable(GL_CULL_FACE);
+	std::cout << "renderlist: " << m.renderlist.size() << "\n";
+	std::cout << "Begin while loop\n";
+	while (!glfwWindowShouldClose(m.glfw->_window)) {
+		if (defaultFps->wait_for_next_frame()) {
+			m.glfw->setTitle(std::to_string(defaultFps->getFps()) + " fps");
+
+			glfwPollEvents();
+			m.glfw->updateMouse();//to do before cam's events
+			m.cam->events(*m.glfw, float(defaultFps->getTick()));
+
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			if (input[0] >= '3') {//instanced
+				renderer->renderObjects(m.renderlist, cam, PG_FORCE_DRAW);
+			}
+			else if (1) {
+				renderer->renderObjects(m.renderlist, cam, PG_FORCE_DRAW);
+			}
+			else {//optimized mass renderer (non instanced) non moving objects, same BP
+				Math::Matrix4	VPmatrix(cam.getProjectionMatrix());
+				Math::Matrix4	Vmatrix = cam.getViewMatrix();
+				VPmatrix.mult(Vmatrix);
+
+				glUseProgram(renderer->_program);
+				if (frontobj->displayTexture && frontobj->getTexture() != nullptr) {
+					glUniform1f(renderer->_tex_coef, 1.0f);
+					glActiveTexture(GL_TEXTURE0);//required for some drivers
+					glBindTexture(GL_TEXTURE_2D, frontobj->getTexture()->getId());
+				}
+				else { glUniform1f(renderer->_tex_coef, 0.0f); }
+				glBindVertexArray(frontbp.getVao());
+
+				for (Object* object : m.renderlist) {
+					Math::Matrix4	MVPmatrix(VPmatrix);
+					MVPmatrix.mult(object->getWorldMatrix());
+					MVPmatrix.setOrder(COLUMN_MAJOR);
+
+					glUniformMatrix4fv(renderer->_mat4_mvp, 1, GL_FALSE, MVPmatrix.getData());
+					//if (Obj3dBP::defaultDataMode == BP_LINEAR)
+					if (frontbp.getDataMode() == BP_LINEAR)
+						glDrawArrays(GL_TRIANGLES, 0, vertices_amount);
+					else {// should be BP_INDICES
+						glDrawElements(GL_TRIANGLES, vertices_amount, GL_UNSIGNED_INT, 0);
+					}
+
+				}
+				glBindVertexArray(0);
+				glBindTexture(GL_TEXTURE_2D, 0);
+			}
+
+			rendererSkybox.renderObjects(m.renderlistSkybox, cam, PG_FORCE_DRAW);//this will unbind obj3d pg vao and texture
+			glfwSwapBuffers(m.glfw->_window);
+
+			if (GLFW_PRESS == glfwGetKey(m.glfw->_window, GLFW_KEY_ESCAPE))
+				glfwSetWindowShouldClose(m.glfw->_window, GLFW_TRUE);
+		}
+	}
+
+	std::cout << "End while loop\n";
+}
+
+#define M_THREADS_BUILDERS		1
 #define M_PERLIN_GENERATION		1
 #define M_OCTREE_OPTIMISATION	1
 #define M_DISPLAY_BLACK			1
@@ -1780,27 +2855,34 @@ static void		keyCallback_ocTree(GLFWwindow* window, int key, int scancode, int a
 			if (key == GLFW_KEY_EQUAL) {
 				manager->threshold++;
 				manager->glfw->setTitle(std::to_string(manager->threshold).c_str());
-			} else if (key == GLFW_KEY_MINUS && manager->threshold > 0) {
+			}
+			else if (key == GLFW_KEY_MINUS && manager->threshold > 0) {
 				manager->threshold--;
 				manager->glfw->setTitle(std::to_string(manager->threshold).c_str());
-			} else if (key == GLFW_KEY_ENTER) {
+			}
+			else if (key == GLFW_KEY_ENTER) {
 				manager->polygon_mode++;
 				manager->polygon_mode = GL_POINT + (manager->polygon_mode % 3);
 				for (std::list<Object*>::iterator it = manager->renderlist.begin(); it != manager->renderlist.end(); ++it) {
 					((Obj3d*)(*it))->setPolygonMode(manager->polygon_mode);
 				}
-			} else if (key == GLFW_KEY_X) {
+			}
+			else if (key == GLFW_KEY_X) {
 				manager->cam->local.translate(move, 0, 0);
-			} else if (key == GLFW_KEY_Y) {
+			}
+			else if (key == GLFW_KEY_Y) {
 				manager->cam->local.translate(0, move, 0);
-			} else if (key == GLFW_KEY_Z) {
+			}
+			else if (key == GLFW_KEY_Z) {
 				manager->cam->local.translate(0, 0, move);
-			}  else if (key == GLFW_KEY_LEFT_SHIFT) {
+			}
+			else if (key == GLFW_KEY_LEFT_SHIFT) {
 				manager->shiftPressed = true;
 				manager->cam->speed = manager->playerSpeed * 3;
 			}
 		}
-	} else if (action == GLFW_RELEASE) {
+	}
+	else if (action == GLFW_RELEASE) {
 		std::cout << "GLFW_RELEASE:" << key << "\n";
 		if (manager->glfw) {
 			if (key == GLFW_KEY_LEFT_SHIFT) {
@@ -1854,9 +2936,10 @@ void	grabObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager, 
 
 	int		hiddenBlocks = 0;
 	int		total_polygons = 0;
+	int		cubgrid = 0;
 
 	float	scale_coef = 0.99;
-	float	scale_coe2 = 1.0;
+	float	scale_coe2 = 0.95;
 	//scale_coef = 1;
 	std::stringstream polygon_debug;
 	polygon_debug << "chunks polygons: ";
@@ -1875,16 +2958,33 @@ void	grabObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager, 
 	endDisplay = Math::Vector3(generator.gridSize);
 #endif
 
+	if (0 && M_DRAW_GRID_CHUNK) {
+		Math::Vector3 pos(
+			int(-generator.gridSize.x / 2),
+			int(-generator.gridSize.y / 2),
+			int(-generator.gridSize.z / 2));
+		pos += generator.gridIndex;
+		pos.scale(generator.chunkSize);
+		Math::Vector3 scale = generator.gridSize;
+		scale.scale(generator.chunkSize);
+		Obj3d* cubeGrid = new Obj3d(cubebp, obj3d_prog);
+		cubeGrid->setColor(255, 0, 0);
+		cubeGrid->local.setPos(pos);
+		cubeGrid->local.setScale(scale);
+		cubeGrid->setPolygonMode(GL_LINE);
+		cubeGrid->displayTexture = false;
+		manager.renderlistGrid.push_back(cubeGrid);
+		cubgrid++;
+	}
+	//tmp
+	startDisplay = generator.gridDisplayIndex;
+	endDisplay = startDisplay + generator.gridDisplaySize;
+	std::cout << "display " << startDisplay << " -> " << endDisplay << "\n";
 	for (unsigned int k = startDisplay.z; k < endDisplay.z; k++) {
 		for (unsigned int j = startDisplay.y; j < endDisplay.y; j++) {
 			for (unsigned int i = startDisplay.x; i < endDisplay.x; i++) {
 				Chunk* chunkPtr = generator.grid[k][j][i];
 				if (chunkPtr) {//at this point, the chunk might not be generated yet
-					if (!chunkPtr->root) {
-						std::cout << "fuck there is no root\n";
-						std::exit(1);
-					}
-
 					if (0) {//coloring origin of each octree/chunk
 						Math::Vector3	siz(1, 1, 1);
 						Octree* root = chunkPtr->root->getRoot(chunkPtr->root->pos, siz);
@@ -1899,14 +2999,13 @@ void	grabObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager, 
 						Obj3d* cubeGrid = new Obj3d(cubebp, obj3d_prog);
 						cubeGrid->setColor(255, 0, 0);
 						cubeGrid->local.setPos(chunkPtr->pos);
-						cubeGrid->local.setScale(chunkPtr->size.x * scale_coe2, chunkPtr->size.y * scale_coe2, chunkPtr->size.z * scale_coe2);
+						cubeGrid->local.setScale(chunkPtr->size * scale_coe2);
 						cubeGrid->setPolygonMode(GL_LINE);
 						cubeGrid->displayTexture = false;
 						manager.renderlistGrid.push_back(cubeGrid);
+						cubgrid++;
 					}
-
-					// one obj3d for the entire chunk
-					if (1) {
+					if (1) {// one obj3d for the entire chunk
 						if (chunkPtr->mesh) {
 							manager.renderlistChunk.push_back(chunkPtr->mesh);
 							chunkPtr->mesh->setTexture(tex_lena);
@@ -1919,10 +3018,8 @@ void	grabObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager, 
 					else {// oldcode, browsing to build 1 obj3d per cube (not chunk)
 						chunkPtr->root->browse(0, [&manager, &cubebp, &obj3d_prog, scale_coef, scale_coe2, chunkPtr, tex_lena, &hiddenBlocks](Octree* node) {
 							if (M_DISPLAY_BLACK || (node->pixel.r != 0 && node->pixel.g != 0 && node->pixel.b != 0)) {// pixel 0?
-								Math::Vector3	worldPos(chunkPtr->pos);
-								worldPos.add(node->pos);
-								Math::Vector3	center(worldPos);
-								center.add(node->size.x / 2, node->size.y / 2, node->size.z / 2);
+								Math::Vector3	worldPos = chunkPtr->pos + node->pos;
+								Math::Vector3	center = worldPos + (node->size / 2);
 								if ((node->pixel.r < VOXEL_EMPTY.r \
 									|| node->pixel.g < VOXEL_EMPTY.g \
 									|| node->pixel.b < VOXEL_EMPTY.b) \
@@ -1969,228 +3066,33 @@ void	grabObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager, 
 									}
 								}
 							}
-							});
+						});
 					}
 				}
 			}
 		}
 	}
-	//std::cout << polygon_debug.str() << "\n";
+
+	//std::cout << "polygon debug:\n" << polygon_debug.str() << "\n";
 	std::cout << "total polygons:\t" << total_polygons << "\n";
 	std::cout << "hiddenBlocks:\t" << hiddenBlocks << "\n";
 	for (auto i : manager.renderlistVoxels)
 		std::cout << "renderlistVoxels[]: " << i.size() << "\n";
 	std::cout << "renderlistOctree: " << manager.renderlistOctree.size() << "\n";
-}
-
-void	scene_benchmarks() {
-	char input[100];
-	std::cout << "Choose:\n\t";
-	std::cout << "1 - glDrawArrays\n\t";
-	std::cout << "2 - glDrawElements\n\t";
-	std::cout << "3 - glDrawArraysInstanced\n\t";
-	std::cout << "4 - glDrawElementsInstanced\n";
-	input[0] = '1';	input[1] = 0;
-	std::cin >> input;
-	OctreeManager	m;
-	m.glfw = new Glfw(WINX, WINY);
-	std::string	pathPrefix("SimpleGL/");
-
-	//Blueprint global settings
-	Obj3dBP::defaultSize = 1;
-	Obj3dBP::defaultDataMode = BP_INDICES;
-	if (input[0] % 2 == 1)
-		Obj3dBP::defaultDataMode = BP_LINEAR;
-	Obj3dBP::rescale = true;
-	Obj3dBP::center = false;
-	Obj3dBP		cubebp(pathPrefix + "obj3d/cube.obj");
-	Obj3dBP		lambobp(pathPrefix + "obj3d/lambo/Lamborginhi_Aventador_OBJ/Lamborghini_Aventador_no_collider.obj");
-
-	Texture* lenatex = new Texture(pathPrefix + "images/lena.bmp");
-	Texture* lambotex = new Texture(pathPrefix + "obj3d/lambo/Lamborginhi_Aventador_OBJ/Lamborginhi_Aventador_diffuse.bmp");
-	Texture* tex_skybox = new Texture(pathPrefix + "images/skybox4.bmp");
-
-	Obj3dPG		rendererObj3d(pathPrefix + OBJ3D_VS_FILE, pathPrefix + OBJ3D_FS_FILE);
-	Obj3dIPG	rendererObj3dInstanced(pathPrefix + OBJ3D_INSTANCED_VS_FILE, pathPrefix + OBJ3D_FS_FILE);
-	SkyboxPG	rendererSkybox(pathPrefix + CUBEMAP_VS_FILE, pathPrefix + CUBEMAP_FS_FILE);
-
-	Skybox		skybox(*tex_skybox, rendererSkybox);
-	m.renderlistSkybox.push_back(&skybox);
-
-	Cam		cam(m.glfw->getWidth(), m.glfw->getHeight());
-	cam.local.setPos(-5, -5, -5);
-	cam.speed = 5;
-	cam.printProperties();
-	cam.lockedMovement = false;
-	cam.lockedOrientation = false;
-	//m.glfw->setMouseAngle(-1);//?
-	m.cam = &cam;
-
-	Obj3dPG* renderer = &rendererObj3d;
-	if (input[0] >= '3') {
-		renderer = &rendererObj3dInstanced;
-		std::cout << "Instanced rendering enabled\n";
-	}
-
-	//texture edit
-	uint8_t* tex_data = lenatex->getData();
-	unsigned int w = lenatex->getWidth();
-	unsigned int h = lenatex->getHeight();
-	int	maxs = w * h * 3;
-	for (int i = 0; i < maxs; i++) {
-		if (i % 3 == 0)
-			tex_data[i] = 255;
-	}
-	lenatex->updateData(tex_data, w, h);
-
-
-	if (1) {//test 10 cubes
-		for (size_t i = 0; i < 10; i++) {
-			Obj3d* cube = new Obj3d(cubebp, *renderer);
-			cube->local.setPos(float(i) * 1.1, 0, 0);
-			cube->local.setScale(1, 1, 1);
-			cube->setColor(25 * i, 0, 0);
-			cube->displayTexture = true;
-			cube->setTexture(lenatex);
-			cube->setPolygonMode(GL_FILL);
-			m.renderlist.push_back(cube);
-		}
-	}
-	else if (1) {//lambos
-		for (size_t k = 0; k < 1; k++) {
-			for (size_t j = 0; j < 50; j++) {
-				for (size_t i = 0; i < 50; i++) {
-					Obj3d* lambo = new Obj3d(lambobp, *renderer);
-					lambo->local.setPos(i, j, k);
-					lambo->local.enlarge(5, 5, 5);
-					lambo->setColor(222, 0, 222);
-					lambo->setTexture(lambotex);
-					lambo->displayTexture = true;
-					lambo->setPolygonMode(GL_FILL);
-					m.renderlist.push_back(lambo);
-				}
-			}
-		}
-	}
-
-	Fps	fps500(500);
-	Fps	fps144(144);
-	Fps	fps60(60);
-	Fps* defaultFps = &fps60;
-	//Fps* defaultFps = &fps144;
-	//Fps* defaultFps = &fps500;
-
-
-	Obj3d* frontobj = static_cast<Obj3d*>(m.renderlist.front());
-	Obj3dBP& frontbp = frontobj->getBlueprint();
-#ifndef SHADER_INIT
-	for (auto o : m.renderlist)
-		o->update();
-	glUseProgram(renderer->_program);
-	glUniform1i(renderer->_dismod, 0);// 1 = display plain_color, 0 = vertex_color
-	glUniform3f(renderer->_plain_color, 200, 0, 200);
-
-	glUniform1f(renderer->_tex_coef, 1.0f);
-	glBindVertexArray(frontbp.getVao());
-	glBindTexture(GL_TEXTURE_2D, lambotex->getId());
-	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	int	vertices_amount = frontbp.getPolygonAmount() * 3;
-#endif
-#define BUFFER_OFFSET(i) ((char *)NULL + (i))
-	glfwSwapInterval(0);//0 = disable vsynx
-	glDisable(GL_CULL_FACE);
-	std::cout << "renderlist: " << m.renderlist.size() << "\n";
-	std::cout << "Begin while loop\n";
-	while (!glfwWindowShouldClose(m.glfw->_window)) {
-		if (defaultFps->wait_for_next_frame()) {
-			m.glfw->setTitle(std::to_string(defaultFps->getFps()) + " fps");
-
-			glfwPollEvents();
-			m.glfw->updateMouse();//to do before cam's events
-			m.cam->events(*m.glfw, float(defaultFps->getTick()));
-
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-			if (input[0] >= '3') {//instanced
-				renderer->renderObjects(m.renderlist, cam, PG_FORCE_DRAW);
-			}
-			else if (0) {
-				renderer->renderObjects(m.renderlist, cam, PG_FORCE_DRAW);
-			}
-			else {//optimized mass renderer (non instanced) non moving objects
-				Math::Matrix4	VPmatrix(cam.getProjectionMatrix());
-				Math::Matrix4	Vmatrix = cam.getViewMatrix();
-				VPmatrix.mult(Vmatrix);// do it in shader ? NO cauz shader will do it for every vertice
-
-				glUseProgram(renderer->_program);
-				if (frontobj->displayTexture && frontobj->getTexture() != nullptr) {
-					glUniform1f(renderer->_tex_coef, 1.0f);
-					glActiveTexture(GL_TEXTURE0);//required for some drivers
-					glBindTexture(GL_TEXTURE_2D, frontobj->getTexture()->getId());
-				}
-				else { glUniform1f(renderer->_tex_coef, 0.0f); }
-				glBindVertexArray(frontbp.getVao());
-
-				for (Object* object : m.renderlist) {
-					Math::Matrix4	MVPmatrix(VPmatrix);
-					MVPmatrix.mult(object->getWorldMatrix());
-					MVPmatrix.setOrder(COLUMN_MAJOR);
-
-					glUniformMatrix4fv(renderer->_mat4_mvp, 1, GL_FALSE, MVPmatrix.getData());
-					if (Obj3dBP::defaultDataMode == BP_LINEAR)
-						glDrawArrays(GL_TRIANGLES, 0, vertices_amount);
-					else {// should be BP_INDICES
-						glDrawElements(GL_TRIANGLES, vertices_amount, GL_UNSIGNED_INT, 0);
-					}
-
-				}
-				glBindVertexArray(0);
-				glBindTexture(GL_TEXTURE_2D, 0);
-			}
-
-			rendererSkybox.renderObjects(m.renderlistSkybox, cam, PG_FORCE_DRAW);//this will unbind obj3d pg vao and texture
-			glfwSwapBuffers(m.glfw->_window);
-
-			if (GLFW_PRESS == glfwGetKey(m.glfw->_window, GLFW_KEY_ESCAPE))
-				glfwSetWindowShouldClose(m.glfw->_window, GLFW_TRUE);
-		}
-	}
-
-	std::cout << "End while loop\n";
-}
-
-void	th1_mapGeneration(ChunkGenerator& generator, OctreeManager& manager, Obj3dBP& cubebp, Obj3dPG& renderer, Texture* tex_lena) {
-	Math::Vector3 playerPos;
-	while (!generator.terminateThreads) {//no mutex for reading?
-		generator.mutex_cam.lock();
-		playerPos = manager.cam->local.getPos();
-		generator.mutex_cam.unlock();
-		generator.updateChunkJobsDone();//before updateChunkJobsToDo()
-		std::cout << "[helper0] jobs done updated\n";
-		generator.job_mutex.lock();
-		if (generator.jobsToDo.size() == 0) {
-			generator.job_mutex.unlock();
-			generator.updateChunkJobsToDo();
-			std::cout << " [helper0] jobsToDo updated\n";
-		}
-		else {
-			generator.job_mutex.unlock();
-		}
-		if (generator.updateGrid(playerPos)) {//player changed chunk
-
-		}
-		std::cout << "[helper0] grid updated with player pos\n";
-		std::this_thread::sleep_for(1s);
-	}
-	std::cout << "[helper0] exiting...\n";
+	std::cout << "cubes grid : " << cubgrid << "\n";
 }
 
 void	scene_octree() {
+	//scene_benchmarks(); exit(0);
+
 #ifndef INIT_GLFW
+	float	win_height = 900;
+	float	win_width = 1600;
 	OctreeManager	m;
-	std::cout << "threads: " << m.cpu_coreAmount << "\n";
+	std::cout << "cpu core Amount: " << m.cpu_coreAmount << "\n";
 	std::this_thread::sleep_for(1s);
 	//m.glfw = new Glfw(WINX, WINY);
-	m.glfw = new Glfw(1600, 900);
+	m.glfw = new Glfw(win_width, win_height);
 	glfwSetWindowPos(m.glfw->_window, 100, 50);
 
 #if 0
@@ -2205,8 +3107,6 @@ void	scene_octree() {
 
 	glfwSwapInterval(0);//0 = disable vsynx
 	//glDisable(GL_CULL_FACE);
-	//glEnable(GL_BLEND);
-	//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	m.glfw->setTitle("Tests octree");
 	m.glfw->activateDefaultCallbacks(&m);
@@ -2218,21 +3118,38 @@ void	scene_octree() {
 	m.glfw->func[GLFW_KEY_Z] = keyCallback_ocTree;
 	m.glfw->func[GLFW_KEY_LEFT_SHIFT] = keyCallback_ocTree;
 
-	std::string	pathPrefix("SimpleGL/");
-	Texture* tex_skybox = new Texture(pathPrefix + "images/skybox4.bmp");
-	Texture* tex_lena = new Texture(pathPrefix + "images/lena.bmp");
-	Texture* tex_player = new Texture(pathPrefix + "images/player_icon.bmp");
+	Texture* tex_skybox = new Texture(SIMPLEGL_FOLDER + "images/skybox4.bmp");
+	Texture* tex_lena = new Texture(SIMPLEGL_FOLDER + "images/lena.bmp");
+	Texture* tex_player = new Texture(SIMPLEGL_FOLDER + "images/player_icon.bmp");
 
 	m.playerMinimap = new UIImage(tex_player);
 
 	//programs
-	Obj3dPG			rendererObj3d(pathPrefix + OBJ3D_VS_FILE, pathPrefix + OBJ3D_FS_FILE);
-	Obj3dIPG		rendererObj3dInstanced(pathPrefix + OBJ3D_INSTANCED_VS_FILE, pathPrefix + OBJ3D_FS_FILE);
-	SkyboxPG		rendererSkybox(pathPrefix + CUBEMAP_VS_FILE, pathPrefix + CUBEMAP_FS_FILE);
+	#if 1 //text
+	TextPG::fonts_folder = Misc::getCurrentDirectory() + SIMPLEGL_FOLDER + "fonts/";
+	TextPG			rendererText_arial(SIMPLEGL_FOLDER + "shaders/text.vs.glsl", SIMPLEGL_FOLDER + "shaders/text.fs.glsl");
+	if (rendererText_arial.init_freetype("arial.ttf", win_width, win_height) == -1) {
+		std::exit(-1);
+	}
+	Text			text1;
+	text1.text = "This is sample text";
+	text1.color = Math::Vector3(0.5, 0.8f, 0.2f);
+	text1.local.setPos(200, 200, 1.0f);
+	text1.local.setScale(1, 1, 1);
+	Text			text2;
+	text2.text = "(C) LearnOpenGL.com";
+	text2.color = Math::Vector3(0.3, 0.7f, 0.9f);
+	text2.local.setPos(540.0f, 570.0f, 0.5f);
+	text2.local.setScale(0.5, 1, 1);
+	#endif
+
+	Obj3dPG			rendererObj3d(SIMPLEGL_FOLDER + OBJ3D_VS_FILE, SIMPLEGL_FOLDER + OBJ3D_FS_FILE);
+	Obj3dIPG		rendererObj3dInstanced(SIMPLEGL_FOLDER + OBJ3D_INSTANCED_VS_FILE, SIMPLEGL_FOLDER + OBJ3D_FS_FILE);
+	SkyboxPG		rendererSkybox(SIMPLEGL_FOLDER + CUBEMAP_VS_FILE, SIMPLEGL_FOLDER + CUBEMAP_FS_FILE);
 	Skybox			skybox(*tex_skybox, rendererSkybox);
 	m.renderlistSkybox.push_back(&skybox);
 	Obj3dPG* renderer = &rendererObj3d;
-	renderer = &rendererObj3dInstanced;
+	//renderer = &rendererObj3dInstanced;
 	Chunk::renderer = &rendererObj3d;
 
 	//Blueprint global settings
@@ -2240,7 +3157,7 @@ void	scene_octree() {
 	Obj3dBP::defaultDataMode = BP_LINEAR;
 	Obj3dBP::rescale = true;
 	Obj3dBP::center = false;
-	Obj3dBP		cubebp(pathPrefix + "obj3d/cube.obj");
+	Obj3dBP		cubebp(SIMPLEGL_FOLDER + "obj3d/cube.obj");
 	Chunk::cubeBlueprint = &cubebp;
 	Obj3dBP::defaultDataMode = BP_INDICES;
 
@@ -2280,46 +3197,45 @@ void	scene_octree() {
 #ifndef OCTREE
 	cam.local.setPos(28, 50, 65);//buried close to the surface
 	cam.local.setPos(280, 50, 65);//
-	//cam.local.setPos(-13, 76, 107);//instant crash
+	//cam.local.setPos(280, -100, 65);//crash
+	//cam.local.setPos(-13, 76, 107);//crash
 	//chunk generator
 	Math::Vector3	playerPos = cam.local.getPos();
 	ChunkGenerator	generator(playerPos, *m.ps, m.chunk_size, m.gridSize, m.gridSizeDisplayed);
-//	generator.buildMeshesAndMapTiles();
-	generator.updateChunkJobsToDo();
-	grabObjectFromGenerator(generator, m, cubebp, *renderer, tex_lena);
 
 #endif
 	Fps	fps(135);
 
-//#define MINIMAP // need to build a framebuffer with the entire map, update it each time the player changes chunk
+	//#define MINIMAP // need to build a framebuffer with the entire map, update it each time the player changes chunk
 #define USE_THREADS
 #ifdef USE_THREADS
-	//void	th1_mapGeneration(ChunkGenerator& generator, OctreeManager& manager, Obj3dBP& cubebp, Obj3dPG& renderer, Texture* tex_lena, Cam& cam, ) {
-	std::thread helper0(th1_mapGeneration, std::ref(generator), std::ref(m), std::ref(cubebp), std::ref(*renderer), tex_lena);
-
 	//chunks builder
 	std::unique_lock<std::mutex> chunks_lock(generator.chunks_mutex, std::defer_lock);
-	//glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
-	const uint8_t	threadAmount = 8;
-	generator.builderAmount = threadAmount;
-	GLFWwindow* contexts[threadAmount];
-	std::thread* builders[threadAmount];
-	for (size_t i = 0; i < threadAmount; i++) {
+	generator.builderAmount = M_THREADS_BUILDERS;
+	GLFWwindow* contexts[M_THREADS_BUILDERS];
+	std::thread* builders[M_THREADS_BUILDERS];
+	for (size_t i = 0; i < generator.builderAmount; i++) {
 		contexts[i] = glfwCreateWindow(500, 30, std::to_string(i).c_str(), NULL, m.glfw->_window);
-		glfwSetWindowPos(contexts[i], 2000, 50 + 30 * i );
+		if (!contexts[i]) {
+			std::cout << "Error when creating context " << i << "\n";
+			std::exit(5);
+		}
+		glfwSetWindowPos(contexts[i], 2000, 50 + 30 * i);
 		builders[i] = new std::thread(std::bind(&ChunkGenerator::th_builders, &generator, contexts[i]));
 	}
+	//helper: player pos, jobs, trash(need gl cntext?)
+	std::thread helper0(std::bind(&ChunkGenerator::th_updater, &generator, &cam));
+
 	glfwWindowHint(GLFW_VISIBLE, GLFW_TRUE);
 	glfwFocusWindow(m.glfw->_window);
-
 	std::this_thread::sleep_for(1s);
 	std::cout << "notifying threads to build data...\n";
 	generator.cv.notify_all();
-	//std::this_thread::sleep_for(5s);
 
 	unsigned int frames = 0;
 	std::cout << "cam: " << cam.local.getPos().toString() << "\n";
-	std::cout << "Begin while loop\n";
+	std::cout << "Begin while loop, renderer: " << typeid(renderer).name() << "\n";
+	//std::cout.setstate(std::ios_base::failbit);
 	while (!glfwWindowShouldClose(m.glfw->_window)) {
 		if (fps.wait_for_next_frame()) {
 			//std::this_thread::sleep_for(1s);
@@ -2339,13 +3255,13 @@ void	scene_octree() {
 			if (generator.job_mutex.try_lock()) {
 				if (generator.chunksChanged && chunks_lock.try_lock()) {
 					//std::cout << "[renderer] lock chunks_mutex\n";
-						double start = glfwGetTime();
-						std::cout << "grabing meshes... ";
-						grabObjectFromGenerator(generator, m, cubebp, *renderer, tex_lena);
-						start = glfwGetTime() - start; std::cout << "grabed in " << start << " seconds\n";
-						generator.chunksChanged = false;
-						chunks_lock.unlock();
-						// the generator can do what he want with the grid, the renderer has what he need for the current frame
+					double start = glfwGetTime();
+					std::cout << &generator << " : grabbing meshes...\n";
+					grabObjectFromGenerator(generator, m, cubebp, *renderer, tex_lena);
+					start = glfwGetTime() - start; std::cout << "grabbed in " << start << " seconds\n";
+					generator.chunksChanged = false;
+					chunks_lock.unlock();
+					// the generator can do what he want with the grid, the renderer has what he need for the current frame
 				}
 				generator.job_mutex.unlock();
 			}
@@ -2360,9 +3276,11 @@ void	scene_octree() {
 					renderer->renderObjects(m.renderlistVoxels[i], cam, PG_FORCE_DRAW);
 				}
 				cam.speed = speed;//restore
-			} else if (0) {//whole cube
+			}
+			else if (0) {//whole cube
 				renderer->renderObjects(m.renderlist, cam, PG_FORCE_DRAW);
-			} else { // converted to mesh
+			}
+			else if (0) { // converted to mesh
 				if (chunks_lock.try_lock()) {//should be another mutex?
 					//chunks_lock.lock();
 					//std::cout << "Rendering objects... ";
@@ -2373,12 +3291,15 @@ void	scene_octree() {
 			}
 			//std::cout << "octreeDisplay\n";
 			//renderer->renderObjects(m.renderlistOctree, cam, PG_FORCE_DRAW);
-			#if true
+#if 1
 			glDisable(GL_CULL_FACE);
 			renderer->renderObjects(m.renderlistGrid, cam, PG_FORCE_DRAW);
 			glEnable(GL_CULL_FACE);
-			#endif
+#endif
 			rendererSkybox.renderObjects(m.renderlistSkybox, cam, PG_FORCE_DRAW);
+
+			rendererText_arial.render(text1, Math::Matrix4());
+			rendererText_arial.render(text2, Math::Matrix4());
 
 #ifdef MINIMAP
 			if (chunks_lock.try_lock() && generator.grid[0][0][0]) {
@@ -2416,11 +3337,12 @@ void	scene_octree() {
 				glfwSetWindowShouldClose(m.glfw->_window, GLFW_TRUE);
 		}
 	}
+	std::cout.clear();
 	std::cout << "End while loop\n";
 	generator.terminateThreads = true;
 	generator.cv.notify_all();
-	std::cout << "[Main] Notifying cv to wake up waiters, need to join " << (int)threadAmount << " builders...\n";
-	for (size_t i = 0; i < threadAmount; i++) {
+	std::cout << "[Main] Notifying cv to wake up waiters, need to join " << int(generator.builderAmount) << " builders...\n";
+	for (size_t i = 0; i < generator.builderAmount; i++) {
 		//builders[i]->detach();
 		builders[i]->join();
 		std::cout << "[Main] joined builder " << i << "\n";
@@ -2512,150 +3434,44 @@ void	scene_checkMemory() {
 	Texture* tex_bigass = new Texture(pathPrefix + "images/skybox4096.bmp");
 	std::cout << ">> Texture loaded\n";
 	//Textrues
-	#if 0
-		std::cout << "Texture unload load loop... ENTER\n";
-		std::cin >> input;
+#if 0
+	std::cout << "Texture unload load loop... ENTER\n";
+	std::cin >> input;
 
-		for (size_t i = 0; i < 100; i++) {
-			//unload
-			tex_bigass->unloadTexture();
-			glfwSwapBuffers(glfw->_window);
-			std::cout << ">> Texture unloaded\n";
+	for (size_t i = 0; i < 100; i++) {
+		//unload
+		tex_bigass->unloadTexture();
+		glfwSwapBuffers(glfw->_window);
+		std::cout << ">> Texture unloaded\n";
 
-			//load
-			tex_bigass->loadTexture();
-			glfwSwapBuffers(glfw->_window);
-			std::cout << ">> Texture loaded\n";
-		}
-	#endif
+		//load
+		tex_bigass->loadTexture();
+		glfwSwapBuffers(glfw->_window);
+		std::cout << ">> Texture loaded\n";
+	}
+#endif
 	//Skybox
-	#if 1
-		SkyboxPG	rendererSkybox(pathPrefix + CUBEMAP_VS_FILE, pathPrefix + CUBEMAP_FS_FILE);
+#if 1
+	SkyboxPG	rendererSkybox(pathPrefix + CUBEMAP_VS_FILE, pathPrefix + CUBEMAP_FS_FILE);
 
-		for (size_t i = 0; i < 100; i++) {
-			Skybox* sky = new Skybox(*tex_bigass, rendererSkybox);
-			delete sky;
-		}
-	#endif
+	for (size_t i = 0; i < 100; i++) {
+		Skybox* sky = new Skybox(*tex_bigass, rendererSkybox);
+		delete sky;
+	}
+#endif
 	//framebuffer
-	#if 1
-	#endif
-	//exit
+#if 1
+#endif
+//exit
 	std::cout << "end... ENTER\n";
 	std::cin >> input;
 	std::exit(0);
 
 }
 
-#endif //end all
+#endif //main all
 
-///////////////////////////////////////
-#if 0
-#include <iostream>
-#include <mutex>
-#include <condition_variable>
-#include <thread>
-#include <functional>
-
-//using namespace std::chrono_literals;
-
-struct Player
-{
-private:
-	std::mutex mtx;
-	std::condition_variable cv;
-	std::thread thr;
-
-	enum State
-	{
-		Stopped,
-		Paused,
-		Playing,
-		Quit
-	};
-
-	State state;
-	int counter;
-
-	void signal_state(State st)
-	{
-		std::unique_lock<std::mutex> lock(mtx);
-		if (st != state)
-		{
-			state = st;
-			cv.notify_one();
-		}
-	}
-
-	// main player monitor
-	void monitor()
-	{
-		std::unique_lock<std::mutex> lock(mtx);
-		bool bQuit = false;
-
-		while (!bQuit)
-		{
-			switch (state)
-			{
-			case Playing:
-				std::cout << ++counter << '.';
-				cv.wait_for(lock, 200ms, [this]() { return state != Playing; });
-				break;
-
-			case Stopped:
-				cv.wait(lock, [this]() { return state != Stopped; });
-				std::cout << '\n';
-				counter = 0;
-				break;
-
-			case Paused:
-				cv.wait(lock, [this]() { return state != Paused; });
-				break;
-
-			case Quit:
-				bQuit = true;
-				break;
-			}
-		}
-	}
-
-public:
-	Player() : state(Stopped), counter(0)
-	{
-		thr = std::thread(std::bind(&Player::monitor, this));
-	}
-
-	~Player()
-	{
-		quit();
-		thr.join();
-	}
-
-	void stop() { signal_state(Stopped); }
-	void play() { signal_state(Playing); }
-	void pause() { signal_state(Paused); }
-	void quit() { signal_state(Quit); }
-};
-
-void	playertest() {
-	Player player;
-	player.play();
-	std::this_thread::sleep_for(2s);
-	player.pause();
-	std::this_thread::sleep_for(2s);
-	player.play();
-	std::this_thread::sleep_for(2s);
-	player.stop();
-	std::this_thread::sleep_for(2s);
-	player.play();
-	std::this_thread::sleep_for(2s);
-
-	std::exit(0);
-}
-#endif
-///////////////////////////////////////
-
-
+#if 1 main
 #define _CRTDBG_MAP_ALLOC
 #include <stdlib.h>
 #include <crtdbg.h>
@@ -2663,6 +3479,17 @@ void	playertest() {
 //thread safe cout : https://stackoverflow.com/questions/14718124/how-to-easily-make-stdcout-thread-safe
 //multithread monitor example : https://stackoverflow.com/questions/51668477/c-lock-a-mutex-as-if-from-another-thread
 int		main(int ac, char **av) {
+
+	//Math::Vector3	v1(1, 2, 3);
+	//Math::Vector3	v2(1, 2, 3);
+	//Math::Vector3	v3(0, 2, 3);
+	//std::cout << (v1 == v2) << "\n";
+	//std::cout << (v2 == v1) << "\n";
+	//std::cout << (v1 != v2) << "\n";
+	//std::cout << (v2 != v1) << "\n";
+	//std::cout << (v2 != v3) << "\n";
+	//std::cout << (v2 == v3) << "\n";
+	//exit(0);
 
 	//playertest();
 	//_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
@@ -2706,266 +3533,4 @@ int		main(int ac, char **av) {
 	}
 	return (EXIT_SUCCESS);
 }
-
-#ifndef EXGLSHARE
-//========================================================================
-// Context sharing example
-// Copyright (c) Camilla Löwy <elmindreda@glfw.org>
-//
-// This software is provided 'as-is', without any express or implied
-// warranty. In no event will the authors be held liable for any damages
-// arising from the use of this software.
-//
-// Permission is granted to anyone to use this software for any purpose,
-// including commercial applications, and to alter it and redistribute it
-// freely, subject to the following restrictions:
-//
-// 1. The origin of this software must not be misrepresented; you must not
-//    claim that you wrote the original software. If you use this software
-//    in a product, an acknowledgment in the product documentation would
-//    be appreciated but is not required.
-//
-// 2. Altered source versions must be plainly marked as such, and must not
-//    be misrepresented as being the original software.
-//
-// 3. This notice may not be removed or altered from any source
-//    distribution.
-//
-//========================================================================
-
-//#include <glad/gl.h>
-#define GLFW_INCLUDE_NONE
-#include <GLFW/glfw3.h>
-
-#include <stdio.h>
-#include <stdlib.h>
-
-//#include "getopt.h"
-//#include "linmath.h"
-
-static const char* vertex_shader_text =
-"#version 110\n"
-"uniform mat4 MVP;\n"
-"attribute vec2 vPos;\n"
-"varying vec2 texcoord;\n"
-"void main()\n"
-"{\n"
-"    gl_Position = MVP * vec4(vPos, 0.0, 1.0);\n"
-"    texcoord = vPos;\n"
-"}\n";
-
-static const char* fragment_shader_text =
-"#version 110\n"
-"uniform sampler2D texture;\n"
-"uniform vec3 color;\n"
-"varying vec2 texcoord;\n"
-"void main()\n"
-"{\n"
-"    gl_FragColor = vec4(color * texture2D(texture, texcoord).rgb, 1.0);\n"
-"}\n";
-
-struct vec2 {
-	float x;
-	float y;
-};
-struct vec3 {
-	float x;
-	float y;
-	float z;
-};
-
-static const vec2 vertices[4] =
-{
-	{ 0.f, 0.f },
-	{ 1.f, 0.f },
-	{ 1.f, 1.f },
-	{ 0.f, 1.f }
-};
-
-static void error_callback(int error, const char* description)
-{
-	fprintf(stderr, "Error: %s\n", description);
-}
-
-static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
-{
-	if (action == GLFW_PRESS && key == GLFW_KEY_ESCAPE)
-		glfwSetWindowShouldClose(window, GLFW_TRUE);
-}
-
-int main2(int argc, char** argv)
-{
-	Glfw::initDefaultState();
-
-	GLFWwindow* windows[2];
-	GLuint texture, program, vertex_buffer;
-	GLint mvp_location, vpos_location, color_location, texture_location;
-
-	glfwSetErrorCallback(error_callback);
-
-	if (!glfwInit())
-		exit(EXIT_FAILURE);
-
-	//glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
-	//glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
-
-	windows[0] = glfwCreateWindow(400, 400, "First", NULL, NULL);
-	if (!windows[0])
-	{
-		glfwTerminate();
-		exit(EXIT_FAILURE);
-	}
-	//
-	glfwSetInputMode(windows[0], GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-	glfwSetInputMode(windows[0], GLFW_STICKY_KEYS, 1);
-	glfwSetInputMode(windows[0], GLFW_STICKY_MOUSE_BUTTONS, 1);
-	//
-
-	glfwSetKeyCallback(windows[0], key_callback);
-	glfwMakeContextCurrent(windows[0]);
-
-	//
-	//glew
-	glewExperimental = GL_TRUE;
-	if (glewInit() != GLEW_OK) {
-		std::cerr << "glewInit failed\n";
-		Misc::breakExit(GL_ERROR);
-	}
-
-	//
-
-	// Only enable vsync for the first of the windows to be swapped to
-	// avoid waiting out the interval for each window
-	glfwSwapInterval(1);
-
-	// The contexts are created with the same APIs so the function
-	// pointers should be re-usable between them
-	//gladLoadGL(glfwGetProcAddress);
-
-	// Create the OpenGL objects inside the first context, created above
-	// All objects will be shared with the second context, created below
-	{
-		int x, y;
-		char pixels[16 * 16];
-		GLuint vertex_shader, fragment_shader;
-
-		glGenTextures(1, &texture);
-		glBindTexture(GL_TEXTURE_2D, texture);
-
-		srand((unsigned int)glfwGetTimerValue());
-
-		for (y = 0; y < 16; y++)
-		{
-			for (x = 0; x < 16; x++)
-				pixels[y * 16 + x] = rand() % 256;
-		}
-
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, 16, 16, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, pixels);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-		vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-		glShaderSource(vertex_shader, 1, &vertex_shader_text, NULL);
-		glCompileShader(vertex_shader);
-
-		fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-		glShaderSource(fragment_shader, 1, &fragment_shader_text, NULL);
-		glCompileShader(fragment_shader);
-
-		program = glCreateProgram();
-		glAttachShader(program, vertex_shader);
-		glAttachShader(program, fragment_shader);
-		glLinkProgram(program);
-
-		mvp_location = glGetUniformLocation(program, "MVP");
-		color_location = glGetUniformLocation(program, "color");
-		texture_location = glGetUniformLocation(program, "texture");
-		vpos_location = glGetAttribLocation(program, "vPos");
-
-		glGenBuffers(1, &vertex_buffer);
-		glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-	}
-
-	glUseProgram(program);
-	glUniform1i(texture_location, 0);
-
-	glEnable(GL_TEXTURE_2D);
-	glBindTexture(GL_TEXTURE_2D, texture);
-
-	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
-	glEnableVertexAttribArray(vpos_location);
-	glVertexAttribPointer(vpos_location, 2, GL_FLOAT, GL_FALSE,
-		sizeof(vertices[0]), (void*)0);
-
-	windows[1] = glfwCreateWindow(400, 400, "Second", NULL, windows[0]);
-	if (!windows[1])
-	{
-		glfwTerminate();
-		exit(EXIT_FAILURE);
-	}
-
-	// Place the second window to the right of the first
-	{
-		int xpos, ypos, left, right, width;
-
-		glfwGetWindowSize(windows[0], &width, NULL);
-		glfwGetWindowFrameSize(windows[0], &left, NULL, &right, NULL);
-		glfwGetWindowPos(windows[0], &xpos, &ypos);
-
-		glfwSetWindowPos(windows[1], xpos + width + left + right, ypos);
-	}
-
-	glfwSetKeyCallback(windows[1], key_callback);
-
-	glfwMakeContextCurrent(windows[1]);
-
-	// While objects are shared, the global context state is not and will
-	// need to be set up for each context
-
-	glUseProgram(program);
-
-	glEnable(GL_TEXTURE_2D);
-	glBindTexture(GL_TEXTURE_2D, texture);
-
-	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
-	glEnableVertexAttribArray(vpos_location);
-	glVertexAttribPointer(vpos_location, 2, GL_FLOAT, GL_FALSE,
-		sizeof(vertices[0]), (void*)0);
-
-	while (!glfwWindowShouldClose(windows[0]) &&
-		!glfwWindowShouldClose(windows[1]))
-	{
-		int i;
-		const vec3 colors[2] =
-		{
-			{ 0.8f, 0.4f, 1.f },
-			{ 0.3f, 0.4f, 1.f }
-		};
-
-		for (i = 0; i < 2; i++)
-		{
-			int width, height;
-
-			glfwGetFramebufferSize(windows[i], &width, &height);
-			glfwMakeContextCurrent(windows[i]);
-
-			glViewport(0, 0, width, height);
-
-			Math::Matrix4	mvp;
-			mvp.identity();
-			//mat4x4_ortho(mvp, 0.f, 1.f, 0.f, 1.f, 0.f, 1.f);
-			glUniformMatrix4fv(mvp_location, 1, GL_FALSE, (const GLfloat*)mvp.getData());
-			glUniform3fv(color_location, 1, (float*)(&colors[i].x));
-			glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-
-			glfwSwapBuffers(windows[i]);
-		}
-
-		glfwWaitEvents();
-	}
-
-	glfwTerminate();
-	exit(EXIT_SUCCESS);
-}
-#endif
+#endif //main

@@ -2,6 +2,7 @@
 
 #include "uipanel.hpp"
 #include "perlin.hpp"
+#include "math.hpp"
 
 
 #define PERLIN_GENERATION	1
@@ -22,7 +23,7 @@ class PerlinSettings
 {
 public:
 	static uint8_t* HeightmapToTextureData(uint8_t** map, int sizex, int sizez) {
-		uint8_t* data = new uint8_t[sizex * sizez * 3];
+		uint8_t* data = new uint8_t[sizex * sizez * 3];//care overflow, a chunk shouldn't be that big tho
 		for (int z = 0; z < sizez; z++) {
 			for (int x = 0; x < sizex; x++) {
 				int index = 3 * (z * sizex + x);
@@ -135,21 +136,31 @@ private:
 class HeightMap//2D
 {
 public:
+	HeightMap(PerlinSettings& perlin_settings, Math::Vector3 chunk_index, Math::Vector3 chunk_size);
 	HeightMap(PerlinSettings& perlin_settings, int posx, int posz, int sizex, int sizez);
 	~HeightMap();
 
 	//opengl thread
-	void	glth_buildPanel();
+	void			glth_buildPanel();
+	Math::Vector3	getIndex() const;
+	//bool operator<(const HeightMap& rhs) const//tmp
+	//{
+	//	return std::tie(this->tile.x, this->tile.y, this->tile.z) < std::tie(rhs.tile.x, rhs.tile.y, rhs.pos.z);
+	//}
 
-	int			posX;
-	int			posZ;
-	int			sizeX;
-	int			sizeZ;
-	uint8_t** map;//used by Chunk::
 
-	//used to display the map tile
+	uint8_t**	map;//used by Chunk::
+
+	//used to display the map tile on screen
 	uint8_t* textureData;
 	Texture* texture;
 	UIImage* panel;
 private:
+	Math::Vector3	_index;
+	int				_posX;//not tile
+	int				_posZ;
+	unsigned int	_sizeX;
+	unsigned int	_sizeZ;
+
+	void	buildMap(PerlinSettings& perlin_settings);
 };

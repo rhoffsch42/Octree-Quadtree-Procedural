@@ -18,6 +18,9 @@
 #include "gamemanager.hpp"
 #include "framebuffer.hpp"
 #include "uipanel.hpp"
+#include "text_pg.hpp"
+
+
 #include "quadtree.hpp"
 #include "octree.hpp"
 #include "chunk.hpp"

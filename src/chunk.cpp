@@ -4,9 +4,9 @@
 Obj3dBP* Chunk::cubeBlueprint = nullptr;
 Obj3dPG* Chunk::renderer = nullptr;
 
-Chunk::Chunk(const Math::Vector3& tile_number, Math::Vector3 chunk_size, PerlinSettings& perlinSettings, HeightMap* hmap) {
-	this->tile = tile_number;
-	this->pos = tile_number;
+Chunk::Chunk(const Math::Vector3& chunk_index, const Math::Vector3& chunk_size, PerlinSettings& perlinSettings, HeightMap* hmap) {
+	this->index = chunk_index;
+	this->pos = chunk_index;
 	this->pos.x *= chunk_size.x;
 	this->pos.y *= chunk_size.y;
 	this->pos.z *= chunk_size.z;
@@ -88,18 +88,18 @@ Chunk::Chunk(const Math::Vector3& tile_number, Math::Vector3 chunk_size, PerlinS
 	delete[] pix;
 	//delete root? not when we will edit it to destroy some voxels
 	delete this->root;
+	this->root = nullptr;
 }
 
 Chunk::~Chunk() {
-	//delete root? when we will edit it to destroy some voxels we will need to do it here
-	//delete this->root;
+	if (this->root) { delete this->root; }
 	if (this->meshBP) { delete this->meshBP; }
 	if (this->mesh) { delete this->mesh; }
 }
 
 void	Chunk::buildMesh() {
 	//std::cout << "Chunk::_vertexArray size: " << this->_vertexArray.size() << "\n";
-	if (this->_vertexArray.size()) {//if there are some voxels in the chunk
+	if (!this->_vertexArray.empty()) {//if there are some voxels in the chunk
 		this->meshBP = new Obj3dBP(this->_vertexArray, BP_DONT_NORMALIZE);
 		this->meshBP->freeData(BP_FREE_ALL);
 		this->mesh = new Obj3d(*this->meshBP, *Chunk::renderer);
@@ -134,7 +134,7 @@ int	Chunk::buildVertexArrayFromOctree(Octree* root, Math::Vector3 pos_offset) {
 			&& node->neighbors < NEIGHBOR_ALL)// should be < NEIGHBOR_ALL or (node->n & NEIGHBOR_ALL) != 0
 		{
 			Math::Vector3	cube_pos(pos_offset);//can be the root pos or (0,0,0)
-			cube_pos.add(node->pos);//the position of the cube
+			cube_pos += node->pos;//the position of the cube
 			int neighbors_flags[] = { NEIGHBOR_FRONT, NEIGHBOR_RIGHT, NEIGHBOR_LEFT, NEIGHBOR_BOTTOM, NEIGHBOR_TOP, NEIGHBOR_BACK };
 			for (size_t i = 0; i < 6; i++) {//6 faces
 				if ((node->neighbors & neighbors_flags[i]) != neighbors_flags[i]) {
@@ -143,7 +143,7 @@ int	Chunk::buildVertexArrayFromOctree(Octree* root, Math::Vector3 pos_offset) {
 						vertex.position.x *= node->size.x;
 						vertex.position.y *= node->size.y;
 						vertex.position.z *= node->size.z;
-						vertex.position.add(node->pos);
+						vertex.position += node->pos;
 						ptr_vertex_array->push_back(vertex);
 					}
 				}
@@ -154,10 +154,11 @@ int	Chunk::buildVertexArrayFromOctree(Octree* root, Math::Vector3 pos_offset) {
 	return 1;
 }
 
-
 std::string		Chunk::toString() const {
 	std::stringstream ss;
-	ss << "tile: " << this->tile.toString() << "\n";
-	ss << "pos: " << this->pos.toString() << "\n";
+	ss << "index: " << this->index << "\n";
+	ss << "pos: " << this->pos << "\n";
+	ss << "size: " << this->size << "\n";
+	ss << "root: " << this->root << "\n";
 	return ss.str();
 }

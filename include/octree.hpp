@@ -25,6 +25,12 @@
 
 
 /*
+	less data:
+		store material ID (uint8_t) instead of RGB, limited to 256 different mats?
+		why Pixel? store voxel ID (uint8_t)
+*/
+
+/*
 _________
 | A | B |
 |---|---|	lower layer

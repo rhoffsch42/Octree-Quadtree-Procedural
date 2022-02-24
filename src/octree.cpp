@@ -2,7 +2,7 @@
 #include "compiler_settings.h"
 
 Pixel   getAverage(Pixel*** arr, Math::Vector3 pos, Math::Vector3 size) {
-	//std::cout << "__getA.. " << width << "x" << height << " at " << x << ":" << y << std::endl;
+	//std::cout << "__getA.. " << width << "x" << height << " at " << x << ":" << y << "\n";
 	unsigned int r = 0;
 	unsigned int g = 0;
 	unsigned int b = 0;
@@ -11,7 +11,7 @@ Pixel   getAverage(Pixel*** arr, Math::Vector3 pos, Math::Vector3 size) {
 	for (int k = pos.z; k < pos.z + size.z; k++) {
 		for (int j = pos.y; j < pos.y + size.y; j++) {
 			for (int i = pos.x; i < pos.x + size.x; i++) {
-				//std::cout << arr[j][i].r << "_" << arr[j][i].g << "_" << arr[j][i].b << std::endl;
+				//std::cout << arr[j][i].r << "_" << arr[j][i].g << "_" << arr[j][i].b << "\n";
 				r += (unsigned int)(arr[k][j][i].r);
 				g += (unsigned int)(arr[k][j][i].g);
 				b += (unsigned int)(arr[k][j][i].b);
@@ -23,13 +23,13 @@ Pixel   getAverage(Pixel*** arr, Math::Vector3 pos, Math::Vector3 size) {
 	//number of pixels evaluated
 	unsigned int area = size.x * size.y * size.z;
 	if (area != counter) {
-		std::cout << "fuck calcul" << std::endl;
+		std::cout << "fuck calcul" << "\n";
 		exit(1);
 	}
 	r = r / area;
 	g = g / area;
 	b = b / area;
-	//std::cout << "average:\t" << r << "\t" << g << "\t" << b << std::endl;
+	//std::cout << "average:\t" << r << "\t" << g << "\t" << b << "\n";
 	// Returns the color that represent the average.
 	//return this->genAverage(area) = 0;
 	return Pixel(r, g, b);
@@ -59,7 +59,7 @@ double	measureDetail(Pixel*** arr, Math::Vector3 pos, Math::Vector3 size, Pixel 
 }
 
 Octree::Octree(Pixel*** arr, Math::Vector3 corner_pos, Math::Vector3 tree_size, unsigned int threshold) {
-	//std::cout << "_ " << __PRETTY_FUNCTION__ << std::endl;
+	//std::cout << "_ " << __PRETTY_FUNCTION__ << "\n";
 
 	this->children = nullptr;
 	this->detail = 0;
@@ -71,15 +71,14 @@ Octree::Octree(Pixel*** arr, Math::Vector3 corner_pos, Math::Vector3 tree_size, 
 	this->pixel.b = 0;
 	this->pos = corner_pos;
 	this->size = tree_size;
-	this->summit = corner_pos;
-	this->summit.add(tree_size);
+	this->summit = corner_pos + tree_size;
 	this->neighbors = 0;//all sides are not empty by default (could count corners too, so 26)
 	if (size.x == 1 && size.y == 1 && size.z == 1) {// or x*y*z==1
 		this->pixel = arr[(int)this->pos.z][(int)this->pos.y][(int)this->pos.x];//use Vector3i to avoid casting
 #if 0 // checks not needed
 		this->detail = measureDetail(arr, pos, size, this->pixel);//should be 0
 		if (this->detail != 0) {
-			std::cout << "1x1 area, detail: " << this->detail << std::endl;
+			std::cout << "1x1 area, detail: " << this->detail << "\n";
 			exit(10);
 		}
 #endif
@@ -87,7 +86,7 @@ Octree::Octree(Pixel*** arr, Math::Vector3 corner_pos, Math::Vector3 tree_size, 
 			std::cout << "new leaf: " << size.x << "x" << size.y << "x" << size.z << " at ";
 			std::cout << pos.x << ":" << pos.y << ":" << pos.z << "\t";
 			std::cout << (int)this->pixel.r << "  \t" << (int)this->pixel.g << "  \t" << (int)this->pixel.b;
-			std::cout << "\t" << this->detail << std::endl;
+			std::cout << "\t" << this->detail << "\n";
 		}
 */
 		return;
@@ -99,9 +98,9 @@ Octree::Octree(Pixel*** arr, Math::Vector3 corner_pos, Math::Vector3 tree_size, 
 			std::cout << "new leaf: " << size.x << "x" << size.y << "x" << size.z << " at ";
 			std::cout << pos.x << ":" << pos.y << ":" << pos.z << "\t";
 			std::cout << (int)this->pixel.r << "  \t" << (int)this->pixel.g << "  \t" << (int)this->pixel.b;
-			std::cout << "\tdetail: " << this->detail << std::endl;
+			std::cout << "\tdetail: " << this->detail << "\n";
 		}
-		//std::cout << this->pixel.r << " " << this->pixel.g << " " << this->pixel.b << std::endl;
+		//std::cout << this->pixel.r << " " << this->pixel.g << " " << this->pixel.b << "\n";
 		return;
 	}
 
@@ -118,22 +117,23 @@ Octree::Octree(Pixel*** arr, Math::Vector3 corner_pos, Math::Vector3 tree_size, 
 
 		/*
 
-		0_________x
+		o________x
 		| A | B |
 		|---|---|		lower layer seen from top
 		| C | D |
-		z``front``
-		_________
+		z``front`
+		o________x
 		| E | F |
 		|---|---|		higher layer seen from top
 		| G | H |
-		``front``
-			_________
-		y/________/|
-		| G | H | |
+		z``front`
+		   _________
+		  /___/___/|
+		y/___/___/ |
+		| G | H |  |
 		|---|---| /		both layers seen from front
 		| C | D |/
-		0`````````x
+		o````````x
 
 		*/
 
@@ -194,8 +194,7 @@ Octree* Octree::getRoot(Math::Vector3 target_pos, Math::Vector3 target_size) {
 	static int ii = 0;
 	ii++;
 
-	Math::Vector3	target_summit(target_pos);
-	target_summit.add(target_size);//the highest summit of the root;
+	Math::Vector3	target_summit = target_pos + target_size;//the highest summit of the root;
 
 	if (target_pos.x < this->pos.x || target_pos.y < this->pos.y || target_pos.z < this->pos.z || \
 		this->summit.x <= target_pos.x || this->summit.y <= target_pos.y || this->summit.z <= target_pos.z) {
@@ -226,7 +225,7 @@ Octree* Octree::getRoot(Math::Vector3 target_pos, Math::Vector3 target_size) {
 			return this->children[index]->getRoot(target_pos, target_size);
 			//std::cout << ">>4";
 		} else {
-			std::cout << "Problem with data in " << __PRETTY_FUNCTION__ << std::endl;
+			std::cout << "Problem with data in " << __PRETTY_FUNCTION__ << "\n";
 			std::cout << "\ttarget pos: \t" << target_pos.toString() << "\n";
 			std::cout << "\ttarget size:\t" << target_size.toString() << "\n";
 			std::cout << "\troot pos:   \t" << this->pos.toString() << "\n";
@@ -244,8 +243,7 @@ bool		Octree::contain(Pixel pix, Math::Vector3 pos, Math::Vector3 size) {
 	for (int x = 0; x < size.x; x++) {
 		for (int y = 0; y < size.y; y++) {
 			for (int z = 0; z < size.z; z++) {
-				Math::Vector3	currentPos(pos);
-				currentPos.add(x, y, z);
+				Math::Vector3	currentPos = pos + Math::Vector3(x, y, z);
 				Octree* subroot = this->getRoot(currentPos, unitSize);
 
 				// if neighbor is out of the current octree (we're on the endge)// we could check with the right neighboring octree (chunk)
@@ -288,12 +286,12 @@ void		Octree::verifyNeighbors(Pixel filter) {
 				check isLeaf: as long as all non-empty voxels are the same, we're sure there is no empty voxels here
 					cf average method
 			*/
-		Math::Vector3	left(node->pos); left.sub(node->size.x, 0, 0);
-		Math::Vector3	right(node->pos); right.add(node->size.x, 0, 0);
-		Math::Vector3	down(node->pos); down.sub(0, node->size.y, 0);
-		Math::Vector3	up(node->pos); up.add(0, node->size.y, 0);
-		Math::Vector3	back(node->pos); back.sub(0, 0, node->size.z);
-		Math::Vector3	front(node->pos); front.add(0, 0, node->size.z);
+		Math::Vector3	left = node->pos - Math::Vector3(node->size.x, 0, 0);
+		Math::Vector3	right = node->pos + Math::Vector3(node->size.x, 0, 0);
+		Math::Vector3	down = node->pos - Math::Vector3(0, node->size.y, 0);
+		Math::Vector3	up = node->pos + Math::Vector3(0, node->size.y, 0);
+		Math::Vector3	back = node->pos - Math::Vector3(0, 0, node->size.z);
+		Math::Vector3	front = node->pos + Math::Vector3(0, 0, node->size.z);
 		Math::Vector3*	sides[6] = { &left, &right, &down, &up, &back, &front };
 
 		for (size_t i = 0; i < 6; i++) {
@@ -312,12 +310,12 @@ void		Octree::verifyNeighbors(Pixel filter) {
 				size.x*size.z*2 amount of getRoot() for top/down
 		*/
 
-			Math::Vector3	posleft(node->pos); posleft.sub(1, 0, 0);
-			Math::Vector3	posright(node->pos); posright.add(node->size.x, 0, 0);
-			Math::Vector3	posdown(node->pos); posdown.sub(0, 1, 0);
-			Math::Vector3	posup(node->pos); posup.add(0, node->size.y, 0);
-			Math::Vector3	posback(node->pos); posback.sub(0, 0, 1);
-			Math::Vector3	posfront(node->pos); posfront.add(0, 0, node->size.z);
+			Math::Vector3	posleft = node->pos - Math::Vector3(1, 0, 0);
+			Math::Vector3	posright = node->pos + Math::Vector3(node->size.x, 0, 0);
+			Math::Vector3	posdown = node->pos - Math::Vector3(0, 1, 0);
+			Math::Vector3	posup = node->pos + Math::Vector3(0, node->size.y, 0);
+			Math::Vector3	posback = node->pos - Math::Vector3(0, 0, 1);
+			Math::Vector3	posfront = node->pos + Math::Vector3(0, 0, node->size.z);
 
 			Math::Vector3	sizeXaxis(1, node->size.y, node->size.z);
 			Math::Vector3	sizeYaxis(node->size.x, 1, node->size.z);

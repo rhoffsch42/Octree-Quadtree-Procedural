@@ -116,11 +116,11 @@
       <PreprocessorDefinitions>GLEW_STATIC;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <WarningLevel>Level3</WarningLevel>
-      <AdditionalIncludeDirectories>$(SolutionDir)SimpleGL\dependencies\assimp\include;$(SolutionDir)SimpleGL\dependencies\GLEW\include;$(SolutionDir)SimpleGL\dependencies\GLFW\include;$(SolutionDir)SimpleGL\include\tinyobjloader;$(SolutionDir)SimpleGL\include;$(SolutionDir)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)SimpleGL\dependencies\assimp\include;$(SolutionDir)SimpleGL\dependencies\GLEW\include;$(SolutionDir)SimpleGL\dependencies\GLFW\include;$(SolutionDir)SimpleGL\dependencies\freetype;$(SolutionDir)SimpleGL\include\tinyobjloader;$(SolutionDir)SimpleGL\include;$(SolutionDir)include;$(SolutionDir)SimpleGL\dependencies\glm\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories);$(SolutionDir)SimpleGL\dependencies\GLFW\lib-vc2019;$(SolutionDir)SimpleGL\dependencies\assimp\lib;$(SolutionDir)SimpleGL\dependencies\GLEW\lib\Release\x64</AdditionalLibraryDirectories>
-      <AdditionalDependencies>glfw3.lib;glew32s.lib;opengl32.lib;assimp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories);$(SolutionDir)SimpleGL\dependencies\GLFW\lib-vc2019;$(SolutionDir)SimpleGL\dependencies\assimp\lib;$(SolutionDir)SimpleGL\dependencies\GLEW\lib\Release\x64;$(SolutionDir)SimpleGL\dependencies\freetype\win64</AdditionalLibraryDirectories>
+      <AdditionalDependencies>glfw3.lib;glew32s.lib;opengl32.lib;assimp.lib;freetype.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Console</SubSystem>
     </Link>
   </ItemDefinitionGroup>
@@ -145,6 +145,7 @@
     <ClCompile Include="SimpleGL\src\skybox.cpp" />
     <ClCompile Include="SimpleGL\src\skyboxPG.cpp" />
     <ClCompile Include="SimpleGL\src\texture.cpp" />
+    <ClCompile Include="SimpleGL\src\text_pg.cpp" />
     <ClCompile Include="SimpleGL\src\transformBH.cpp" />
     <ClCompile Include="SimpleGL\src\uipanel.cpp" />
     <ClCompile Include="src\chunk.cpp" />
@@ -168,6 +169,7 @@
     <ClInclude Include="SimpleGL\include\compiler_settings.h" />
     <ClInclude Include="SimpleGL\include\fps.hpp" />
     <ClInclude Include="SimpleGL\include\framebuffer.hpp" />
+    <ClInclude Include="SimpleGL\include\ft2build.h" />
     <ClInclude Include="SimpleGL\include\gamemanager.hpp" />
     <ClInclude Include="SimpleGL\include\glfw.hpp" />
     <ClInclude Include="SimpleGL\include\main.hpp" />
@@ -184,6 +186,7 @@
     <ClInclude Include="SimpleGL\include\skybox.hpp" />
     <ClInclude Include="SimpleGL\include\skyboxPG.hpp" />
     <ClInclude Include="SimpleGL\include\texture.hpp" />
+    <ClInclude Include="SimpleGL\include\text_pg.hpp" />
     <ClInclude Include="SimpleGL\include\tinyobjloader\tiny_obj_loader.h" />
     <ClInclude Include="SimpleGL\include\transformBH.hpp" />
     <ClInclude Include="SimpleGL\include\uipanel.hpp" />
@@ -194,6 +197,8 @@
     <None Include="SimpleGL\shaders\obj3d.fs.glsl" />
     <None Include="SimpleGL\shaders\obj3d.vs.glsl" />
     <None Include="SimpleGL\shaders\obj3d_instanced.vs.glsl" />
+    <None Include="SimpleGL\shaders\text.fs.glsl" />
+    <None Include="SimpleGL\shaders\text.vs.glsl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

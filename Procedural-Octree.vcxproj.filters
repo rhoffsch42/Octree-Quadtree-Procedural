@@ -114,6 +114,9 @@
     <ClCompile Include="src\heightmap.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="SimpleGL\src\text_pg.cpp">
+      <Filter>SimpleGL\Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="SimpleGL\include\behavior.hpp">
@@ -212,6 +215,12 @@
     <ClInclude Include="include\heightmap.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="SimpleGL\include\text_pg.hpp">
+      <Filter>SimpleGL\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SimpleGL\include\ft2build.h">
+      <Filter>SimpleGL\Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="SimpleGL\shaders\cubemap.fs.glsl">
@@ -227,6 +236,12 @@
       <Filter>SimpleGL\Shaders</Filter>
     </None>
     <None Include="SimpleGL\shaders\obj3d_instanced.vs.glsl">
+      <Filter>SimpleGL\Shaders</Filter>
+    </None>
+    <None Include="SimpleGL\shaders\text.fs.glsl">
+      <Filter>SimpleGL\Shaders</Filter>
+    </None>
+    <None Include="SimpleGL\shaders\text.vs.glsl">
       <Filter>SimpleGL\Shaders</Filter>
     </None>
   </ItemGroup>
