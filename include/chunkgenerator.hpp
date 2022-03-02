@@ -39,6 +39,8 @@ class JobBuildGenerator;
 class ChunkGenerator
 {
 public:
+	static void		test_calcExceed();//unit tests
+	static void		exceedTest();//unit tests
 	//grid_size_displayed will be clamped between 1 -> grid_size
 	ChunkGenerator(Math::Vector3 player_pos, const PerlinSettings& perlin_settings, Math::Vector3 chunk_size, Math::Vector3 grid_size, Math::Vector3 grid_size_displayed);
 	~ChunkGenerator();
@@ -48,10 +50,12 @@ public:
 	bool		updateGrid(Math::Vector3 player_pos);
 	void		updateChunkJobsToDo();
 	void		updateChunkJobsDone();
+	void		build(PerlinSettings& perlinSettings, std::string& threadIDstr);
 	void		th_builders(GLFWwindow* context);
 	void		th_builders_old(GLFWwindow* context);
 	bool		buildMeshesAndMapTiles();
 	bool		try_deleteUnusedData();
+	Math::Vector3	getGridDisplayStart() const;
 
 	std::string	toString() const;
 	Math::Vector3	ChunkGenerator::worldToGrid(const Math::Vector3& index) const;
@@ -61,9 +65,18 @@ public:
 	Math::Vector3	gridSize;
 	Math::Vector3	gridDisplaySize;// must be <= gridSize
 
-	Math::Vector3	gridIndex;//in world
-	Math::Vector3	gridDisplayIndex;//in grid
-	Math::Vector3	currentChunkWorldIndex;//player chunk in world
+	/*
+		world index of the start of the grid (0:0:0)
+	*/
+	Math::Vector3	gridIndex;
+	/*
+		index in grid
+	*/
+	Math::Vector3	gridDisplayIndex;
+	/*
+		player chunk in world
+	*/
+	Math::Vector3	currentChunkWorldIndex;
 
 	HeightMap***	heightMaps;//2d grid
 	Chunk* ***		grid;//3d grid
@@ -89,8 +102,8 @@ public:
 	bool			gridMemoryMoved;//not used for now
 	uint8_t			threadsReadyToBuildChunks;
 
-	std::map<Math::Vector3, bool>	jobsMap_hmap;//store directly the jobs ptr?
-	std::map<Math::Vector3, bool>	jobsMap_chunk;
+	std::map<Math::Vector3, bool>	map_jobsHmap;//store directly the jobs ptr?
+	std::map<Math::Vector3, bool>	map_jobsChunk;
 	std::list<JobBuildGenerator*>	jobsToDo;
 	std::list<JobBuildGenerator*>	jobsDone;
 	std::vector<HeightMap*>			trashHeightMaps;
@@ -146,32 +159,35 @@ public:
 		this->hmap = new HeightMap(perlinSettings, this->index, this->chunkSize);
 		this->hmap->glth_buildPanel();
 		this->done = true;
+		std::cout << "job done : new hmap : " << this->hmap << " " << this->index << "\n";
 		return this->done;
 	}
 	virtual void	deliver(ChunkGenerator& generator) const {
 		Math::Vector3	ind = generator.worldToGrid(this->index);
+		ind.y = 0;//same hmap for all Y // not used...
 		int x = ind.x;
 		int z = ind.z;
-		if (this->index != this->hmap->getIndex()) {
+		if (this->index != this->hmap->getIndex() || this->index.y != 0) {
 			std::cerr << "wrong index for job " << this->index << " and hmap " << this->hmap << this->hmap->getIndex() << "\n";
 			std::exit(-14);
 		}
 		if (x < 0 || z < 0 || x >= generator.gridSize.x || z >= generator.gridSize.z) {
-			std::cerr << "out of memory hmap " << this->hmap << " index " << ind.toString() << "\n";
+			std::cerr << "out of memory hmap " << this->hmap << " index " << ind << "\n";
 			generator.trash_mutex.lock();
 			generator.trashHeightMaps.push_back(this->hmap);
 			generator.trash_mutex.unlock();
+			generator.map_jobsHmap[this->index] = false;
 			return;
 		}
 		if (generator.heightMaps[z][x]) {
 			HeightMap* h = generator.heightMaps[z][x];
-			std::cerr << "Heightmap " << this->hmap << " overriding " << h << " " << ind.toString() << "\n";
+			std::cerr << "Heightmap " << this->hmap << " overriding " << h << " " << ind << "\n";
 			std::cerr << "This shouldn't happen, exiting...\n";
- 			//std::exit(-14);
+			//std::exit(-14);
 		}
 
 		generator.heightMaps[z][x] = this->hmap;
-		generator.jobsMap_hmap[this->index] = false;
+		generator.map_jobsHmap[this->index] = false;
 		std::cout << this->hmap << " hmap " << this->hmap->getIndex() << " plugged in " << ind << "\n";
 	}
 
@@ -193,6 +209,7 @@ public:
 		this->chunk = new Chunk(this->index, this->chunkSize, perlinSettings, hmap);
 		this->chunk->buildMesh();
 		this->done = true;
+		std::cout << "job executed : new chunk : " << this->chunk << " " << this->index << "\n";
 		return this->done;
 	}
 	virtual void	deliver(ChunkGenerator& generator) const {
@@ -210,17 +227,19 @@ public:
 			generator.trash_mutex.lock();
 			generator.trashChunks.push_back(this->chunk);
 			generator.trash_mutex.unlock();
+			generator.map_jobsChunk[this->index] = false;
 			return;
 		}
 		if (generator.grid[z][y][x]) {
 			Chunk* c = generator.grid[z][y][x];
 			std::cerr << "Chunk " << this->chunk << this->index << " overriding " << c << c->index << " on grid: " << ind << "\n";
 			std::cerr << "This shouldn't happen, exiting...\n";
-   			//std::exit(-14);
+			//std::exit(-14);
 		}
 		generator.grid[z][y][x] = this->chunk;
-		generator.jobsMap_chunk[this->index] = false;
+		generator.map_jobsChunk[this->index] = false;
 		std::cout << this->chunk << " chunk " << this->chunk->index << " plugged in " << ind << "\n";
+		generator.chunksChanged = true;
 	}
 
 	HeightMap* hmap = nullptr;

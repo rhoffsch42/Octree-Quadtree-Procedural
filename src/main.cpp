@@ -2617,8 +2617,8 @@ public:
 		this->shiftPressed = false;
 		int s = 32;
 		this->chunk_size = Math::Vector3(s, s, s);
-		int	g = 3;
-		int	d = g;// *2 / 3;
+		int	g = 5;
+		int	d = 3;// g * 2 / 3;
 		this->gridSize = Math::Vector3(g, g, g);
 		this->gridSizeDisplayed = Math::Vector3(d, d, d);
 
@@ -2930,7 +2930,7 @@ void	grabObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager, 
 	manager.renderlistGrid.clear();
 	for (size_t i = 0; i < 6; i++) {
 		manager.renderlistVoxels[i].clear();
-		std::cout << "clear: " << i << "\n";
+		//std::cout << "clear: " << i << "\n";
 	}
 	manager.renderlistChunk.clear();
 
@@ -2945,18 +2945,13 @@ void	grabObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager, 
 	polygon_debug << "chunks polygons: ";
 
 	// display box
-	Math::Vector3	startDisplay(
-		generator.gridDisplayIndex.x - int(generator.gridDisplaySize.x / 2),
-		generator.gridDisplayIndex.y - int(generator.gridDisplaySize.y / 2),
-		generator.gridDisplayIndex.z - int(generator.gridDisplaySize.z / 2));
-	Math::Vector3	endDisplay(
-		startDisplay.x + generator.gridDisplaySize.x,
-		startDisplay.y + generator.gridDisplaySize.y,
-		startDisplay.z + generator.gridDisplaySize.z);
+	Math::Vector3	startDisplay = generator.getGridDisplayStart();
+	Math::Vector3	endDisplay = startDisplay + generator.gridDisplaySize;
 #if 0 // all the grid
 	startDisplay = Math::Vector3();
 	endDisplay = Math::Vector3(generator.gridSize);
 #endif
+	std::cout << " > display " << startDisplay << " -> " << endDisplay << "\n";
 
 	if (0 && M_DRAW_GRID_CHUNK) {
 		Math::Vector3 pos(
@@ -2976,10 +2971,7 @@ void	grabObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager, 
 		manager.renderlistGrid.push_back(cubeGrid);
 		cubgrid++;
 	}
-	//tmp
-	startDisplay = generator.gridDisplayIndex;
-	endDisplay = startDisplay + generator.gridDisplaySize;
-	std::cout << "display " << startDisplay << " -> " << endDisplay << "\n";
+
 	for (unsigned int k = startDisplay.z; k < endDisplay.z; k++) {
 		for (unsigned int j = startDisplay.y; j < endDisplay.y; j++) {
 			for (unsigned int i = startDisplay.x; i < endDisplay.x; i++) {
@@ -3129,6 +3121,7 @@ void	scene_octree() {
 	TextPG::fonts_folder = Misc::getCurrentDirectory() + SIMPLEGL_FOLDER + "fonts/";
 	TextPG			rendererText_arial(SIMPLEGL_FOLDER + "shaders/text.vs.glsl", SIMPLEGL_FOLDER + "shaders/text.fs.glsl");
 	if (rendererText_arial.init_freetype("arial.ttf", win_width, win_height) == -1) {
+		std::cerr << "TextPG::init_freetype failed\n";
 		std::exit(-1);
 	}
 	Text			text1;
@@ -3141,7 +3134,7 @@ void	scene_octree() {
 	text2.color = Math::Vector3(0.3, 0.7f, 0.9f);
 	text2.local.setPos(540.0f, 570.0f, 0.5f);
 	text2.local.setScale(0.5, 1, 1);
-	#endif
+	#endif //text
 
 	Obj3dPG			rendererObj3d(SIMPLEGL_FOLDER + OBJ3D_VS_FILE, SIMPLEGL_FOLDER + OBJ3D_FS_FILE);
 	Obj3dIPG		rendererObj3dInstanced(SIMPLEGL_FOLDER + OBJ3D_INSTANCED_VS_FILE, SIMPLEGL_FOLDER + OBJ3D_FS_FILE);
@@ -3194,23 +3187,28 @@ void	scene_octree() {
 	//std::list<Obj3d*>	playerList;
 	//playerList.push_back(&player1);
 #endif
-#ifndef OCTREE
+#ifndef GENERATOR
 	cam.local.setPos(28, 50, 65);//buried close to the surface
 	cam.local.setPos(280, 50, 65);//
 	//cam.local.setPos(280, -100, 65);//crash
 	//cam.local.setPos(-13, 76, 107);//crash
 	//chunk generator
 	Math::Vector3	playerPos = cam.local.getPos();
+
+	int	g = 5;
+	int	d = 3;// g * 2 / 3;
+	m.gridSize = Math::Vector3(g, g, g);
+	m.gridSizeDisplayed = Math::Vector3(d, d, d);
 	ChunkGenerator	generator(playerPos, *m.ps, m.chunk_size, m.gridSize, m.gridSizeDisplayed);
 
-#endif
+#endif // GENERATOR
 	Fps	fps(135);
 
 	//#define MINIMAP // need to build a framebuffer with the entire map, update it each time the player changes chunk
-#define USE_THREADS
+	std::unique_lock<std::mutex> chunks_lock(generator.chunks_mutex, std::defer_lock);
+#define USE_THREADSL
 #ifdef USE_THREADS
 	//chunks builder
-	std::unique_lock<std::mutex> chunks_lock(generator.chunks_mutex, std::defer_lock);
 	generator.builderAmount = M_THREADS_BUILDERS;
 	GLFWwindow* contexts[M_THREADS_BUILDERS];
 	std::thread* builders[M_THREADS_BUILDERS];
@@ -3264,6 +3262,7 @@ void	scene_octree() {
 					// the generator can do what he want with the grid, the renderer has what he need for the current frame
 				}
 				generator.job_mutex.unlock();
+				glFinish();
 			}
 
 			//GLuint	mode = m.polygon_mode;
@@ -3280,7 +3279,7 @@ void	scene_octree() {
 			else if (0) {//whole cube
 				renderer->renderObjects(m.renderlist, cam, PG_FORCE_DRAW);
 			}
-			else if (0) { // converted to mesh
+			else if (1) { // converted to mesh
 				if (chunks_lock.try_lock()) {//should be another mutex?
 					//chunks_lock.lock();
 					//std::cout << "Rendering objects... ";
@@ -3353,6 +3352,9 @@ void	scene_octree() {
 	std::cout << "[Main] exiting...\n";
 #else  // not USE_THREADS
 
+	//helper: player pos, jobs, trash(need gl cntext?)
+	std::thread helper0(std::bind(&ChunkGenerator::th_updater, &generator, &cam));
+
 	std::cout << "Begin while loop\n";
 	while (!glfwWindowShouldClose(m.glfw->_window)) {
 		if (fps.wait_for_next_frame()) {
@@ -3362,12 +3364,28 @@ void	scene_octree() {
 			glfwPollEvents();
 			m.glfw->updateMouse();//to do before cam's events
 			{
-				std::lock_guard<std::mutex> guard(generator.mutex1);//?
+				std::lock_guard<std::mutex> guard(generator.mutex_cam);
 				m.cam->events(*m.glfw, float(fps.getTick()));
 			}
-			if (1 && generator.updateGrid(m.cam->local.getPos())) {
+			//no helper thread
+			if (0 && generator.updateGrid(m.cam->local.getPos())) {
 				generator.buildMeshesAndMapTiles();
 				grabObjectFromGenerator(generator, m, cubebp, *renderer, tex_lena);
+			} else if (1) {//with helper thread
+				if (!generator.jobsToDo.empty()) {
+					generator.build(generator.settings, std::string("[main thread]\t"));
+				} else if ((generator.playerChangedChunk || generator.chunksChanged) && chunks_lock.try_lock()){
+					//std::cout << "[renderer] lock chunks_mutex\n";
+					double start = glfwGetTime();
+					std::cout << &generator << " : grabbing meshes...\n";
+					grabObjectFromGenerator(generator, m, cubebp, *renderer, tex_lena);
+					start = glfwGetTime() - start; std::cout << "grabbed in " << start << " seconds\n";
+					if (generator.playerChangedChunk)
+						generator.playerChangedChunk = false;
+					if (generator.chunksChanged)
+						generator.chunksChanged = false;
+					chunks_lock.unlock();
+				}
 			}
 
 			//GLuint	mode = m.polygon_mode;
@@ -3398,19 +3416,22 @@ void	scene_octree() {
 			rendererSkybox.renderObjects(m.renderlistSkybox, cam, PG_FORCE_DRAW);
 
 			glfwSwapBuffers(m.glfw->_window);
-			generator.try_deleteUnusedData();
+			//generator.try_deleteUnusedData();
 
 			if (GLFW_PRESS == glfwGetKey(m.glfw->_window, GLFW_KEY_ESCAPE))
 				glfwSetWindowShouldClose(m.glfw->_window, GLFW_TRUE);
 		}
 	}
 	std::cout << "End while loop\n";
-	std::cout << "deleting textures...\n";
-	generator._chunksReadyForMeshes = false;
+	generator.terminateThreads = true;
+	generator.cv.notify_all();
+	glfwMakeContextCurrent(nullptr);
+	helper0.join();
+	std::cout << "[Main] joined helper0\n";
+	std::cout << "[Main] exiting...\n";
 	std::cout << "[Main] exiting...\n";
 
 #endif // USE_THREADS
-	//////////////////////////////////////////////////////////////////
 }
 
 void	maxUniforms() {
@@ -3479,6 +3500,9 @@ void	scene_checkMemory() {
 //thread safe cout : https://stackoverflow.com/questions/14718124/how-to-easily-make-stdcout-thread-safe
 //multithread monitor example : https://stackoverflow.com/questions/51668477/c-lock-a-mutex-as-if-from-another-thread
 int		main(int ac, char **av) {
+
+	//ChunkGenerator::test_calcExceed();std::exit(0);
+	//ChunkGenerator::exceedTest();std::exit(0);
 
 	//Math::Vector3	v1(1, 2, 3);
 	//Math::Vector3	v2(1, 2, 3);

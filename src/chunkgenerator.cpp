@@ -2,27 +2,133 @@
 #include "compiler_settings.h"
 #include <algorithm>
 
+static int	calcExceed(int posA, int sizeA, int posB, int sizeB);
+void	ChunkGenerator::test_calcExceed() {
+	/*
+			A========.========A		0 19
+			   B------.------B		1 15
+				B------.------B		2 15
+				 B------.------B	3 15
+			A========.========A		0 19
+			 B------.------B		-1 15
+			B------.------B			-2 15
+		   B------.------B			-3 15
+
+			A=========.========A	0 20
+			   B-------.------B		1 16
+				B-------.------B	2 16
+				 B-------.------B	3 16
+			A=========.========A	0 20
+			 B-------.------B		-1 16
+			B-------.------B		-2 16
+		   B-------.------B			-3 16
+
+			A========.========A		0 19
+			  B-------.------B		1 16
+			   B-------.------B		2 16
+				B-------.------B	3 16
+			A========.========A		0 19
+			 B-------.------B		0 16
+			B-------.------B		-1 16
+		   B-------.------B			-2 16
+
+			A=========.========A	0 20
+				B------.------B		1 15
+				 B------.------B	2 15
+				  B------.------B	3 15
+			A=========.========A	0 20
+			 B------.------B		-2 15
+			B------.------B			-3 15
+		   B------.------B			-4 15
+	*/
+	std::cout << calcExceed(0, 19, 1, 15) << std::endl;
+	std::cout << calcExceed(0, 19, 2, 15) << std::endl;
+	std::cout << calcExceed(0, 19, 3, 15) << std::endl;
+	std::cout << calcExceed(0, 19, -1, 15) << std::endl;
+	std::cout << calcExceed(0, 19, -2, 15) << std::endl;
+	std::cout << calcExceed(0, 19, -3, 15) << std::endl;
+	std::cout << "\n";
+	std::cout << calcExceed(0, 20, 1, 16) << std::endl;
+	std::cout << calcExceed(0, 20, 2, 16) << std::endl;
+	std::cout << calcExceed(0, 20, 3, 16) << std::endl;
+	std::cout << calcExceed(0, 20, -1, 16) << std::endl;
+	std::cout << calcExceed(0, 20, -2, 16) << std::endl;
+	std::cout << calcExceed(0, 20, -3, 16) << std::endl;
+	std::cout << "\n";
+	std::cout << calcExceed(0, 19, 1, 16) << std::endl;
+	std::cout << calcExceed(0, 19, 2, 16) << std::endl;
+	std::cout << calcExceed(0, 19, 3, 16) << std::endl;
+	std::cout << calcExceed(0, 19, 0, 16) << std::endl;
+	std::cout << calcExceed(0, 19, -1, 16) << std::endl;
+	std::cout << calcExceed(0, 19, -2, 16) << std::endl;
+	std::cout << "\n";
+	std::cout << calcExceed(0, 20, 1, 15) << std::endl;
+	std::cout << calcExceed(0, 20, 2, 15) << std::endl;
+	std::cout << calcExceed(0, 20, 3, 15) << std::endl;
+	std::cout << calcExceed(0, 20, -2, 15) << std::endl;
+	std::cout << calcExceed(0, 20, -3, 15) << std::endl;
+	std::cout << calcExceed(0, 20, -4, 15) << std::endl;
+}
+
 static int	calcExceed(int posA, int sizeA, int posB, int sizeB) {
 	/*
-		A========.========A
-			B----.----B
+		A========.========A		0 19
+			B----.----B			0 11
+			B-------.------B	3 16
+		A=========.========A	1 20
 
 		sizeB <= sizeA
 	*/
 	if (sizeB > sizeA) {
-		std::cout << "Error: Grid Displayed is larger than the total Grid in memory\n";
+		std::cout << "Error: Grid Displayed is larger than the total Grid in memory, or sizes are odd\n";
 		exit(4);
 	}
-	int sign = posA <= posB ? 1 : -1;							// set up the sign to mirror the diff if it is negative to handle only positive part
-	int diffpos = sign * (posB - posA);							// mirrored if negative
-	int diffside = std::max((sizeB - sizeA) / 2 + diffpos, 0);	// std::max(diff,0) : if the diff is negative, nothing exceeds the bounds
-	return sign * diffside;										// mirrored back if sign was negative
+	int sign = posA <= posB ? 1 : -1;					// set up the sign to mirror the diff if it is negative to handle only positive part
+	int diffpos = sign * (posB - posA);					// mirrored if negative
+	int diffsize = sizeB - sizeA;
+	if (diffsize % 2 != 0)
+		if ((sizeA % 2 == 0 && posA > posB) || (sizeB % 2 == 0 && posB > posA))
+			diffsize += -1;								// compensate loss when halving int
+	int diffside = std::max(diffsize / 2 + diffpos, 0);	// std::max(diff,0) : if the diff is negative, nothing exceeds the bounds
+	return sign * diffside;								// mirrored back if sign was negative
 	/*
 		.========A
 		  .----B		//B does not exceed A
 			  .----C    //C exceeds A
 	*/
 }
+static int	exceed1d(int posA, int sizeA, int posB, int sizeB);
+void	ChunkGenerator::exceedTest() {
+	std::cout << exceed1d(0, 11, 0, 7) << "\n";
+	std::cout << exceed1d(0, 11, 4, 7) << "\n";
+	std::cout << exceed1d(0, 11, 5, 7) << "\n";
+	std::cout << exceed1d(0, 11, -1, 7) << "\n";
+}
+static int	exceed1d(int posA, int sizeA, int posB, int sizeB) {
+	/*
+		.=========A		0 11
+		.-----B			0 7
+		    .-----B		4 7
+		     .-----B	5 7
+	   .-----B			-1 7
+		sizeB <= sizeA
+	*/
+	if (sizeB > sizeA) {
+		std::cout << "Error: Grid Displayed is larger than the total Grid in memory, or sizes are odd\n";
+		exit(4);
+	}
+	int relB = posB - posA;
+	if (relB >= 0)
+		relB = std::max(0, relB + sizeB - sizeA);
+	return relB;
+}
+static Math::Vector3	exceed(Math::Vector3 posA, Math::Vector3 sizeA, Math::Vector3 posB, Math::Vector3 sizeB) {
+	return Math::Vector3(
+		exceed1d(posA.x, sizeA.x, posB.x, sizeB.x),
+		exceed1d(posA.y, sizeA.y, posB.y, sizeB.y),
+		exceed1d(posA.z, sizeA.z, posB.z, sizeB.z));
+}
+
 static void		initValues(float diff, float& inc, float& start, float& end, float& endShift, float intersection, float size) {
 	if (diff >= 0) {
 		inc = 1;
@@ -94,6 +200,14 @@ ChunkGenerator::ChunkGenerator(Math::Vector3 player_pos, const PerlinSettings& p
 
 	this->gridIndex = Math::Vector3(0, 0, 0);
 	this->gridDisplayIndex = Math::Vector3(0, 0, 0);
+	this->currentChunkWorldIndex = Math::Vector3(0, 0, 0);
+
+	//center the player in the grid display
+	this->currentChunkWorldIndex += Math::Vector3(
+		int(this->gridDisplaySize.x / 2),
+		int(this->gridDisplaySize.y / 2),
+		int(this->gridDisplaySize.z / 2));
+
 	this->updateGrid(player_pos);
 	//this->_updatePlayerPos(player_pos);
 }
@@ -280,12 +394,39 @@ bool	ChunkGenerator::updateGrid(Math::Vector3 player_pos) {
 
 	//calculate if we need to move the memory grid and load new chunks
 	Math::Vector3	diffGrid;
-	diffGrid.x = calcExceed(this->gridIndex.x, this->gridSize.x, this->currentChunkWorldIndex.x, this->gridDisplaySize.x);
-	diffGrid.y = calcExceed(this->gridIndex.y, this->gridSize.y, this->currentChunkWorldIndex.y, this->gridDisplaySize.y);
-	diffGrid.z = calcExceed(this->gridIndex.z, this->gridSize.z, this->currentChunkWorldIndex.z, this->gridDisplaySize.z);
+#if 0 // exceed funcs, doesnt work if the player is not on the grid index 0:0:0
+	//diffGrid.x = calcExceed(this->gridIndex.x, this->gridSize.x, this->currentChunkWorldIndex.x, this->gridDisplaySize.x);
+	//diffGrid.y = calcExceed(this->gridIndex.y, this->gridSize.y, this->currentChunkWorldIndex.y, this->gridDisplaySize.y);
+	//diffGrid.z = calcExceed(this->gridIndex.z, this->gridSize.z, this->currentChunkWorldIndex.z, this->gridDisplaySize.z);
+	diffGrid = exceed(this->gridIndex, this->gridSize, this->currentChunkWorldIndex, this->gridDisplaySize);
+
 	this->gridIndex += diffGrid;
 	this->gridDisplayIndex += diff;
 	this->gridDisplayIndex -= diffGrid; //should be inside the next block? yes, test it after the refacto
+#else
+	/*
+		moving the display grid in the world, and adapt the memory grid after it, independently from the original player offset
+		if for any reason the player offset changes, this will not catch it and will continue moving grids based on above diff
+	*/
+	Math::Vector3	new_worldDisplayIndex = this->gridIndex + this->gridDisplayIndex + diff;
+	Math::Vector3	relDisplayIndex = new_worldDisplayIndex - this->gridIndex;
+	Math::Vector3	new_gridIndex;
+	if (relDisplayIndex.x < 0)
+		new_gridIndex.x = std::min(new_worldDisplayIndex.x, this->gridIndex.x);
+	else
+		new_gridIndex.x = std::max(new_worldDisplayIndex.x + this->gridDisplaySize.x - this->gridSize.x, this->gridIndex.x);
+	if (relDisplayIndex.y < 0)
+		new_gridIndex.y = std::min(this->gridIndex.y, new_worldDisplayIndex.y);
+	else
+		new_gridIndex.y = std::max(new_worldDisplayIndex.y + this->gridDisplaySize.y - this->gridSize.y, this->gridIndex.y);
+	if (relDisplayIndex.z < 0)
+		new_gridIndex.z = std::min(this->gridIndex.z, new_worldDisplayIndex.z);
+	else
+		new_gridIndex.z = std::max(new_worldDisplayIndex.z + this->gridDisplaySize.z - this->gridSize.z, this->gridIndex.z);
+	diffGrid = new_gridIndex - this->gridIndex;
+	this->gridDisplayIndex = new_worldDisplayIndex - new_gridIndex;
+	this->gridIndex = new_gridIndex;
+#endif
 	//std::cout << "\t--gridSize       \t" << this->gridSize << "\n";
 	//std::cout << "\t--gridDisplaySize\t" << this->gridDisplaySize << "\n";
 	std::cout << "\t--diff                  \t" << diff << "\n";
@@ -294,8 +435,17 @@ bool	ChunkGenerator::updateGrid(Math::Vector3 player_pos) {
 	std::cout << "\t--currentChunkWorldIndex\t" << this->currentChunkWorldIndex << "\n";
 	std::cout << "\t--gridDisplayIndex      \t" << this->gridDisplayIndex << "\n";
 
+	//std::exit(0);
+
+	//--diff(8, 1, 2)
+	//	--diffGrid(8, 1, 2)
+	//	--gridIndex(8, 1, 2)
+	//	--currentChunkWorldIndex(8, 1, 2)
+	//	--gridDisplayIndex(0, 0, 0)
+
 	if (diffGrid.len() == 0)
 		return true;
+	// make a function translateGrid(Math::Vector3) care mutex
 	this->gridMemoryMoved = true;
 
 	//grid (memory)
@@ -405,10 +555,11 @@ void	ChunkGenerator::updateChunkJobsToDo() {
 
 			if (!this->heightMaps[z][x]) {
 				index = this->gridToWorld(Math::Vector3(x, 0, z));
-				if (!this->jobsMap_hmap[index]) {
+				index.y = 0;//same hmap for all Y
+				if (!this->map_jobsHmap[index]) {
 					job_hmap = new JobBuildHeighMap(index, this->chunkSize);
 					this->jobsToDo.push_back(job_hmap);
-					this->jobsMap_hmap[index] = true;
+					this->map_jobsHmap[index] = true;
 					std::cout << "new JobBuildHeighMap: " << x << ":" << z << " world: " << index << "\n";
 					hn++;
 				} else {
@@ -420,10 +571,10 @@ void	ChunkGenerator::updateChunkJobsToDo() {
 
 				if (!this->grid[z][y][x] && this->heightMaps[z][x]) {
 					index = this->gridToWorld(Math::Vector3(x, y, z));
-					if (!this->jobsMap_hmap[index]) {
+					if (!this->map_jobsChunk[index]) {
 						job_chunk = new JobBuildChunk(index, this->chunkSize, this->heightMaps[z][x]);
 						this->jobsToDo.push_back(job_chunk);
-						this->jobsMap_chunk[index] = true;
+						this->map_jobsChunk[index] = true;
 						std::cout << "new JobBuildChunk: " << x << ":" << y << ":" << z << " world: " << index << " hmap: " << this->heightMaps[z][x] << "\n";
 						cn++;
 					} else {
@@ -468,7 +619,35 @@ void	ChunkGenerator::updateChunkJobsDone() {
 		std::cerr << "jobsDone not empty, wth? : " << this->jobsDone.size() << "\nexiting...\n";
 		std::exit(-14);
 	}
-	this->chunksChanged = true;
+	//this->chunksChanged = true;
+}
+
+void	ChunkGenerator::build(PerlinSettings& perlinSettings, std::string& threadIDstr) {
+	JobBuildGenerator* job = nullptr;
+
+	while (!this->jobsToDo.empty()) {
+		// grab job
+		//std::cout << threadIDstr << "grabbing job\n";
+		job = this->jobsToDo.front();
+		this->jobsToDo.pop_front();
+		job->assigned = true;
+
+		//job_lock.unlock();
+		this->chunks_mutex.lock();
+		job->execute(perlinSettings);
+		this->chunks_mutex.unlock();
+		//job_lock.lock();
+
+		job->assigned = false;
+		if (job->done)
+			this->jobsDone.push_back(job);
+		else
+			this->jobsToDo.push_back(job);
+
+		//std::cout << threadIDstr << "job done " << job->index << "\n";
+		job = nullptr;
+	}
+	std::cout << threadIDstr << "nomore job found... \n";
 }
 
 void	ChunkGenerator::th_builders(GLFWwindow* context) {
@@ -689,19 +868,31 @@ std::string	ChunkGenerator::toString() const {
 }
 
 Math::Vector3	ChunkGenerator::worldToGrid(const Math::Vector3& index) const {
-	Math::Vector3	gridStart = this->gridIndex - Math::Vector3(
-		int(this->gridSize.x / 2),
-		int(this->gridSize.y / 2),
-		int(this->gridSize.z / 2));
-	return (index - gridStart);
+	return (index - this->gridIndex);
+	//Math::Vector3	gridStart = this->gridIndex - Math::Vector3(
+	//	int(this->gridSize.x / 2),
+	//	int(this->gridSize.y / 2),
+	//	int(this->gridSize.z / 2));
+	//return (index - gridStart);
 }
 
 Math::Vector3	ChunkGenerator::gridToWorld(const Math::Vector3& index) const {
-	Math::Vector3	gridStart = this->gridIndex - Math::Vector3(
-		int(this->gridSize.x / 2),
-		int(this->gridSize.y / 2),
-		int(this->gridSize.z / 2));
-	return (gridStart + index);
+	return (this->gridIndex + index);
+	//Math::Vector3	gridStart = this->gridIndex - Math::Vector3(
+	//	int(this->gridSize.x / 2),
+	//	int(this->gridSize.y / 2),
+	//	int(this->gridSize.z / 2));
+	//return (gridStart + index);
+}
+
+Math::Vector3	ChunkGenerator::getGridDisplayStart() const {
+	return this->gridDisplayIndex;
+	/*
+		-Math::Vector3(
+		int(this->gridDisplaySize.x / 2),
+		int(this->gridDisplaySize.y / 2),
+		int(this->gridDisplaySize.z / 2));
+	*/
 }
 
 bool	ChunkGenerator::try_deleteUnusedData() {
