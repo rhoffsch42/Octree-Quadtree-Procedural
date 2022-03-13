@@ -2832,11 +2832,12 @@ void	scene_benchmarks() {
 	std::cout << "End while loop\n";
 }
 
-#define M_THREADS_BUILDERS		1
+#define M_THREADS_BUILDERS		10
 #define M_PERLIN_GENERATION		1
 #define M_OCTREE_OPTIMISATION	1
 #define M_DISPLAY_BLACK			1
-#define M_DRAW_GRID_CHUNK		1
+#define M_DRAW_BOX_GRID			1
+#define M_DRAW_GRID_CHUNK		0
 #define M_DRAW_MINIMAP			0
 
 static void		keyCallback_ocTree(GLFWwindow* window, int key, int scancode, int action, int mods) {
@@ -2894,7 +2895,7 @@ static void		keyCallback_ocTree(GLFWwindow* window, int key, int scancode, int a
 	}
 }
 
-void	grabObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager, Obj3dBP& cubebp, Obj3dPG& obj3d_prog, Texture* tex_lena) {
+void	grabObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager, Obj3dBP& cubebp, Obj3dPG& obj3d_prog, Texture* tex) {
 	std::cout << "_ " << __PRETTY_FUNCTION__ << "\n";
 	std::cout << generator.getGridChecks() << "\n";
 
@@ -2928,10 +2929,8 @@ void	grabObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager, 
 	manager.renderlist.clear();
 	manager.renderlistOctree.clear();
 	manager.renderlistGrid.clear();
-	for (size_t i = 0; i < 6; i++) {
+	for (size_t i = 0; i < 6; i++)
 		manager.renderlistVoxels[i].clear();
-		//std::cout << "clear: " << i << "\n";
-	}
 	manager.renderlistChunk.clear();
 
 	int		hiddenBlocks = 0;
@@ -2953,12 +2952,8 @@ void	grabObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager, 
 #endif
 	std::cout << " > display " << startDisplay << " -> " << endDisplay << "\n";
 
-	if (0 && M_DRAW_GRID_CHUNK) {
-		Math::Vector3 pos(
-			int(-generator.gridSize.x / 2),
-			int(-generator.gridSize.y / 2),
-			int(-generator.gridSize.z / 2));
-		pos += generator.gridIndex;
+	if (M_DRAW_BOX_GRID) {
+		Math::Vector3 pos = generator.gridIndex;
 		pos.scale(generator.chunkSize);
 		Math::Vector3 scale = generator.gridSize;
 		scale.scale(generator.chunkSize);
@@ -2971,94 +2966,89 @@ void	grabObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager, 
 		manager.renderlistGrid.push_back(cubeGrid);
 		cubgrid++;
 	}
-
-	for (unsigned int k = startDisplay.z; k < endDisplay.z; k++) {
-		for (unsigned int j = startDisplay.y; j < endDisplay.y; j++) {
-			for (unsigned int i = startDisplay.x; i < endDisplay.x; i++) {
-				Chunk* chunkPtr = generator.grid[k][j][i];
-				if (chunkPtr) {//at this point, the chunk might not be generated yet
-					if (0) {//coloring origin of each octree/chunk
-						Math::Vector3	siz(1, 1, 1);
-						Octree* root = chunkPtr->root->getRoot(chunkPtr->root->pos, siz);
-						if (root) {
-							if (root->size.len() != siz.len())
-								root->pixel = Pixel(254, 0, 0);
-							else
-								root->pixel = Pixel(0, 255, 0);
+	if (1) {
+		generator.glth_loadChunks();
+		generator.pushDisplayedChunks(&manager.renderlistChunk);
+	}
+	if (1) {
+		for (unsigned int k = startDisplay.z; k < endDisplay.z; k++) {
+			for (unsigned int j = startDisplay.y; j < endDisplay.y; j++) {
+				for (unsigned int i = startDisplay.x; i < endDisplay.x; i++) {
+					Chunk* chunkPtr = generator.grid[k][j][i];
+					if (chunkPtr) {//at this point, the chunk might not be generated yet
+						if (M_DRAW_GRID_CHUNK) {
+							Obj3d* cubeGrid = new Obj3d(cubebp, obj3d_prog);
+							cubeGrid->setColor(255, 0, 0);
+							cubeGrid->local.setPos(chunkPtr->pos);
+							//cubeGrid->local.setScale(chunkPtr->size * scale_coe2);
+							cubeGrid->setPolygonMode(GL_LINE);
+							cubeGrid->displayTexture = false;
+							manager.renderlistGrid.push_back(cubeGrid);
+							cubgrid++;
 						}
-					}
-					if (M_DRAW_GRID_CHUNK) {
-						Obj3d* cubeGrid = new Obj3d(cubebp, obj3d_prog);
-						cubeGrid->setColor(255, 0, 0);
-						cubeGrid->local.setPos(chunkPtr->pos);
-						cubeGrid->local.setScale(chunkPtr->size * scale_coe2);
-						cubeGrid->setPolygonMode(GL_LINE);
-						cubeGrid->displayTexture = false;
-						manager.renderlistGrid.push_back(cubeGrid);
-						cubgrid++;
-					}
-					if (1) {// one obj3d for the entire chunk
-						if (chunkPtr->mesh) {
-							manager.renderlistChunk.push_back(chunkPtr->mesh);
-							chunkPtr->mesh->setTexture(tex_lena);
-							chunkPtr->mesh->displayTexture = false;
-							int pol = chunkPtr->mesh->getBlueprint().getPolygonAmount();
-							total_polygons += pol;
-							polygon_debug << pol << " ";
+						if (0) {//coloring origin of each octree/chunk
+							Math::Vector3	siz(1, 1, 1);
+							Octree* root = chunkPtr->root->getRoot(chunkPtr->root->pos, siz);
+							if (root) {
+								if (root->size.len() != siz.len())
+									root->pixel = Pixel(254, 0, 0);
+								else
+									root->pixel = Pixel(0, 255, 0);
+							}
 						}
-					}
-					else {// oldcode, browsing to build 1 obj3d per cube (not chunk)
-						chunkPtr->root->browse(0, [&manager, &cubebp, &obj3d_prog, scale_coef, scale_coe2, chunkPtr, tex_lena, &hiddenBlocks](Octree* node) {
-							if (M_DISPLAY_BLACK || (node->pixel.r != 0 && node->pixel.g != 0 && node->pixel.b != 0)) {// pixel 0?
-								Math::Vector3	worldPos = chunkPtr->pos + node->pos;
-								Math::Vector3	center = worldPos + (node->size / 2);
-								if ((node->pixel.r < VOXEL_EMPTY.r \
-									|| node->pixel.g < VOXEL_EMPTY.g \
-									|| node->pixel.b < VOXEL_EMPTY.b) \
-									&& node->neighbors < NEIGHBOR_ALL)// should be < NEIGHBOR_ALL or (node->n & NEIGHBOR_ALL) != 0
-								{
-									Obj3d* cube = new Obj3d(cubebp, obj3d_prog);
-									cube->setColor(node->pixel.r, node->pixel.g, node->pixel.b);
-									cube->local.setPos(worldPos);
-									cube->local.setScale(node->size.x * scale_coef, node->size.y * scale_coef, node->size.z * scale_coef);
-									cube->setPolygonMode(manager.polygon_mode);
-									cube->displayTexture = true;
-									cube->displayTexture = false;
-									cube->setTexture(tex_lena);
-
-									//if (node->neighbors == 1)// faire une texture pour chaque numero
-									//	cube->setColor(0, 127, 127);
-
-									//we can see if there is false positive on fully obstructed voxel, some are partially obstructed
-									if (node->neighbors == NEIGHBOR_ALL) {//should not be drawn
-										cube->setColor(100, 200, 100);
+						if (0) {// oldcode, browsing to build 1 obj3d per cube (not chunk)
+							chunkPtr->root->browse(0, [&manager, &cubebp, &obj3d_prog, scale_coef, scale_coe2, chunkPtr, tex, &hiddenBlocks](Octree* node) {
+								if (M_DISPLAY_BLACK || (node->pixel.r != 0 && node->pixel.g != 0 && node->pixel.b != 0)) {// pixel 0?
+									Math::Vector3	worldPos = chunkPtr->pos + node->pos;
+									Math::Vector3	center = worldPos + (node->size / 2);
+									if ((node->pixel.r < VOXEL_EMPTY.r \
+										|| node->pixel.g < VOXEL_EMPTY.g \
+										|| node->pixel.b < VOXEL_EMPTY.b) \
+										&& node->neighbors < NEIGHBOR_ALL)// should be < NEIGHBOR_ALL or (node->n & NEIGHBOR_ALL) != 0
+									{
+										Obj3d* cube = new Obj3d(cubebp, obj3d_prog);
+										cube->setColor(node->pixel.r, node->pixel.g, node->pixel.b);
+										cube->local.setPos(worldPos);
+										cube->local.setScale(node->size.x * scale_coef, node->size.y * scale_coef, node->size.z * scale_coef);
 										cube->setPolygonMode(manager.polygon_mode);
-										cube->setPolygonMode(GL_FILL);
-										hiddenBlocks++;
-										manager.renderlist.push_back(cube);
-									}
-									else {
-										// push only the faces next to an EMPTY_VOXEL in an all-in buffer
-										manager.renderlist.push_back(cube);
-										if ((node->neighbors & NEIGHBOR_FRONT) != NEIGHBOR_FRONT) { manager.renderlistVoxels[CUBE_FRONT_FACE].push_back(cube); }
-										if ((node->neighbors & NEIGHBOR_RIGHT) != NEIGHBOR_RIGHT) { manager.renderlistVoxels[CUBE_RIGHT_FACE].push_back(cube); }
-										if ((node->neighbors & NEIGHBOR_LEFT) != NEIGHBOR_LEFT) { manager.renderlistVoxels[CUBE_LEFT_FACE].push_back(cube); }
-										if ((node->neighbors & NEIGHBOR_BOTTOM) != NEIGHBOR_BOTTOM) { manager.renderlistVoxels[CUBE_BOTTOM_FACE].push_back(cube); }
-										if ((node->neighbors & NEIGHBOR_TOP) != NEIGHBOR_TOP) { manager.renderlistVoxels[CUBE_TOP_FACE].push_back(cube); }
-										if ((node->neighbors & NEIGHBOR_BACK) != NEIGHBOR_BACK) { manager.renderlistVoxels[CUBE_BACK_FACE].push_back(cube); }
-									}
-									if (M_DISPLAY_BLACK) {
-										Obj3d* cube2 = new Obj3d(cubebp, obj3d_prog);
-										cube2->setColor(0, 0, 0);
-										cube2->local.setPos(worldPos);
-										cube2->local.setScale(node->size.x * scale_coe2, node->size.y * scale_coe2, node->size.z * scale_coe2);
-										cube2->setPolygonMode(GL_LINE);
-										cube2->displayTexture = false;
-										manager.renderlistOctree.push_back(cube2);
+										cube->displayTexture = true;
+										cube->displayTexture = false;
+										cube->setTexture(tex);
+
+										//if (node->neighbors == 1)// faire une texture pour chaque numero
+										//	cube->setColor(0, 127, 127);
+
+										//we can see if there is false positive on fully obstructed voxel, some are partially obstructed
+										if (node->neighbors == NEIGHBOR_ALL) {//should not be drawn
+											cube->setColor(100, 200, 100);
+											cube->setPolygonMode(manager.polygon_mode);
+											cube->setPolygonMode(GL_FILL);
+											hiddenBlocks++;
+											manager.renderlist.push_back(cube);
+										}
+										else {
+											// push only the faces next to an EMPTY_VOXEL in an all-in buffer
+											manager.renderlist.push_back(cube);
+											if ((node->neighbors & NEIGHBOR_FRONT) != NEIGHBOR_FRONT) { manager.renderlistVoxels[CUBE_FRONT_FACE].push_back(cube); }
+											if ((node->neighbors & NEIGHBOR_RIGHT) != NEIGHBOR_RIGHT) { manager.renderlistVoxels[CUBE_RIGHT_FACE].push_back(cube); }
+											if ((node->neighbors & NEIGHBOR_LEFT) != NEIGHBOR_LEFT) { manager.renderlistVoxels[CUBE_LEFT_FACE].push_back(cube); }
+											if ((node->neighbors & NEIGHBOR_BOTTOM) != NEIGHBOR_BOTTOM) { manager.renderlistVoxels[CUBE_BOTTOM_FACE].push_back(cube); }
+											if ((node->neighbors & NEIGHBOR_TOP) != NEIGHBOR_TOP) { manager.renderlistVoxels[CUBE_TOP_FACE].push_back(cube); }
+											if ((node->neighbors & NEIGHBOR_BACK) != NEIGHBOR_BACK) { manager.renderlistVoxels[CUBE_BACK_FACE].push_back(cube); }
+										}
+										if (M_DISPLAY_BLACK) {
+											Obj3d* cube2 = new Obj3d(cubebp, obj3d_prog);
+											cube2->setColor(0, 0, 0);
+											cube2->local.setPos(worldPos);
+											cube2->local.setScale(node->size.x * scale_coe2, node->size.y * scale_coe2, node->size.z * scale_coe2);
+											cube2->setPolygonMode(GL_LINE);
+											cube2->displayTexture = false;
+											manager.renderlistOctree.push_back(cube2);
+										}
 									}
 								}
-							}
-						});
+							});
+						}
 					}
 				}
 			}
@@ -3071,6 +3061,8 @@ void	grabObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager, 
 	for (auto i : manager.renderlistVoxels)
 		std::cout << "renderlistVoxels[]: " << i.size() << "\n";
 	std::cout << "renderlistOctree: " << manager.renderlistOctree.size() << "\n";
+	std::cout << "renderlistChunk: " << manager.renderlistChunk.size() << "\n";
+	std::cout << "renderlistGrid: " << manager.renderlistGrid.size() << "\n";
 	std::cout << "cubes grid : " << cubgrid << "\n";
 }
 
@@ -3195,8 +3187,8 @@ void	scene_octree() {
 	//chunk generator
 	Math::Vector3	playerPos = cam.local.getPos();
 
-	int	g = 5;
-	int	d = 3;// g * 2 / 3;
+	int	g = 21;
+	int	d = 15;// g * 2 / 3;
 	m.gridSize = Math::Vector3(g, g, g);
 	m.gridSizeDisplayed = Math::Vector3(d, d, d);
 	ChunkGenerator	generator(playerPos, *m.ps, m.chunk_size, m.gridSize, m.gridSizeDisplayed);
@@ -3206,7 +3198,7 @@ void	scene_octree() {
 
 	//#define MINIMAP // need to build a framebuffer with the entire map, update it each time the player changes chunk
 	std::unique_lock<std::mutex> chunks_lock(generator.chunks_mutex, std::defer_lock);
-#define USE_THREADSL
+#define USE_THREADS
 #ifdef USE_THREADS
 	//chunks builder
 	generator.builderAmount = M_THREADS_BUILDERS;
@@ -3251,13 +3243,17 @@ void	scene_octree() {
 				m.cam->events(*m.glfw, float(fps.getTick()));
 			}
 			if (generator.job_mutex.try_lock()) {
-				if (generator.chunksChanged && chunks_lock.try_lock()) {
+				if ((generator.playerChangedChunk || generator.chunksChanged) && chunks_lock.try_lock()) {
 					//std::cout << "[renderer] lock chunks_mutex\n";
 					double start = glfwGetTime();
 					std::cout << &generator << " : grabbing meshes...\n";
 					grabObjectFromGenerator(generator, m, cubebp, *renderer, tex_lena);
-					start = glfwGetTime() - start; std::cout << "grabbed in " << start << " seconds\n";
-					generator.chunksChanged = false;
+					start = glfwGetTime() - start;
+					std::cout << "grabbed " << m.renderlistChunk.size() << " in " << start << " seconds\n";
+					if (generator.playerChangedChunk)
+						generator.playerChangedChunk = false;
+					if (generator.chunksChanged)
+						generator.chunksChanged = false;
 					chunks_lock.unlock();
 					// the generator can do what he want with the grid, the renderer has what he need for the current frame
 				}
@@ -3280,17 +3276,11 @@ void	scene_octree() {
 				renderer->renderObjects(m.renderlist, cam, PG_FORCE_DRAW);
 			}
 			else if (1) { // converted to mesh
-				if (chunks_lock.try_lock()) {//should be another mutex?
-					//chunks_lock.lock();
-					//std::cout << "Rendering objects... ";
-					Chunk::renderer->renderObjects(m.renderlistChunk, cam, PG_FORCE_DRAW);//PG_FRUSTUM_CULLING
-					//std::cout << "Done\n";
-					chunks_lock.unlock();
-				}
+				Chunk::renderer->renderObjects(m.renderlistChunk, cam, PG_FORCE_DRAW);//PG_FRUSTUM_CULLING
 			}
 			//std::cout << "octreeDisplay\n";
 			//renderer->renderObjects(m.renderlistOctree, cam, PG_FORCE_DRAW);
-#if 1
+#if (M_DRAW_BOX_GRID || M_DRAW_GRID_CHUNK)
 			glDisable(GL_CULL_FACE);
 			renderer->renderObjects(m.renderlistGrid, cam, PG_FORCE_DRAW);
 			glEnable(GL_CULL_FACE);
@@ -3351,7 +3341,6 @@ void	scene_octree() {
 	std::cout << "[Main] joined helper0\n";
 	std::cout << "[Main] exiting...\n";
 #else  // not USE_THREADS
-
 	//helper: player pos, jobs, trash(need gl cntext?)
 	std::thread helper0(std::bind(&ChunkGenerator::th_updater, &generator, &cam));
 
@@ -3492,6 +3481,147 @@ void	scene_checkMemory() {
 
 #endif //main all
 
+void	th_build_object(GLFWwindow* context, int n, list<Object*> * list, Obj3dPG* pg, std::mutex* mutex) {
+	std::cout << __PRETTY_FUNCTION__ << "\n";
+	std::thread::id threadID = std::this_thread::get_id();
+	std::stringstream ss;
+	ss << threadID;
+	std::string	thid = "[" + ss.str() + "]\t";
+	glfwMakeContextCurrent(context);
+	std::unique_lock<std::mutex> lock(*mutex);
+
+	Obj3dBP	bp(SIMPLEGL_FOLDER + "obj3d/cube.obj");
+	std::cout << thid << "new bp: vao: " << bp.getVao() << "\t vbo: " << bp.getVboVertex() << "\n";
+	Obj3d* o = new Obj3d(bp, *pg);
+	o->local.setPos(Math::Vector3(n * 3, 0, 0));
+	o->local.setScale(Math::Vector3(1, n * 3, 1));
+	list->push_back(dynamic_cast<Object*>(o));
+	bp.deleteVao();
+
+	lock.unlock();
+	while (1);
+	//glfwSetWindowShouldClose(context, GLFW_TRUE);
+	//glfwMakeContextCurrent(nullptr);
+	//std::this_thread::sleep_for(3600s);
+}
+
+void	scene_test_thread() {
+	float		win_height = 900;
+	float		win_width = 1600;
+	Glfw		glfw(win_width, win_height);
+	glfwSetWindowPos(glfw._window, 100, 50);
+	glfwWindowHint(GLFW_VISIBLE, GLFW_TRUE);
+	glfwFocusWindow(glfw._window);
+	glfwSwapInterval(0);
+	glfw.setTitle("Tests octree");
+	GameManager	m;
+	m.glfw = &glfw;
+	glfw.activateDefaultCallbacks(&m);
+
+	Cam			cam(glfw.getWidth(), glfw.getHeight());
+	cam.local.setPos(0, 0, 8);
+	Obj3dPG		renderer(SIMPLEGL_FOLDER + OBJ3D_VS_FILE, SIMPLEGL_FOLDER + OBJ3D_FS_FILE);
+	Texture*	tex_skybox = new Texture(SIMPLEGL_FOLDER + "images/skybox4.bmp");
+	SkyboxPG	rendererSkybox(SIMPLEGL_FOLDER + CUBEMAP_VS_FILE, SIMPLEGL_FOLDER + CUBEMAP_FS_FILE);
+	Skybox		skybox(*tex_skybox, rendererSkybox);
+	list<Object*>	renderlistSkybox;
+	renderlistSkybox.push_back(dynamic_cast<Object*>(&skybox));
+
+	Obj3dBP::defaultSize = 1;
+	Obj3dBP::defaultDataMode = BP_LINEAR;
+	Obj3dBP::rescale = true;
+	Obj3dBP::center = false;
+
+	list<Object*>	objlist;
+	std::mutex		mutex;
+
+#define TESTTHREADSL
+#ifdef TESTTHREADS
+	GLFWwindow* contexts[M_THREADS_BUILDERS];
+	std::thread* builders[M_THREADS_BUILDERS];
+	for (size_t i = 0; i < M_THREADS_BUILDERS; i++) {
+		contexts[i] = glfwCreateWindow(500, 30, std::to_string(i).c_str(), NULL, glfw._window);
+		if (!contexts[i]) {
+			std::cout << "Error when creating context " << i << "\n";
+			std::exit(5);
+		}
+		glfwSetWindowPos(contexts[i], 2000, 50 + 30 * i);
+		builders[i] = new std::thread(std::bind(&th_build_object, contexts[i], i, &objlist, &renderer, &mutex));
+	}
+	//std::this_thread::sleep_for(5s);
+	while (1) {
+		if (mutex.try_lock()) {
+			std::cout << objlist.size();
+			if (objlist.size() == M_THREADS_BUILDERS) {
+				mutex.unlock();
+				break;
+			}
+			mutex.unlock();
+			std::this_thread::sleep_for(1s);
+		} else {
+			std::cout << ".";
+		}
+	}
+	for (auto i : objlist) {
+		std::cout << i->getId() << "\n";
+		Obj3d* o = dynamic_cast<Obj3d*>(i);
+		if (!o) {
+			std::cout << "dyn_cast failed to object: " << i << "\n";
+			std::exit(88);
+		}
+		Obj3dBP&	bp = o->getBlueprint();
+		GLuint vao = bp.createVao();
+		renderer.linkBuffersToVao(bp, vao);
+	}
+
+#else
+	Obj3dBP	bp(SIMPLEGL_FOLDER + "obj3d/cube.obj");
+	for (int n = 0; n < M_THREADS_BUILDERS; n++) {
+		Obj3d* o = new Obj3d(bp, renderer);
+		o->local.setPos(Math::Vector3(n * 3, 0, 0));
+		o->local.setScale(Math::Vector3(1, n+1, 1));
+		objlist.push_back(dynamic_cast<Object*>(o));
+	}
+#endif // !TESTTHREADS
+
+	Fps	fps(25);
+	unsigned int frames = 0;
+	std::cout << "Begin rendering\n";
+	while (!glfwWindowShouldClose(glfw._window)) {
+		std::cout << "-";
+		if (fps.wait_for_next_frame()) {
+			std::cout << "1";
+			frames++;
+			if (frames % 500 == 0) {
+				std::cout << ">>>>>>>>>>>>>>>>>>>> " << frames << " FRAMES <<<<<<<<<<<<<<<<<<<<\n";
+				std::cout << "cam: " << cam.local.getPos() << "\n";
+				std::cout << "objects: " << objlist.size() << "\n";
+			}
+			glfw.setTitle(std::to_string(fps.getFps()) + " fps");
+			std::cout << "2";
+			glfwPollEvents();
+			std::cout << "3";
+			glfw.updateMouse();//to do before cam's events
+			std::cout << "4";
+			cam.events(glfw, float(fps.getTick()));
+			std::cout << "5";
+
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			renderer.renderObjects(objlist, cam, PG_FORCE_DRAW);//PG_FRUSTUM_CULLING
+			std::cout << "6";
+			rendererSkybox.renderObjects(renderlistSkybox, cam, PG_FORCE_DRAW);
+			std::cout << "7";
+
+			glfwSwapBuffers(glfw._window);
+
+			if (GLFW_PRESS == glfwGetKey(glfw._window, GLFW_KEY_ESCAPE))
+				glfwSetWindowShouldClose(glfw._window, GLFW_TRUE);
+			std::cout << "f";
+		}
+	}
+	std::cout << "end\n";
+}
+
 #if 1 main
 #define _CRTDBG_MAP_ALLOC
 #include <stdlib.h>
@@ -3500,20 +3630,6 @@ void	scene_checkMemory() {
 //thread safe cout : https://stackoverflow.com/questions/14718124/how-to-easily-make-stdcout-thread-safe
 //multithread monitor example : https://stackoverflow.com/questions/51668477/c-lock-a-mutex-as-if-from-another-thread
 int		main(int ac, char **av) {
-
-	//ChunkGenerator::test_calcExceed();std::exit(0);
-	//ChunkGenerator::exceedTest();std::exit(0);
-
-	//Math::Vector3	v1(1, 2, 3);
-	//Math::Vector3	v2(1, 2, 3);
-	//Math::Vector3	v3(0, 2, 3);
-	//std::cout << (v1 == v2) << "\n";
-	//std::cout << (v2 == v1) << "\n";
-	//std::cout << (v1 != v2) << "\n";
-	//std::cout << (v2 != v1) << "\n";
-	//std::cout << (v2 != v3) << "\n";
-	//std::cout << (v2 == v3) << "\n";
-	//exit(0);
 
 	//playertest();
 	//_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
@@ -3540,6 +3656,7 @@ int		main(int ac, char **av) {
 	//scene_benchmarks();
 	//scene_checkMemory();
 	scene_octree();
+	//scene_test_thread();
 	// while(1);
 
 	std::cout << "____END____ : \n";

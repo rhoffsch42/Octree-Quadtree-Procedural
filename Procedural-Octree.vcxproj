@@ -151,6 +151,7 @@
     <ClCompile Include="src\chunk.cpp" />
     <ClCompile Include="src\chunkgenerator.cpp" />
     <ClCompile Include="src\heightmap.cpp" />
+    <ClCompile Include="src\job.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\octree.cpp" />
     <ClCompile Include="src\quadtree.cpp" />
@@ -159,6 +160,7 @@
     <ClInclude Include="include\chunk.hpp" />
     <ClInclude Include="include\chunkgenerator.hpp" />
     <ClInclude Include="include\heightmap.hpp" />
+    <ClInclude Include="include\job.hpp" />
     <ClInclude Include="include\octree.hpp" />
     <ClInclude Include="include\quadtree.hpp" />
     <ClInclude Include="include\trees.h" />

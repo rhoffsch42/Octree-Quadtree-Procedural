@@ -97,15 +97,30 @@ Chunk::~Chunk() {
 	if (this->mesh) { delete this->mesh; }
 }
 
-void	Chunk::buildMesh() {
+
+/*
+	before calling this function, empty vertices means empty chunk.
+	if there are vertices, it uses them to build a mesh, then it deletes the vertices
+*/
+void	Chunk::glth_buildMesh() {
 	//std::cout << "Chunk::_vertexArray size: " << this->_vertexArray.size() << "\n";
 	if (!this->_vertexArray.empty()) {//if there are some voxels in the chunk
+		if (this->meshBP) {
+			std::cout << "overriding mesh bp: " << this->meshBP << " on chunk: " << this << "\n";
+			std::exit(31);
+		}
+		if (this->mesh) {
+			std::cout << "overriding mesh: " << this->mesh << " on chunk: " << this << "\n";
+			std::exit(31);
+		}
+
 		this->meshBP = new Obj3dBP(this->_vertexArray, BP_DONT_NORMALIZE);
 		this->meshBP->freeData(BP_FREE_ALL);
 		this->mesh = new Obj3d(*this->meshBP, *Chunk::renderer);
 		this->mesh->local.setPos(this->pos);
 
-		//delete vertex array of the mesh so we don't build it more than once
+		//delete vertex array of the mesh so we don't build it again later
+		//to rebuild the mesh (for whatever reason), call buildVertexArrayFromOctree() first
 		this->_vertexArray.clear();
 	}
 }
@@ -126,7 +141,7 @@ int	Chunk::buildVertexArrayFromOctree(Octree* root, Math::Vector3 pos_offset) {
 		return 0;
 	}
 	std::vector<SimpleVertex>	vertices = Chunk::cubeBlueprint->getVertices();
-	std::vector<SimpleVertex>* ptr_vertex_array = &this->_vertexArray;
+	std::vector<SimpleVertex>*	ptr_vertex_array = &this->_vertexArray;
 	root->browse(0, [&pos_offset, ptr_vertex_array, &vertices](Octree* node) {
 		if ((node->pixel.r < VOXEL_EMPTY.r \
 			|| node->pixel.g < VOXEL_EMPTY.g \

@@ -117,6 +117,9 @@
     <ClCompile Include="SimpleGL\src\text_pg.cpp">
       <Filter>SimpleGL\Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\job.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="SimpleGL\include\behavior.hpp">
@@ -220,6 +223,9 @@
     </ClInclude>
     <ClInclude Include="SimpleGL\include\ft2build.h">
       <Filter>SimpleGL\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\job.hpp">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

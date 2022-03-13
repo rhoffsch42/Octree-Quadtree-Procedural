@@ -28,7 +28,7 @@ public:
 	Obj3dBP*		meshBP;
 	Obj3d*			mesh;
 
-	void		buildMesh();//with _vertexArray
+	void		glth_buildMesh();//with _vertexArray
 	//bool operator<(const Chunk& rhs) const//tmp
 	//{
 	//	return std::tie(this->index.x, this->index.y, this->index.z) < std::tie(rhs.index.x, rhs.index.y, rhs.pos.z);
