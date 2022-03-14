@@ -99,8 +99,8 @@ Chunk::~Chunk() {
 
 
 /*
-	before calling this function, empty vertices means empty chunk.
-	if there are vertices, it uses them to build a mesh, then it deletes the vertices
+	Before calling this function, empty vertices means empty chunk.
+	If there are vertices, it uses them to build a mesh, then it deletes the vertices.
 */
 void	Chunk::glth_buildMesh() {
 	//std::cout << "Chunk::_vertexArray size: " << this->_vertexArray.size() << "\n";
@@ -119,8 +119,11 @@ void	Chunk::glth_buildMesh() {
 		this->mesh = new Obj3d(*this->meshBP, *Chunk::renderer);
 		this->mesh->local.setPos(this->pos);
 
-		//delete vertex array of the mesh so we don't build it again later
-		//to rebuild the mesh (for whatever reason), call buildVertexArrayFromOctree() first
+		/*
+			Delete vertex array of the mesh so we don't build it again later.
+			To rebuild the mesh (for whatever reason), call buildVertexArrayFromOctree() first.
+			pb: for now the root octree is deleted at this point (in Chunk constructor)
+		*/
 		this->_vertexArray.clear();
 	}
 }

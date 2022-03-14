@@ -836,6 +836,9 @@ void RenderText(Shader& shader, std::string text, float x, float y, float scale,
 #include "simplegl.h"
 #include "trees.h"
 #include <typeinfo>
+#include <thread>
+#include <chrono>
+using namespace std::chrono_literals;
 
 void	test_poe() {
 	float	crit_chance = 1;
@@ -974,7 +977,7 @@ void	check_paddings() {
 	std::cout << "long long     \t" << sizeof(long long) << "\n";
 	std::cout << "int           \t" << sizeof(int) << "\n";
 	if ((sizeof(BMPFILEHEADER) != 14) || (sizeof(BMPINFOHEADER) != 40)) {
-		cerr << "Padding in structure, exiting...\n" << "\n";
+		std::cerr << "Padding in structure, exiting...\n" << "\n";
 		std::cout << "BMPFILEHEADER\t" << sizeof(BMPFILEHEADER) << "\n";
 		std::cout << "bfType     \t" << offsetof(BMPFILEHEADER, bfType) << "\n";
 		std::cout << "bfSize     \t" << offsetof(BMPFILEHEADER, bfSize) << "\n";
@@ -1086,7 +1089,7 @@ void	scene1() {
 	Texture		texture8 = *texture1;
 #endif
 #ifndef OBJ3D
-	list<Obj3d*>	obj3dList;
+	std::list<Obj3d*>	obj3dList;
 
 	float s = 1.0f;//scale
 	//Create Obj3d with the blueprint & by copy
@@ -1422,7 +1425,7 @@ void scene2() {
 	Skybox		skybox(*texture3, sky_pg);
 
 
-	list<Obj3d*>	obj3dList;
+	std::list<Obj3d*>	obj3dList;
 
 	Obj3d			rocket(rocketBP, obj3d_prog);
 	rocket.local.setPos(0, 0, 0);
@@ -2630,7 +2633,7 @@ public:
 		this->polygon_mode = GL_FILL;
 		this->threshold = 0;
 
-		this->cpu_coreAmount = std::thread::hardware_concurrency();
+		this->cpuThreadAmount = std::thread::hardware_concurrency();
 	}
 	~OctreeManager() {}
 
@@ -2642,6 +2645,7 @@ public:
 	std::list<Object*>	renderlistGrid;
 	std::list<Object*>	renderlistVoxels[6];//6faces
 	std::list<Object*>	renderlistChunk;
+	Object**			renderArrayChunk = nullptr;
 	std::list<Object*>	renderlistSkybox;
 	UIPanel*** minimapPanels;
 	UIImage* playerMinimap;
@@ -2657,7 +2661,7 @@ public:
 	Math::Vector3		gridSizeDisplayed;
 	unsigned int		threshold;
 
-	unsigned int		cpu_coreAmount;
+	unsigned int		cpuThreadAmount;
 };
 
 void	scene_benchmarks() {
@@ -2969,6 +2973,7 @@ void	grabObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager, 
 	if (1) {
 		generator.glth_loadChunks();
 		generator.pushDisplayedChunks(&manager.renderlistChunk);
+		generator.pushDisplayedChunks(manager.renderArrayChunk);
 	}
 	if (1) {
 		for (unsigned int k = startDisplay.z; k < endDisplay.z; k++) {
@@ -3073,20 +3078,20 @@ void	scene_octree() {
 	float	win_height = 900;
 	float	win_width = 1600;
 	OctreeManager	m;
-	std::cout << "cpu core Amount: " << m.cpu_coreAmount << "\n";
+	std::cout << "cpu threads amount: " << m.cpuThreadAmount << "\n";
 	std::this_thread::sleep_for(1s);
 	//m.glfw = new Glfw(WINX, WINY);
 	m.glfw = new Glfw(win_width, win_height);
 	glfwSetWindowPos(m.glfw->_window, 100, 50);
 
-#if 0
+	#if 0
 	GLint n = 0;
 	glGetIntegerv(GL_NUM_EXTENSIONS, &n);
 	for (GLint i = 0; i < n; i++) {
 		const char* extension = (const char*)glGetStringi(GL_EXTENSIONS, i);
 		std::cout << extension << "\n";
 	}
-#endif
+	#endif
 	//exit(0);
 
 	glfwSwapInterval(0);//0 = disable vsynx
@@ -3187,12 +3192,29 @@ void	scene_octree() {
 	//chunk generator
 	Math::Vector3	playerPos = cam.local.getPos();
 
-	int	g = 21;
-	int	d = 15;// g * 2 / 3;
+	int	g = 25;
+	int	d = 19;// g * 2 / 3;
 	m.gridSize = Math::Vector3(g, g, g);
 	m.gridSizeDisplayed = Math::Vector3(d, d, d);
 	ChunkGenerator	generator(playerPos, *m.ps, m.chunk_size, m.gridSize, m.gridSizeDisplayed);
-
+	#ifndef INIT_RENDER_ARRAY
+	unsigned int x = generator.gridDisplaySize.x;
+	unsigned int y = generator.gridDisplaySize.y;
+	unsigned int z = generator.gridDisplaySize.z;
+	unsigned int len = x * y;
+	if (x != 0 && len / x != y) {
+		std::cout << "grid size too big, causing overflow\n";
+		std::exit(99);
+	}
+	len = x * y * z;
+	if ((z != 0 && len / z != x * y) || len == 4294967295) {
+		std::cout << "grid size too big, causing overflow\n";
+		std::exit(99);
+	}
+	len++;
+	m.renderArrayChunk = new Object* [len];
+	m.renderArrayChunk[0] = nullptr;
+	#endif // INIT_RENDER_ARRAY
 #endif // GENERATOR
 	Fps	fps(135);
 
@@ -3201,9 +3223,9 @@ void	scene_octree() {
 #define USE_THREADS
 #ifdef USE_THREADS
 	//chunks builder
-	generator.builderAmount = M_THREADS_BUILDERS;
-	GLFWwindow* contexts[M_THREADS_BUILDERS];
-	std::thread* builders[M_THREADS_BUILDERS];
+	generator.builderAmount = m.cpuThreadAmount - 2;
+	GLFWwindow** contexts = new GLFWwindow*[generator.builderAmount + 1];	contexts[generator.builderAmount] = nullptr;
+	std::thread** builders = new std::thread*[generator.builderAmount + 1];	builders[generator.builderAmount] = nullptr;
 	for (size_t i = 0; i < generator.builderAmount; i++) {
 		contexts[i] = glfwCreateWindow(500, 30, std::to_string(i).c_str(), NULL, m.glfw->_window);
 		if (!contexts[i]) {
@@ -3223,6 +3245,7 @@ void	scene_octree() {
 	generator.cv.notify_all();
 
 	unsigned int frames = 0;
+	bool renderingWithList = true;
 	std::cout << "cam: " << cam.local.getPos().toString() << "\n";
 	std::cout << "Begin while loop, renderer: " << typeid(renderer).name() << "\n";
 	//std::cout.setstate(std::ios_base::failbit);
@@ -3232,7 +3255,9 @@ void	scene_octree() {
 			frames++;
 			if (frames % 500 == 0) {
 				std::cout << ">>>>>>>>>>>>>>>>>>>> " << frames << " FRAMES <<<<<<<<<<<<<<<<<<<<\n";
-				std::cout << "cam: " << cam.local.getPos().toString() << "\n";
+				std::cout << "cam: " << cam.local.getPos() << "\n";
+				renderingWithList = !renderingWithList;
+				std::cout << "rendering with " << (renderingWithList ? "list\n" : "array\n");
 			}
 			m.glfw->setTitle(std::to_string(fps.getFps()) + " fps");
 
@@ -3276,7 +3301,10 @@ void	scene_octree() {
 				renderer->renderObjects(m.renderlist, cam, PG_FORCE_DRAW);
 			}
 			else if (1) { // converted to mesh
-				Chunk::renderer->renderObjects(m.renderlistChunk, cam, PG_FORCE_DRAW);//PG_FRUSTUM_CULLING
+				if (renderingWithList)
+					Chunk::renderer->renderObjects(m.renderlistChunk, cam, PG_FORCE_DRAW);//PG_FRUSTUM_CULLING
+				else
+					Chunk::renderer->renderObjects(m.renderArrayChunk, cam, PG_FORCE_DRAW);//PG_FRUSTUM_CULLING
 			}
 			//std::cout << "octreeDisplay\n";
 			//renderer->renderObjects(m.renderlistOctree, cam, PG_FORCE_DRAW);
@@ -3481,7 +3509,7 @@ void	scene_checkMemory() {
 
 #endif //main all
 
-void	th_build_object(GLFWwindow* context, int n, list<Object*> * list, Obj3dPG* pg, std::mutex* mutex) {
+void	th_build_object(GLFWwindow* context, int n, std::list<Object*> * list, Obj3dPG* pg, std::mutex* mutex) {
 	std::cout << __PRETTY_FUNCTION__ << "\n";
 	std::thread::id threadID = std::this_thread::get_id();
 	std::stringstream ss;
@@ -3524,7 +3552,7 @@ void	scene_test_thread() {
 	Texture*	tex_skybox = new Texture(SIMPLEGL_FOLDER + "images/skybox4.bmp");
 	SkyboxPG	rendererSkybox(SIMPLEGL_FOLDER + CUBEMAP_VS_FILE, SIMPLEGL_FOLDER + CUBEMAP_FS_FILE);
 	Skybox		skybox(*tex_skybox, rendererSkybox);
-	list<Object*>	renderlistSkybox;
+	std::list<Object*>	renderlistSkybox;
 	renderlistSkybox.push_back(dynamic_cast<Object*>(&skybox));
 
 	Obj3dBP::defaultSize = 1;
@@ -3532,7 +3560,7 @@ void	scene_test_thread() {
 	Obj3dBP::rescale = true;
 	Obj3dBP::center = false;
 
-	list<Object*>	objlist;
+	std::list<Object*>	objlist;
 	std::mutex		mutex;
 
 #define TESTTHREADSL
@@ -3630,7 +3658,6 @@ void	scene_test_thread() {
 //thread safe cout : https://stackoverflow.com/questions/14718124/how-to-easily-make-stdcout-thread-safe
 //multithread monitor example : https://stackoverflow.com/questions/51668477/c-lock-a-mutex-as-if-from-another-thread
 int		main(int ac, char **av) {
-
 	//playertest();
 	//_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 	//_CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_DEBUG);

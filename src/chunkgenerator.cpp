@@ -1,6 +1,8 @@
 #include "chunkgenerator.hpp"
 #include "compiler_settings.h"
 #include <algorithm>
+#include <chrono>
+using namespace std::chrono_literals;
 
 ChunkGenerator::ChunkGenerator(Math::Vector3 player_pos, const PerlinSettings& perlin_settings, Math::Vector3 chunk_size, Math::Vector3 grid_size, Math::Vector3 grid_size_displayed)
 	: chunkSize(chunk_size),
@@ -9,28 +11,6 @@ ChunkGenerator::ChunkGenerator(Math::Vector3 player_pos, const PerlinSettings& p
 	settings(perlin_settings)
 {
 	std::cout << "_ " << __PRETTY_FUNCTION__ << "\n";
-/*
-	retfacto grid with 3d list
-	std::list< std::list< std::list<Chunk*> > >	gr;
-	//move forward +Z
-	gr.push_back
-	gr.pop_front
-	//move backward -Z
-	gr.pop_back
-	gr.push_front
-	//move up +Y
-	gr[z].push_back
-	gr[z].pop_front
-	//move down -Y
-	gr[z].pop_back
-	gr[z].push_front
-	//move left -X
-	gr[z][y].pop_back
-	gr[z][y].push_front
-	//move right +X
-	gr[z][y].push_back
-	gr[z][y].pop_front
-*/
 
 	this->heightMaps = new HeightMap* *[this->gridSize.z];
 	for (unsigned int z = 0; z < this->gridSize.z; z++) {
@@ -370,7 +350,7 @@ void	ChunkGenerator::updateChunkJobsDone() {
 		std::cerr << "jobsDone not empty, wth? : " << this->jobsDone.size() << "\nexiting...\n";
 		std::exit(-14);
 	}
-	this->chunksChanged = true;
+	//this->chunksChanged = true;
 }
 
 void	ChunkGenerator::build(PerlinSettings& perlinSettings, std::string& threadIDstr) {
@@ -403,19 +383,18 @@ void	ChunkGenerator::build(PerlinSettings& perlinSettings, std::string& threadID
 
 void	ChunkGenerator::th_builders(GLFWwindow* context) {
 	std::cout << __PRETTY_FUNCTION__ << "\n";
+	glfwMakeContextCurrent(context);
 	std::thread::id threadID = std::this_thread::get_id();
 	std::stringstream ss;
 	ss << threadID;
 	std::string	threadIDstr = "[" + ss.str() + "]\t";
-	glfwMakeContextCurrent(context);
-	//glfwSetWindowTitle(context, threadIDstr.c_str());//Thread safety : This function must only be called from the main thread.
 	std::cout << threadIDstr << " started\n";
-	std::unique_lock<std::mutex> job_lock(this->job_mutex);
 
 	//build job variables
 	PerlinSettings		perlinSettings(this->settings);//if they change later, we have to update them, cpy them when finding a job?
 	JobBuildGenerator*	job = nullptr;
 	unsigned int		thread_jobsdone = 0;
+	std::unique_lock<std::mutex> job_lock(this->job_mutex);
 
 	while (!this->terminateThreads) {
 		if (!this->jobsToDo.empty()) {
@@ -439,15 +418,13 @@ void	ChunkGenerator::th_builders(GLFWwindow* context) {
 				this->jobsToDo.push_back(job);
 
 			//std::cout << threadIDstr << "job done " << job->index << "\n";
-			//glfwSetWindowTitle(context, (threadIDstr + "job done: chunk built").c_str());
 			job = nullptr;
 		}
-		else {
-			//std::cout << threadIDstr << "no job found... \n";
-		}
+		//else {
+		//	std::cout << threadIDstr << "no job found... \n";
+		//}
 
 		//std::cout << threadIDstr << "waiting \n";
-		//glfwSetWindowTitle(context, (threadIDstr + "waiting").c_str());
 		this->cv.wait(job_lock, [this] { return (!this->jobsToDo.empty() || this->terminateThreads); });//wait until jobs list in not empty
 		//std::cout << threadIDstr << "waking up from cv.wait() \n";
 	}
@@ -499,6 +476,13 @@ void	ChunkGenerator::_updatePlayerPos(const Math::Vector3& player_pos) {
 }
 
 void	ChunkGenerator::glth_loadChunks() {
+	/*
+		not ideal. each time there are new chunks on 1 dimension, it recheck the entire grid
+		ex: grid 1000x1000x1000. 1000x1000 new chunks to load, but 1000x1000x1000 iterations
+
+		refacto: new job: change the chunk job deliver to create a new job for the main thread
+		if the chunk isn't empty ofc.
+	*/
 	Chunk* c = nullptr;
 	for (unsigned int k = 0; k < gridSize.z; k++) {
 		for (unsigned int j = 0; j < gridSize.y; j++) {
@@ -513,7 +497,12 @@ void	ChunkGenerator::glth_loadChunks() {
 	}
 }
 
-void	ChunkGenerator::pushDisplayedChunks(list<Object*>* dst) const {
+void	ChunkGenerator::pushDisplayedChunks(std::list<Object*>* dst) const {
+	/*
+		same as in glth_loadChunks() but more complicated
+		we would need to select the chunks to remove (change the render list with a map?),
+		and push only the new chunks
+	*/
 	Chunk* c = nullptr;
 	Math::Vector3	endDisplay = gridDisplayIndex + gridDisplaySize;
 	for (unsigned int k = gridDisplayIndex.z; k < endDisplay.z; k++) {
@@ -528,6 +517,31 @@ void	ChunkGenerator::pushDisplayedChunks(list<Object*>* dst) const {
 		}
 	}
 }
+
+void	ChunkGenerator::pushDisplayedChunks(Object** dst) const {
+	/*
+		same as in glth_loadChunks() but more complicated
+		we would need to select the chunks to remove (change the render list with a map?),
+		and push only the new chunks
+	*/
+	unsigned int n = 0;
+	Chunk* c = nullptr;
+	Math::Vector3	endDisplay = gridDisplayIndex + gridDisplaySize;
+	for (unsigned int k = gridDisplayIndex.z; k < endDisplay.z; k++) {
+		for (unsigned int j = gridDisplayIndex.y; j < endDisplay.y; j++) {
+			for (unsigned int i = gridDisplayIndex.x; i < endDisplay.x; i++) {
+				c = grid[k][j][i];
+				//at this point, the chunk might not be generated yet
+				if (c && c->mesh) {//mesh can be null if the chunk is empty (see glth_buildMesh())
+					dst[n] = c->mesh;
+					n++;
+				}
+			}
+		}
+	}
+	dst[n] = nullptr;
+}
+
 
 Math::Vector3	ChunkGenerator::getGridDisplayStart() const {
 	return this->gridDisplayIndex;

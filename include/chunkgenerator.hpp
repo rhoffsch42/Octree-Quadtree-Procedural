@@ -57,7 +57,8 @@ public:
 	// build the chunks meshes and load them to the GPU
 	void			glth_loadChunks();
 
-	void			pushDisplayedChunks(list<Object*>* dst) const;
+	void			pushDisplayedChunks(std::list<Object*>* dst) const;
+	void			pushDisplayedChunks(Object** dst) const;
 	Math::Vector3	getGridDisplayStart() const;
 
 	std::string		toString() const;
