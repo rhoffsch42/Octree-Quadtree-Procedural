@@ -3,6 +3,7 @@
 #include "uipanel.hpp"
 #include "perlin.hpp"
 #include "math.hpp"
+#include "dispose.hpp"
 
 
 #define PERLIN_GENERATION	1
@@ -133,7 +134,7 @@ public:
 private:
 };
 
-class HeightMap//2D
+class HeightMap : public IDisposable//2D
 {
 public:
 	HeightMap(PerlinSettings& perlin_settings, Math::Vector3 chunk_index, Math::Vector3 chunk_size);

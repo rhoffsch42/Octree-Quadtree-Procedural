@@ -3,7 +3,7 @@
 
 
 HeightMap::HeightMap(PerlinSettings& perlin_settings, Math::Vector3 chunk_index, Math::Vector3 chunk_size)
-	: _index(chunk_index)
+	: IDisposable(), _index(chunk_index)
 {
 	this->_posX = this->_index.x * chunk_size.x;
 	this->_posZ = this->_index.z * chunk_size.z;
@@ -14,7 +14,7 @@ HeightMap::HeightMap(PerlinSettings& perlin_settings, Math::Vector3 chunk_index,
 }
 
 HeightMap::HeightMap(PerlinSettings& perlin_settings, int posx, int posz, int sizex, int sizez)
-	: _posX(posx), _posZ(posz), _sizeX(sizex), _sizeZ(sizez)
+	: IDisposable(), _posX(posx), _posZ(posz), _sizeX(sizex), _sizeZ(sizez)
 {
 	this->buildMap(perlin_settings);
 }

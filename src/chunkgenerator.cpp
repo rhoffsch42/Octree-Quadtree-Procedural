@@ -302,7 +302,7 @@ void	ChunkGenerator::updateChunkJobsToDo() {
 
 				if (!this->grid[z][y][x] && this->heightMaps[z][x]) {
 					index = this->gridToWorld(Math::Vector3(x, y, z));
-					if (!this->map_jobsChunk[index]) {
+					if (!this->map_jobsChunk[index] && this->heightMaps[z][x]->tryDispose()) {
 						job_chunk = new JobBuildChunk(index, this->chunkSize, this->heightMaps[z][x]);
 						this->jobsToDo.push_back(job_chunk);
 						this->map_jobsChunk[index] = true;
@@ -597,14 +597,25 @@ bool	ChunkGenerator::try_deleteUnusedData() {
 
 void	ChunkGenerator::_deleteUnusedData() {
 	//todo : use unique_ptr in the vectors
-	for (auto& pointer : this->trashHeightMaps)	{
-			delete pointer;
-			pointer = nullptr;
+	size_t size = this->trashHeightMaps.size();
+	if (size) {
+		for (auto it = this->trashHeightMaps.begin(); it != this->trashHeightMaps.end(); /*it++;*/) { //avoid it invalidation, inc manually when needed
+			if ((*it)->getdisposedCount() == 0) {
+				delete (*it);
+				it = this->trashHeightMaps.erase(it);
+			} else {
+				it++;
+			}
+		}
+		std::cout << " X deleted hmaps: " << (size - this->trashHeightMaps.size()) << "\n";
 	}
-	this->trashHeightMaps.erase(std::remove(this->trashHeightMaps.begin(), this->trashHeightMaps.end(), nullptr), this->trashHeightMaps.end());
-	for (auto& pointer : this->trashChunks) {
-		delete pointer;
-		pointer = nullptr;
+	size = this->trashChunks.size();
+	if (size) {
+		for (auto& ptr : this->trashChunks) {
+			delete ptr;
+			ptr = nullptr;
+		}
+		std::cout << " X deleted chunks: " << (size - this->trashChunks.size()) << "\n";
+		this->trashChunks.erase(std::remove(this->trashChunks.begin(), this->trashChunks.end(), nullptr), this->trashChunks.end());
 	}
-	this->trashChunks.erase(std::remove(this->trashChunks.begin(), this->trashChunks.end(), nullptr), this->trashChunks.end());
 }

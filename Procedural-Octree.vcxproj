@@ -150,6 +150,7 @@
     <ClCompile Include="SimpleGL\src\uipanel.cpp" />
     <ClCompile Include="src\chunk.cpp" />
     <ClCompile Include="src\chunkgenerator.cpp" />
+    <ClCompile Include="src\dispose.cpp" />
     <ClCompile Include="src\heightmap.cpp" />
     <ClCompile Include="src\job.cpp" />
     <ClCompile Include="src\main.cpp" />
@@ -159,6 +160,7 @@
   <ItemGroup>
     <ClInclude Include="include\chunk.hpp" />
     <ClInclude Include="include\chunkgenerator.hpp" />
+    <ClInclude Include="include\dispose.hpp" />
     <ClInclude Include="include\heightmap.hpp" />
     <ClInclude Include="include\job.hpp" />
     <ClInclude Include="include\octree.hpp" />

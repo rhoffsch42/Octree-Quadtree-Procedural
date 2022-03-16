@@ -3192,8 +3192,8 @@ void	scene_octree() {
 	//chunk generator
 	Math::Vector3	playerPos = cam.local.getPos();
 
-	int	g = 25;
-	int	d = 19;// g * 2 / 3;
+	int	g = 15;
+	int	d = 9;// g * 2 / 3;
 	m.gridSize = Math::Vector3(g, g, g);
 	m.gridSizeDisplayed = Math::Vector3(d, d, d);
 	ChunkGenerator	generator(playerPos, *m.ps, m.chunk_size, m.gridSize, m.gridSizeDisplayed);
@@ -3348,7 +3348,7 @@ void	scene_octree() {
 			}
 #endif
 			glfwSwapBuffers(m.glfw->_window);
-			//generator.try_deleteUnusedData();
+			generator.try_deleteUnusedData();
 
 			if (GLFW_PRESS == glfwGetKey(m.glfw->_window, GLFW_KEY_ESCAPE))
 				glfwSetWindowShouldClose(m.glfw->_window, GLFW_TRUE);
@@ -3658,6 +3658,7 @@ void	scene_test_thread() {
 //thread safe cout : https://stackoverflow.com/questions/14718124/how-to-easily-make-stdcout-thread-safe
 //multithread monitor example : https://stackoverflow.com/questions/51668477/c-lock-a-mutex-as-if-from-another-thread
 int		main(int ac, char **av) {
+
 	//playertest();
 	//_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 	//_CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_DEBUG);

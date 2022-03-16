@@ -120,6 +120,9 @@
     <ClCompile Include="src\job.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\dispose.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="SimpleGL\include\behavior.hpp">
@@ -225,6 +228,9 @@
       <Filter>SimpleGL\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\job.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\dispose.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

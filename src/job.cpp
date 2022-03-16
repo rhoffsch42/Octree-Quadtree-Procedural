@@ -56,6 +56,7 @@ bool	JobBuildChunk::execute(PerlinSettings& perlinSettings) {
 		return this->done;
 	}
 	this->chunk = new Chunk(this->index, this->chunkSize, perlinSettings, this->hmap);
+	this->hmap->unDispose();
 	//this->chunk->glth_buildMesh();
 	this->done = true;
 	//std::cout << "job executed : new chunk : " << this->chunk << " " << this->index << "\n";
