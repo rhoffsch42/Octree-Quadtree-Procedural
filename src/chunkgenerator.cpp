@@ -291,7 +291,9 @@ void	ChunkGenerator::updateChunkJobsToDo() {
 					job_hmap = new JobBuildHeighMap(index, this->chunkSize);
 					this->jobsToDo.push_back(job_hmap);
 					this->map_jobsHmap[index] = true;
-					//std::cout << "new JobBuildHeighMap: " << x << ":" << z << " world: " << index << "\n";
+					#ifdef CHUNK_GEN_DEBUG
+					std::cout << "new JobBuildHeighMap: " << x << ":" << z << " world: " << index << "\n";
+					#endif
 					hn++;
 				} else {
 					std::cout << "duplicate JobBuildHeighMap: " << x << ":" << z << " world: " << index << "\n";
@@ -306,7 +308,9 @@ void	ChunkGenerator::updateChunkJobsToDo() {
 						job_chunk = new JobBuildChunk(index, this->chunkSize, this->heightMaps[z][x]);
 						this->jobsToDo.push_back(job_chunk);
 						this->map_jobsChunk[index] = true;
-						//std::cout << "new JobBuildChunk: " << x << ":" << y << ":" << z << " world: " << index << " hmap: " << this->heightMaps[z][x] << "\n";
+						#ifdef CHUNK_GEN_DEBUG
+						std::cout << "new JobBuildChunk: " << x << ":" << y << ":" << z << " world: " << index << " hmap: " << this->heightMaps[z][x] << "\n";
+						#endif
 						cn++;
 					} else {
 						std::cout << "duplicate JobBuildChunk: " << x << ":" << y << ":" << z << " world: " << index << " hmap: " << this->heightMaps[z][x] << "\n";

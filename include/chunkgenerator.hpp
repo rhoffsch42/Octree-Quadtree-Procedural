@@ -12,7 +12,7 @@ class JobBuildGenerator;
 #include <GLFW/glfw3.h> //window context
 
 
-#define CHUNK_GEN_DEBUG	0
+//#define CHUNK_GEN_DEBUG
 
 //make a class for that
 typedef uint8_t**	hmap;

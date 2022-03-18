@@ -9,6 +9,8 @@
 
 #include <algorithm>
 
+//#define OCTREE_OLD
+
 class Chunk //could inherit from Object
 {
 public:
@@ -22,7 +24,11 @@ public:
 	Math::Vector3	index;
 	Math::Vector3	pos;
 	Math::Vector3	size;
-	Octree*			root;
+	#ifdef OCTREE_OLD
+	Octree_old* root;
+	#else
+	Octree<Voxel>* root;
+	#endif
 
 	//opengl 
 	Obj3dBP*		meshBP;
@@ -35,6 +41,10 @@ public:
 	//}
 private:
 	// you should check for error: 0 means Chunk::cubebp is null, 1 means no error
-	int		buildVertexArrayFromOctree(Octree* root, Math::Vector3 pos_offset = Math::Vector3(0, 0, 0));
+	#ifdef OCTREE_OLD
+	int		buildVertexArrayFromOctree(Octree_old* root, Math::Vector3 pos_offset = Math::Vector3(0, 0, 0));
+	#else
+	int		buildVertexArrayFromOctree(Octree<Voxel>* root, Math::Vector3 pos_offset = Math::Vector3(0, 0, 0));
+	#endif
 	std::vector<SimpleVertex>	_vertexArray;
 };

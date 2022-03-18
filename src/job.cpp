@@ -12,7 +12,9 @@ bool	JobBuildHeighMap::execute(PerlinSettings& perlinSettings) {
 	this->hmap = new HeightMap(perlinSettings, this->index, this->chunkSize);
 	//this->hmap->glth_buildPanel();
 	this->done = true;
-	//std::cout << "job done : new hmap : " << this->hmap << " " << this->index << "\n";
+	#ifdef CHUNK_GEN_DEBUG
+	std::cout << "job executed : new hmap : " << this->hmap << " " << this->index << "\n";
+	#endif
 	return this->done;
 }
 
@@ -59,7 +61,9 @@ bool	JobBuildChunk::execute(PerlinSettings& perlinSettings) {
 	this->hmap->unDispose();
 	//this->chunk->glth_buildMesh();
 	this->done = true;
-	//std::cout << "job executed : new chunk : " << this->chunk << " " << this->index << "\n";
+	#ifdef CHUNK_GEN_DEBUG
+	std::cout << "job executed : new chunk : " << this->chunk << " " << this->index << "\n";
+	#endif
 	return this->done;
 }
 

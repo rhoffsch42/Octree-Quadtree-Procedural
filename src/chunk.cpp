@@ -47,7 +47,7 @@ Chunk::Chunk(const Math::Vector3& chunk_index, const Math::Vector3& chunk_size, 
 		}
 	}
 
-	//tmp
+#ifdef OCTREE_OLD
 	Pixel*** pix = new Pixel**[this->size.z];
 	for (unsigned int k = 0; k < this->size.z; k++) {
 		pix[k] = new Pixel * [this->size.y];
@@ -60,15 +60,50 @@ Chunk::Chunk(const Math::Vector3& chunk_index, const Math::Vector3& chunk_size, 
 			}
 		}
 	}
-
 	// important note: all chunks have their octree starting at pos 0 0 0.
 	int threshold = 0;
-	this->root = new Octree(pix, Math::Vector3(0,0,0), this->size, threshold);//octree(T data,...) template?  || classe abstraite pour def average() etc
+	this->root = new Octree_old(pix, Math::Vector3(0, 0, 0), this->size, threshold);//octree(T data,...) template?  || classe abstraite pour def average() etc
 	this->root->verifyNeighbors(VOXEL_EMPTY);//white
 	if (this->buildVertexArrayFromOctree(this->root, Math::Vector3(0, 0, 0)) == 0) {
 		std::cout << "Error: failed to build vertex array for the chuck " << this << std::endl;
 		std::exit(23);
 	}
+	//delete tmp pix
+	for (unsigned int k = 0; k < this->size.z; k++) {
+		for (unsigned int j = 0; j < this->size.y; j++) {
+			delete[] pix[k][j];
+		}
+		delete[] pix[k];
+	}
+	delete[] pix;
+#else
+	Voxel*** voxels = new Voxel * *[this->size.z];
+	for (unsigned int k = 0; k < this->size.z; k++) {
+		voxels[k] = new Voxel * [this->size.y];
+		for (unsigned int j = 0; j < this->size.y; j++) {
+			voxels[k][j] = new Voxel[this->size.x];
+			for (unsigned int i = 0; i < this->size.x; i++) {
+				voxels[k][j][i]._value = data[k][j][i];
+			}
+		}
+	}
+	// important note: all chunks have their octree starting at pos 0 0 0.
+	int threshold = 0;
+	this->root = new Octree<Voxel>(voxels, Math::Vector3(0, 0, 0), this->size, threshold);
+	this->root->verifyNeighbors(Voxel(255));
+	if (this->buildVertexArrayFromOctree(this->root, Math::Vector3(0, 0, 0)) == 0) {
+		std::cout << "Error: failed to build vertex array for the chuck " << this << std::endl;
+		std::exit(23);
+	}
+	//delete tmp pix
+	for (unsigned int k = 0; k < this->size.z; k++) {
+		for (unsigned int j = 0; j < this->size.y; j++) {
+			delete[] voxels[k][j];
+		}
+		delete[] voxels[k];
+	}
+	delete[] voxels;
+#endif OCTREE_OLD
 
 	//delete data
 	for (unsigned int k = 0; k < this->size.z; k++) {
@@ -78,14 +113,7 @@ Chunk::Chunk(const Math::Vector3& chunk_index, const Math::Vector3& chunk_size, 
 		delete[] data[k];
 	}
 	delete[] data;
-	//delete tmp pix
-	for (unsigned int k = 0; k < this->size.z; k++) {
-		for (unsigned int j = 0; j < this->size.y; j++) {
-			delete[] pix[k][j];
-		}
-		delete[] pix[k];
-	}
-	delete[] pix;
+
 	//delete root? not when we will edit it to destroy some voxels
 	delete this->root;
 	this->root = nullptr;
@@ -115,7 +143,7 @@ void	Chunk::glth_buildMesh() {
 		}
 
 		this->meshBP = new Obj3dBP(this->_vertexArray, BP_DONT_NORMALIZE);
-		this->meshBP->freeData(BP_FREE_ALL);
+		//this->meshBP->freeData(BP_FREE_ALL);
 		this->mesh = new Obj3d(*this->meshBP, *Chunk::renderer);
 		this->mesh->local.setPos(this->pos);
 
@@ -128,7 +156,8 @@ void	Chunk::glth_buildMesh() {
 	}
 }
 
-int	Chunk::buildVertexArrayFromOctree(Octree* root, Math::Vector3 pos_offset) {
+#ifdef OCTREE_OLD
+int	Chunk::buildVertexArrayFromOctree(Octree_old* root, Math::Vector3 pos_offset) {
 	/*
 		for each chunck, build a linear vertex array with concatened faces and corresponding attributes (texcoord, color, etc)
 		it will use the chunk matrix so for the vertex position we simply add the chunk pos and the node pos to the vertex.position of the face
@@ -145,12 +174,53 @@ int	Chunk::buildVertexArrayFromOctree(Octree* root, Math::Vector3 pos_offset) {
 	}
 	std::vector<SimpleVertex>	vertices = Chunk::cubeBlueprint->getVertices();
 	std::vector<SimpleVertex>*	ptr_vertex_array = &this->_vertexArray;
-	root->browse(0, [&pos_offset, ptr_vertex_array, &vertices](Octree* node) {
+	root->browse(0, [&pos_offset, ptr_vertex_array, &vertices](Octree_old* node) {
 		if ((node->pixel.r < VOXEL_EMPTY.r \
 			|| node->pixel.g < VOXEL_EMPTY.g \
 			|| node->pixel.b < VOXEL_EMPTY.b) \
 			&& node->neighbors < NEIGHBOR_ALL)// should be < NEIGHBOR_ALL or (node->n & NEIGHBOR_ALL) != 0
 		{
+			Math::Vector3	cube_pos(pos_offset);//can be the root pos or (0,0,0)
+			cube_pos += node->pos;//the position of the cube
+			int neighbors_flags[] = { NEIGHBOR_FRONT, NEIGHBOR_RIGHT, NEIGHBOR_LEFT, NEIGHBOR_BOTTOM, NEIGHBOR_TOP, NEIGHBOR_BACK };
+			for (size_t i = 0; i < 6; i++) {//6 faces
+				if ((node->neighbors & neighbors_flags[i]) != neighbors_flags[i]) {
+					for (size_t j = 0; j < 6; j++) {// push the 2 triangles = 2 * 3 vertex
+						SimpleVertex	vertex = vertices[i * 6 + j];
+						vertex.position.x *= node->size.x;
+						vertex.position.y *= node->size.y;
+						vertex.position.z *= node->size.z;
+						vertex.position += node->pos;
+						ptr_vertex_array->push_back(vertex);
+					}
+				}
+			}
+		}
+	});
+	//std::cout << "\t> vertex array ready: " << this->_vertexArray.size() << std::endl;
+	return 1;
+}
+#endif
+
+int	Chunk::buildVertexArrayFromOctree(Octree<Voxel>* root, Math::Vector3 pos_offset) {
+	/*
+		for each chunck, build a linear vertex array with concatened faces and corresponding attributes (texcoord, color, etc)
+		it will use the chunk matrix so for the vertex position we simply add the chunk pos and the node pos to the vertex.position of the face
+
+		this will be used with glDrawArray() later
+		we could even concat all chunk array for a single glDrawArray
+			cons: we need to remap data at every chunck change
+				-> display list? check what it is
+	*/
+
+	if (!Chunk::cubeBlueprint) {
+		std::cout << "Obj3dBP*	Chunk::cubeBlueprint is null" << std::endl;
+		return 0;
+	}
+	std::vector<SimpleVertex>	vertices = Chunk::cubeBlueprint->getVertices();
+	std::vector<SimpleVertex>* ptr_vertex_array = &this->_vertexArray;
+	root->browse(0, [&pos_offset, ptr_vertex_array, &vertices](Octree<Voxel>* node) {
+		if (node->element != Voxel(255) && node->neighbors < NEIGHBOR_ALL) {// should be < NEIGHBOR_ALL or (node->n & NEIGHBOR_ALL) != 0
 			Math::Vector3	cube_pos(pos_offset);//can be the root pos or (0,0,0)
 			cube_pos += node->pos;//the position of the cube
 			int neighbors_flags[] = { NEIGHBOR_FRONT, NEIGHBOR_RIGHT, NEIGHBOR_LEFT, NEIGHBOR_BOTTOM, NEIGHBOR_TOP, NEIGHBOR_BACK };
