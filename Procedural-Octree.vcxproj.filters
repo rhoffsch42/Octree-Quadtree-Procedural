@@ -28,6 +28,15 @@
     <Filter Include="SimpleGL\Shaders">
       <UniqueIdentifier>{89be103d-ef1d-42b7-adce-e7df2f14306e}</UniqueIdentifier>
     </Filter>
+    <Filter Include="SimpleGL\obj">
+      <UniqueIdentifier>{7e8a4f55-aee6-401b-818f-9a6011f4c4eb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="SimpleGL\images">
+      <UniqueIdentifier>{a8e31fe9-8144-4f30-8ff3-4f4522075421}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="SimpleGL\fonts">
+      <UniqueIdentifier>{7b0dd43a-28cd-4cd7-a9e8-42af4cb9da7b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\chunk.cpp">
@@ -256,5 +265,39 @@
     <None Include="SimpleGL\shaders\text.vs.glsl">
       <Filter>SimpleGL\Shaders</Filter>
     </None>
+    <None Include="SimpleGL\obj3d\cube.obj">
+      <Filter>SimpleGL\obj</Filter>
+    </None>
+    <None Include="SimpleGL\obj3d\cube_pastel.mtl">
+      <Filter>SimpleGL\obj</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="SimpleGL\images\player_icon.bmp">
+      <Filter>SimpleGL\images</Filter>
+    </Image>
+    <Image Include="SimpleGL\images\skybox4.bmp">
+      <Filter>SimpleGL\images</Filter>
+    </Image>
+    <Image Include="SimpleGL\images\lena.bmp">
+      <Filter>SimpleGL\images</Filter>
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <Font Include="SimpleGL\fonts\arial.ttf">
+      <Filter>SimpleGL\fonts</Filter>
+    </Font>
+    <Font Include="SimpleGL\fonts\arialbd.ttf">
+      <Filter>SimpleGL\fonts</Filter>
+    </Font>
+    <Font Include="SimpleGL\fonts\arialbi.ttf">
+      <Filter>SimpleGL\fonts</Filter>
+    </Font>
+    <Font Include="SimpleGL\fonts\ariali.ttf">
+      <Filter>SimpleGL\fonts</Filter>
+    </Font>
+    <Font Include="SimpleGL\fonts\ariblk.ttf">
+      <Filter>SimpleGL\fonts</Filter>
+    </Font>
   </ItemGroup>
 </Project>

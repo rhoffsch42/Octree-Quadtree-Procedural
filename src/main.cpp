@@ -100,7 +100,7 @@ void	playertest() {
 	player.play();
 	std::this_thread::sleep_for(2s);
 
-	std::exit(0);
+	Misc::breakExit(0);
 }
 #endif // test mutex
 
@@ -201,7 +201,7 @@ int main2(int argc, char** argv)
 	glfwSetErrorCallback(error_callback);
 
 	if (!glfwInit())
-		std::exit(EXIT_FAILURE);
+		Misc::breakExit(EXIT_FAILURE);
 
 	//glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
 	//glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
@@ -210,7 +210,7 @@ int main2(int argc, char** argv)
 	if (!windows[0])
 	{
 		glfwTerminate();
-		std::exit(EXIT_FAILURE);
+		Misc::breakExit(EXIT_FAILURE);
 	}
 	//
 	glfwSetInputMode(windows[0], GLFW_CURSOR, GLFW_CURSOR_DISABLED);
@@ -299,7 +299,7 @@ int main2(int argc, char** argv)
 	if (!windows[1])
 	{
 		glfwTerminate();
-		std::exit(EXIT_FAILURE);
+		Misc::breakExit(EXIT_FAILURE);
 	}
 
 	// Place the second window to the right of the first
@@ -363,7 +363,7 @@ int main2(int argc, char** argv)
 	}
 
 	glfwTerminate();
-	std::exit(EXIT_SUCCESS);
+	Misc::breakExit(EXIT_SUCCESS);
 }
 #endif ////example context sharing
 
@@ -896,7 +896,7 @@ void	test_poe() {
 	}
 	float	bonus_damage = final_damage_gluttonous / final_damage_usual - 1;
 	std::cout << "bonus damage : " << (bonus_damage * 100) << " %\n";
-	std::exit(0);
+	Misc::breakExit(0);
 	/*
 		dmg * (1 + bonus*0.4)
 		dmg * (1 + bonus*0.4 + bonus*0.4)
@@ -948,7 +948,7 @@ void	blitToWindow(FrameBuffer* readFramebuffer, GLenum attachmentPoint, UIPanel*
 	}
 	else {
 		std::cout << "FUCK " << __PRETTY_FUNCTION__ << "\n";
-		std::exit(2);
+		Misc::breakExit(2);
 	}
 	if (0) {
 		std::cout << "copy " << w << "x" << h << "\tresized\t" << panel->_width << "x" << panel->_height \
@@ -997,7 +997,7 @@ void	check_paddings() {
 		std::cout << "biYPelsPerMeter\t" << offsetof(BMPINFOHEADER, biYPelsPerMeter) << "\n";
 		std::cout << "biClrUsed\t" << offsetof(BMPINFOHEADER, biClrUsed) << "\n";
 		std::cout << "biClrImportant\t" << offsetof(BMPINFOHEADER, biClrImportant) << "\n";
-		std::exit(ERROR_PADDING);
+		Misc::breakExit(ERROR_PADDING);
 	}
 }
 
@@ -1228,7 +1228,7 @@ void	scene1() {
 
 	glfw.setMouseAngle(45);
 	std::cout << "MouseAngle: " << glfw.getMouseAngle() << "\n";
-	//exit(0);
+	//Misc::breakExit(0);
 
 	if (false) {//cam anchor to rocket1, bugged with Z rot
 		cam.local.setPos(0, 1.5f, 3.5f);
@@ -1289,7 +1289,7 @@ void	scene1() {
 	b4.modeScale = ADDITIVE;
 	b4.transform.rot.y = 720.0f * defaultFps->getTick();
 	b4.addTarget(&teapot1);
-	// exit(0);
+	// Misc::breakExit(0);
 
 	if (false) {// check behavior target, add remove
 
@@ -1319,7 +1319,7 @@ void	scene1() {
 		std::cout << "b2:    \t" << b2.getTargetList().size() << "\n";
 	}
 #endif
-	// exit(0);
+	// Misc::breakExit(0);
 
 #ifndef GAMEMANAGER
 	GameManager	manager;
@@ -1453,7 +1453,7 @@ void scene2() {
 
 	glfw.setMouseAngle(-1);
 	std::cout << "MouseAngle: " << glfw.getMouseAngle() << "\n";
-	//exit(0);
+	//Misc::breakExit(0);
 
 	//cam.local.setPos(0, 1.5f, 3.5f);
 	AnchorCameraBH	b1;
@@ -1569,7 +1569,7 @@ void	fillData(uint8_t* dst, QuadNode* node, int* leafAmount, int baseWidth, bool
 		//(*leafAmount)++;
 		//std::cout << "leaf: " << node->width << "x" << node->height << " at " << node->x << ":" << node->y << "\n";
 		if (node->width == 0 || node->height == 0) {
-			std::cout << "error with tree data\n"; std::exit(2);
+			std::cout << "error with tree data\n"; Misc::breakExit(2);
 		}
 		if (node->width * node->height >= DEBUG_LEAF_AREA && DEBUG_LEAF && *leafAmount == 0 && DEBUG_FILL_TOO) {
 			std::cout << "Fill new leaf: " << node->width << "x" << node->height << " at " << node->x << ":" << node->y << "\t";
@@ -2060,7 +2060,7 @@ void	buildChunk(ProceduralManager& manager, QuadNode* node, int chunkI, int chun
 	if (node->detail <= threshold) {
 		//std::cout << "leaf: " << node->width << "x" << node->height << " at " << node->x << ":" << node->y << "\n";
 		if (node->width == 0 || node->height == 0) {
-			std::cout << "error with tree data\n"; std::exit(2);
+			std::cout << "error with tree data\n"; Misc::breakExit(2);
 		}
 		if (node->width * node->height >= DEBUG_LEAF_AREA && DEBUG_LEAF && DEBUG_BUILD_TOO) {
 			std::cout << "Display new leaf: " << node->width << "x" << node->height << " at " << node->x << ":" << node->y << "\t";
@@ -2151,7 +2151,7 @@ uint8_t* generatePerlinNoise(ProceduralManager& manager, int posX, int posY, int
 void	updateChunksX(ProceduralManager& manager, QuadNode*** chunkMemory4Tree, uint8_t*** chunkMemory, int change) {
 	if (abs(change) > 1) {
 		std::cout << "player went too fast on X, or teleported\n";
-		std::exit(1);
+		Misc::breakExit(1);
 	}
 
 	bool displayDebug = false;
@@ -2228,7 +2228,7 @@ void	updateChunksX(ProceduralManager& manager, QuadNode*** chunkMemory4Tree, uin
 void	updateChunksY(ProceduralManager& manager, QuadNode*** chunkMemory4Tree, uint8_t*** chunkMemory, int change) {
 	if (abs(change) > 1) {
 		std::cout << "player went too fast on Y, or teleported\n";
-		std::exit(1);
+		Misc::breakExit(1);
 	}
 
 	bool displayDebug = false;
@@ -2634,6 +2634,10 @@ public:
 		this->threshold = 0;
 
 		this->cpuThreadAmount = std::thread::hardware_concurrency();
+		if (this->cpuThreadAmount < 3) {
+			std::cout << "Not enough threads: " << this->cpuThreadAmount << "\n";
+			Misc::breakExit(-44);
+		}
 	}
 	~OctreeManager() {}
 
@@ -2645,7 +2649,7 @@ public:
 	std::list<Object*>	renderlistGrid;
 	std::list<Object*>	renderlistVoxels[6];//6faces
 	std::list<Object*>	renderlistChunk;
-	Object**			renderArrayChunk = nullptr;
+	Object** renderArrayChunk = nullptr;
 	std::list<Object*>	renderlistSkybox;
 	UIPanel*** minimapPanels;
 	UIImage* playerMinimap;
@@ -2868,7 +2872,7 @@ static void		keyCallback_ocTree(GLFWwindow* window, int key, int scancode, int a
 			else if (key == GLFW_KEY_ENTER) {
 				manager->polygon_mode++;
 				manager->polygon_mode = GL_POINT + (manager->polygon_mode % 3);
-				for (std::list<Object*>::iterator it = manager->renderlist.begin(); it != manager->renderlist.end(); ++it) {
+				for (std::list<Object*>::iterator it = manager->renderlistChunk.begin(); it != manager->renderlistChunk.end(); ++it) {
 					((Obj3d*)(*it))->setPolygonMode(manager->polygon_mode);
 				}
 			}
@@ -2981,6 +2985,9 @@ void	grabObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager, 
 				for (unsigned int i = startDisplay.x; i < endDisplay.x; i++) {
 					Chunk* chunkPtr = generator.grid[k][j][i];
 					if (chunkPtr) {//at this point, the chunk might not be generated yet
+						if (chunkPtr->mesh)
+							chunkPtr->mesh->setPolygonMode(manager.polygon_mode);
+
 						if (M_DRAW_GRID_CHUNK) {
 							Obj3d* cubeGrid = new Obj3d(cubebp, obj3d_prog);
 							cubeGrid->setColor(255, 0, 0);
@@ -2993,7 +3000,7 @@ void	grabObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager, 
 						}
 						if (0) {//coloring origin of each octree/chunk
 							Math::Vector3	siz(1, 1, 1);
-							#ifdef OCTREE_OLD
+#ifdef OCTREE_OLD
 							Octree_old* root = chunkPtr->root->getRoot(chunkPtr->root->pos, siz);
 							if (root) {
 								if (root->size.len() != siz.len())
@@ -3001,7 +3008,7 @@ void	grabObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager, 
 								else
 									root->pixel = Pixel(0, 255, 0);
 							}
-							#else
+#else
 							Octree<Voxel>* root = chunkPtr->root->getRoot(chunkPtr->root->pos, siz);
 							if (root) {
 								if (root->size.len() != siz.len())
@@ -3009,9 +3016,9 @@ void	grabObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager, 
 								else
 									root->element._value = 253;
 							}
-							#endif
+#endif
 						}
-						#if 0// oldcode, browsing to build 1 obj3d per cube (not chunk)
+#if 0// oldcode, browsing to build 1 obj3d per cube (not chunk)
 						chunkPtr->root->browse(0, [&manager, &cubebp, &obj3d_prog, scale_coef, scale_coe2, chunkPtr, tex, &hiddenBlocks](Octree_old* node) {
 							if (M_DISPLAY_BLACK || (node->pixel.r != 0 && node->pixel.g != 0 && node->pixel.b != 0)) {// pixel 0?
 								Math::Vector3	worldPos = chunkPtr->pos + node->pos;
@@ -3063,7 +3070,7 @@ void	grabObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager, 
 								}
 							}
 						});
-						#endif
+#endif
 					}
 				}
 			}
@@ -3082,7 +3089,13 @@ void	grabObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager, 
 }
 
 void	scene_octree() {
-	//scene_benchmarks(); exit(0);
+	std::cout << "Enter grid size (min 7, max 35):\n";
+	int grid_size = 15;
+	//std::cin >> grid_size;
+	//grid_size = (grid_size < 7) ? 7 : grid_size;
+	//grid_size = (grid_size > 35) ? 35 : grid_size;
+	//scene_benchmarks(); Misc::breakExit(0);
+	//Misc::breakExit(0);
 
 #ifndef INIT_GLFW
 	float	win_height = 900;
@@ -3093,16 +3106,17 @@ void	scene_octree() {
 	//m.glfw = new Glfw(WINX, WINY);
 	m.glfw = new Glfw(win_width, win_height);
 	glfwSetWindowPos(m.glfw->_window, 100, 50);
+	glfwSetWindowUserPointer(m.glfw->_window, static_cast<void*>(&m));
 
-	#if 0
+#if 0
 	GLint n = 0;
 	glGetIntegerv(GL_NUM_EXTENSIONS, &n);
 	for (GLint i = 0; i < n; i++) {
 		const char* extension = (const char*)glGetStringi(GL_EXTENSIONS, i);
 		std::cout << extension << "\n";
 	}
-	#endif
-	//exit(0);
+#endif
+	//Misc::breakExit(0);
 
 	glfwSwapInterval(0);//0 = disable vsynx
 	//glDisable(GL_CULL_FACE);
@@ -3124,12 +3138,12 @@ void	scene_octree() {
 	m.playerMinimap = new UIImage(tex_player);
 
 	//programs
-	#if 1 //text
+#if 1 //text
 	TextPG::fonts_folder = Misc::getCurrentDirectory() + SIMPLEGL_FOLDER + "fonts/";
 	TextPG			rendererText_arial(SIMPLEGL_FOLDER + "shaders/text.vs.glsl", SIMPLEGL_FOLDER + "shaders/text.fs.glsl");
 	if (rendererText_arial.init_freetype("arial.ttf", win_width, win_height) == -1) {
 		std::cerr << "TextPG::init_freetype failed\n";
-		std::exit(-1);
+		Misc::breakExit(-1);
 	}
 	Text			text1;
 	text1.text = "This is sample text";
@@ -3141,7 +3155,7 @@ void	scene_octree() {
 	text2.color = Math::Vector3(0.3, 0.7f, 0.9f);
 	text2.local.setPos(540.0f, 570.0f, 0.5f);
 	text2.local.setScale(0.5, 1, 1);
-	#endif //text
+#endif //text
 
 	Obj3dPG			rendererObj3d(SIMPLEGL_FOLDER + OBJ3D_VS_FILE, SIMPLEGL_FOLDER + OBJ3D_FS_FILE);
 	Obj3dIPG		rendererObj3dInstanced(SIMPLEGL_FOLDER + OBJ3D_INSTANCED_VS_FILE, SIMPLEGL_FOLDER + OBJ3D_FS_FILE);
@@ -3202,29 +3216,29 @@ void	scene_octree() {
 	//chunk generator
 	Math::Vector3	playerPos = cam.local.getPos();
 
-	int	g = 15;
-	int	d = 9;// g * 2 / 3;
+	int	g = grid_size;
+	int	d = grid_size - 4;// g * 2 / 3;
 	m.gridSize = Math::Vector3(g, g, g);
 	m.gridSizeDisplayed = Math::Vector3(d, d, d);
 	ChunkGenerator	generator(playerPos, *m.ps, m.chunk_size, m.gridSize, m.gridSizeDisplayed);
-	#ifndef INIT_RENDER_ARRAY
+#ifndef INIT_RENDER_ARRAY
 	unsigned int x = generator.gridDisplaySize.x;
 	unsigned int y = generator.gridDisplaySize.y;
 	unsigned int z = generator.gridDisplaySize.z;
 	unsigned int len = x * y;
 	if (x != 0 && len / x != y) {
 		std::cout << "grid size too big, causing overflow\n";
-		std::exit(99);
+		Misc::breakExit(99);
 	}
 	len = x * y * z;
 	if ((z != 0 && len / z != x * y) || len == 4294967295) {
 		std::cout << "grid size too big, causing overflow\n";
-		std::exit(99);
+		Misc::breakExit(99);
 	}
 	len++;
-	m.renderArrayChunk = new Object* [len];
+	m.renderArrayChunk = new Object * [len];
 	m.renderArrayChunk[0] = nullptr;
-	#endif // INIT_RENDER_ARRAY
+#endif // INIT_RENDER_ARRAY
 #endif // GENERATOR
 	Fps	fps(135);
 
@@ -3234,16 +3248,17 @@ void	scene_octree() {
 #ifdef USE_THREADS
 	//chunks builder
 	generator.builderAmount = m.cpuThreadAmount - 2;
-	GLFWwindow** contexts = new GLFWwindow*[generator.builderAmount + 1];	contexts[generator.builderAmount] = nullptr;
-	std::thread** builders = new std::thread*[generator.builderAmount + 1];	builders[generator.builderAmount] = nullptr;
+	//GLFWwindow** contexts = new GLFWwindow*[generator.builderAmount + 1];	contexts[generator.builderAmount] = nullptr;
+	std::thread** builders = new std::thread * [generator.builderAmount + 1];	builders[generator.builderAmount] = nullptr;
 	for (size_t i = 0; i < generator.builderAmount; i++) {
-		contexts[i] = glfwCreateWindow(500, 30, std::to_string(i).c_str(), NULL, m.glfw->_window);
-		if (!contexts[i]) {
-			std::cout << "Error when creating context " << i << "\n";
-			std::exit(5);
-		}
-		glfwSetWindowPos(contexts[i], 2000, 50 + 30 * i);
-		builders[i] = new std::thread(std::bind(&ChunkGenerator::th_builders, &generator, contexts[i]));
+		//contexts[i] = glfwCreateWindow(500, 30, std::to_string(i).c_str(), NULL, m.glfw->_window);
+		//if (!contexts[i]) {
+			//std::cout << "Error when creating context " << i << "\n";
+			//Misc::breakExit(5);
+		//}
+		//glfwSetWindowPos(contexts[i], 2000, 50 + 30 * i);
+		//builders[i] = new std::thread(std::bind(&ChunkGenerator::th_builders, &generator, contexts[i]));
+		builders[i] = new std::thread(std::bind(&ChunkGenerator::th_builders, &generator, nullptr));
 	}
 	//helper: player pos, jobs, trash(need gl cntext?)
 	std::thread helper0(std::bind(&ChunkGenerator::th_updater, &generator, &cam));
@@ -3325,8 +3340,8 @@ void	scene_octree() {
 #endif
 			rendererSkybox.renderObjects(m.renderlistSkybox, cam, PG_FORCE_DRAW);
 
-			rendererText_arial.render(text1, Math::Matrix4());
-			rendererText_arial.render(text2, Math::Matrix4());
+			//rendererText_arial.render(text1, Math::Matrix4());
+			//rendererText_arial.render(text2, Math::Matrix4());
 
 #ifdef MINIMAP
 			if (chunks_lock.try_lock() && generator.grid[0][0][0]) {
@@ -3398,10 +3413,12 @@ void	scene_octree() {
 			if (0 && generator.updateGrid(m.cam->local.getPos())) {
 				generator.buildMeshesAndMapTiles();
 				grabObjectFromGenerator(generator, m, cubebp, *renderer, tex_lena);
-			} else if (1) {//with helper thread
+			}
+			else if (1) {//with helper thread
 				if (!generator.jobsToDo.empty()) {
 					generator.build(generator.settings, std::string("[main thread]\t"));
-				} else if ((generator.playerChangedChunk || generator.chunksChanged) && chunks_lock.try_lock()){
+				}
+				else if ((generator.playerChangedChunk || generator.chunksChanged) && chunks_lock.try_lock()) {
 					//std::cout << "[renderer] lock chunks_mutex\n";
 					double start = glfwGetTime();
 					std::cout << &generator << " : grabbing meshes...\n";
@@ -3469,7 +3486,7 @@ void	maxUniforms() {
 	std::cout << "GL_MAX_TESS_EVALUATION_UNIFORM_COMPONENTS\t" << GL_MAX_TESS_EVALUATION_UNIFORM_COMPONENTS << "\n";
 	std::cout << "GL_MAX_COMPUTE_UNIFORM_COMPONENTS\t" << GL_MAX_COMPUTE_UNIFORM_COMPONENTS << "\n";
 	std::cout << "GL_MAX_UNIFORM_LOCATIONS\t" << GL_MAX_UNIFORM_LOCATIONS << "\n";
-	std::exit(0);
+	Misc::breakExit(0);
 }
 
 void	scene_checkMemory() {
@@ -3513,13 +3530,13 @@ void	scene_checkMemory() {
 //exit
 	std::cout << "end... ENTER\n";
 	std::cin >> input;
-	std::exit(0);
+	Misc::breakExit(0);
 
 }
 
 #endif //main all
 
-void	th_build_object(GLFWwindow* context, int n, std::list<Object*> * list, Obj3dPG* pg, std::mutex* mutex) {
+void	th_build_object(GLFWwindow* context, int n, std::list<Object*>* list, Obj3dPG* pg, std::mutex* mutex) {
 	std::cout << __PRETTY_FUNCTION__ << "\n";
 	std::thread::id threadID = std::this_thread::get_id();
 	std::stringstream ss;
@@ -3559,7 +3576,7 @@ void	scene_test_thread() {
 	Cam			cam(glfw.getWidth(), glfw.getHeight());
 	cam.local.setPos(0, 0, 8);
 	Obj3dPG		renderer(SIMPLEGL_FOLDER + OBJ3D_VS_FILE, SIMPLEGL_FOLDER + OBJ3D_FS_FILE);
-	Texture*	tex_skybox = new Texture(SIMPLEGL_FOLDER + "images/skybox4.bmp");
+	Texture* tex_skybox = new Texture(SIMPLEGL_FOLDER + "images/skybox4.bmp");
 	SkyboxPG	rendererSkybox(SIMPLEGL_FOLDER + CUBEMAP_VS_FILE, SIMPLEGL_FOLDER + CUBEMAP_FS_FILE);
 	Skybox		skybox(*tex_skybox, rendererSkybox);
 	std::list<Object*>	renderlistSkybox;
@@ -3581,7 +3598,7 @@ void	scene_test_thread() {
 		contexts[i] = glfwCreateWindow(500, 30, std::to_string(i).c_str(), NULL, glfw._window);
 		if (!contexts[i]) {
 			std::cout << "Error when creating context " << i << "\n";
-			std::exit(5);
+			Misc::breakExit(5);
 		}
 		glfwSetWindowPos(contexts[i], 2000, 50 + 30 * i);
 		builders[i] = new std::thread(std::bind(&th_build_object, contexts[i], i, &objlist, &renderer, &mutex));
@@ -3596,7 +3613,8 @@ void	scene_test_thread() {
 			}
 			mutex.unlock();
 			std::this_thread::sleep_for(1s);
-		} else {
+		}
+		else {
 			std::cout << ".";
 		}
 	}
@@ -3605,9 +3623,9 @@ void	scene_test_thread() {
 		Obj3d* o = dynamic_cast<Obj3d*>(i);
 		if (!o) {
 			std::cout << "dyn_cast failed to object: " << i << "\n";
-			std::exit(88);
+			Misc::breakExit(88);
 		}
-		Obj3dBP&	bp = o->getBlueprint();
+		Obj3dBP& bp = o->getBlueprint();
 		GLuint vao = bp.createVao();
 		renderer.linkBuffersToVao(bp, vao);
 	}
@@ -3617,7 +3635,7 @@ void	scene_test_thread() {
 	for (int n = 0; n < M_THREADS_BUILDERS; n++) {
 		Obj3d* o = new Obj3d(bp, renderer);
 		o->local.setPos(Math::Vector3(n * 3, 0, 0));
-		o->local.setScale(Math::Vector3(1, n+1, 1));
+		o->local.setScale(Math::Vector3(1, n + 1, 1));
 		objlist.push_back(dynamic_cast<Object*>(o));
 	}
 #endif // !TESTTHREADS
@@ -3660,7 +3678,7 @@ void	scene_test_thread() {
 	std::cout << "end\n";
 }
 
-#define SSSIZE 25000
+#define SSSIZE 2500
 void	benchmark_octree() {
 	Glfw glfw;
 	//Blueprint global settings
@@ -3684,7 +3702,7 @@ void	benchmark_octree() {
 		delete test->meshBP;
 		test->meshBP = nullptr;
 	}
-	std::exit(0);
+	//Misc::breakExit(0);
 	double start = glfwGetTime();
 	Chunk* c;
 	for (size_t i = 0; i < SSSIZE; i++) {
@@ -3697,7 +3715,7 @@ void	benchmark_octree() {
 	}
 	start = glfwGetTime() - start;
 	std::cout << "\n\n" << double(start) << std::endl;
-	std::exit(0);
+	Misc::breakExit(0);
 }
 
 #if 1 main
@@ -3709,7 +3727,7 @@ void	benchmark_octree() {
 //multithread monitor example : https://stackoverflow.com/questions/51668477/c-lock-a-mutex-as-if-from-another-thread
 int		main(int ac, char **av) {
 
-
+	//Misc::breakExit(5);
 	//playertest();
 	//_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 	//_CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_DEBUG);
@@ -3722,7 +3740,7 @@ int		main(int ac, char **av) {
 	//maxUniforms();
 	//check_paddings();
 	// test_behaviors();
-	//test_mult_mat4(); exit(0);
+	//test_mult_mat4(); Misc::breakExit(0);
 	//	test_obj_loader();
 
 	std::cout << "____START____ :" << Misc::getCurrentDirectory() << "\n";
@@ -3732,7 +3750,7 @@ int		main(int ac, char **av) {
 	//scene_4Tree();
 	//scene_procedural();
 	//scene_vox();
-	//testtype(true);	testtype(false); exit(0);
+	//testtype(true);	testtype(false); Misc::breakExit(0);
 	//scene_benchmarks();
 	//scene_checkMemory();
 	scene_octree();

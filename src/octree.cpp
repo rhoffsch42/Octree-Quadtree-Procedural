@@ -51,7 +51,7 @@ Voxel	Voxel::speGetAverage(Voxel*** arr, const Math::Vector3& pos, const Math::V
 	return Voxel(sum / (size.x * size.y * size.z));//care overflow
 }
 double	Voxel::speMeasureDetail(Voxel*** arr, const Math::Vector3& pos, const Math::Vector3& size, const Voxel& average) {
-	// Calculates the distance between every pixel in the region
+	// Calculates the distance between every voxel in the region
 	// and the average color. The Manhattan distance is used, and
 	// all the distances are added.
 	double sum = 0;
@@ -202,8 +202,8 @@ Octree<T>::Octree(T*** arr, Math::Vector3 corner_pos, Math::Vector3 tree_size, u
 
 	//sizes
 	int	xBDFH = this->size.x / 2;//is rounded down, so smaller when width is odd
-	int yEFGH = this->size.y / 2;//is rounded down, so smaller when width is odd
-	int	zCDGH = this->size.z / 2;//is rounded down, so smaller when height is odd
+	int yEFGH = this->size.y / 2;//is rounded down, so smaller when height is odd
+	int	zCDGH = this->size.z / 2;//is rounded down, so smaller when depth is odd
 	int xACEG = this->size.x - xBDFH;
 	int yABCD = this->size.y - yEFGH;
 	int zABEF = this->size.z - zCDGH;

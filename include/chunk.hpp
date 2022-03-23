@@ -45,6 +45,8 @@ private:
 	int		buildVertexArrayFromOctree(Octree_old* root, Math::Vector3 pos_offset = Math::Vector3(0, 0, 0));
 	#else
 	int		buildVertexArrayFromOctree(Octree<Voxel>* root, Math::Vector3 pos_offset = Math::Vector3(0, 0, 0));
-	#endif
+	int		buildVertexArrayFromOctree_homogeneous(Octree<Voxel>* root, Math::Vector3 pos_offset = Math::Vector3(0, 0, 0));
+#endif
 	std::vector<SimpleVertex>	_vertexArray;
+	std::vector<unsigned int>	_indices;
 };

@@ -345,14 +345,14 @@ void	ChunkGenerator::updateChunkJobsDone() {
 		if (!job->done) {
 			std::cerr << "job not done but is in the jobsDone list: " << job << job->index << "\n";
 			std::cerr << "exiting...\n";
-			std::exit(-14);
+			Misc::breakExit(-14);
 		}
 		job->deliver(*this);
 		delete job;//no custom destructor: nothing to delete manually for now
 	}
 	if (!this->jobsDone.empty()) {
 		std::cerr << "jobsDone not empty, wth? : " << this->jobsDone.size() << "\nexiting...\n";
-		std::exit(-14);
+		Misc::breakExit(-14);
 	}
 	//this->chunksChanged = true;
 }
@@ -387,7 +387,7 @@ void	ChunkGenerator::build(PerlinSettings& perlinSettings, std::string& threadID
 
 void	ChunkGenerator::th_builders(GLFWwindow* context) {
 	std::cout << __PRETTY_FUNCTION__ << "\n";
-	glfwMakeContextCurrent(context);
+	//glfwMakeContextCurrent(context);
 	std::thread::id threadID = std::this_thread::get_id();
 	std::stringstream ss;
 	ss << threadID;
@@ -436,8 +436,8 @@ void	ChunkGenerator::th_builders(GLFWwindow* context) {
 
 	std::cout << threadIDstr << " jobs done: " << thread_jobsdone << "\n";
 	std::cout << threadIDstr << "exiting...\n";
-	glfwSetWindowShouldClose(context, GLFW_TRUE);
-	glfwMakeContextCurrent(nullptr);
+	//glfwSetWindowShouldClose(context, GLFW_TRUE);
+	//glfwMakeContextCurrent(nullptr);
 }
 
 bool	ChunkGenerator::buildMeshesAndMapTiles() {
@@ -546,7 +546,6 @@ void	ChunkGenerator::pushDisplayedChunks(Object** dst) const {
 	dst[n] = nullptr;
 }
 
-
 Math::Vector3	ChunkGenerator::getGridDisplayStart() const {
 	return this->gridDisplayIndex;
 	/*
@@ -557,7 +556,7 @@ Math::Vector3	ChunkGenerator::getGridDisplayStart() const {
 	*/
 }
 
-std::string	ChunkGenerator::toString() const {
+std::string		ChunkGenerator::toString() const {
 	std::stringstream ss;
 	ss << "currentChunkWorldIndex: " << this->currentChunkWorldIndex.toString() << "\n";
 	for (int k = 0; k < this->gridSize.z; k++) {

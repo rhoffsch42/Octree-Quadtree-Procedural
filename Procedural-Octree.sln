@@ -7,6 +7,11 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Procedural-Octree", "Proced
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "UnitTests_SimpleGL", "SimpleGL\unittests\UnitTests_SimpleGL.vcxproj", "{D7661890-1CDA-45BA-892F-F85ECE94775F}"
 EndProject
+Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "octree-procedural-installer", "..\procedural-installer\octree-procedural-installer\octree-procedural-installer.vdproj", "{7633AE6D-750A-4541-97DE-47554A0B6FAC}"
+	ProjectSection(ProjectDependencies) = postProject
+		{B3C2BA9E-C4E2-4616-B505-B4309EED606B} = {B3C2BA9E-C4E2-4616-B505-B4309EED606B}
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -31,6 +36,11 @@ Global
 		{D7661890-1CDA-45BA-892F-F85ECE94775F}.Release|x64.Build.0 = Release|x64
 		{D7661890-1CDA-45BA-892F-F85ECE94775F}.Release|x86.ActiveCfg = Release|Win32
 		{D7661890-1CDA-45BA-892F-F85ECE94775F}.Release|x86.Build.0 = Release|Win32
+		{7633AE6D-750A-4541-97DE-47554A0B6FAC}.Debug|x64.ActiveCfg = Debug
+		{7633AE6D-750A-4541-97DE-47554A0B6FAC}.Debug|x86.ActiveCfg = Debug
+		{7633AE6D-750A-4541-97DE-47554A0B6FAC}.Release|x64.ActiveCfg = Release
+		{7633AE6D-750A-4541-97DE-47554A0B6FAC}.Release|x64.Build.0 = Release
+		{7633AE6D-750A-4541-97DE-47554A0B6FAC}.Release|x86.ActiveCfg = Release
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

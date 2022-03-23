@@ -196,13 +196,65 @@
     <ClInclude Include="SimpleGL\include\uipanel.hpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="SimpleGL\shaders\cubemap.fs.glsl" />
-    <None Include="SimpleGL\shaders\cubemap.vs.glsl" />
-    <None Include="SimpleGL\shaders\obj3d.fs.glsl" />
-    <None Include="SimpleGL\shaders\obj3d.vs.glsl" />
-    <None Include="SimpleGL\shaders\obj3d_instanced.vs.glsl" />
-    <None Include="SimpleGL\shaders\text.fs.glsl" />
-    <None Include="SimpleGL\shaders\text.vs.glsl" />
+    <None Include="SimpleGL\obj3d\cube_pastel.mtl">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</DeploymentContent>
+    </None>
+    <None Include="SimpleGL\shaders\cubemap.fs.glsl">
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</DeploymentContent>
+    </None>
+    <None Include="SimpleGL\shaders\cubemap.vs.glsl">
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</DeploymentContent>
+    </None>
+    <None Include="SimpleGL\shaders\obj3d.fs.glsl">
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</DeploymentContent>
+    </None>
+    <None Include="SimpleGL\shaders\obj3d.vs.glsl">
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</DeploymentContent>
+    </None>
+    <None Include="SimpleGL\shaders\obj3d_instanced.vs.glsl">
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</DeploymentContent>
+    </None>
+    <None Include="SimpleGL\shaders\text.fs.glsl">
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</DeploymentContent>
+    </None>
+    <None Include="SimpleGL\shaders\text.vs.glsl">
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</DeploymentContent>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="SimpleGL\images\lena.bmp">
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</DeploymentContent>
+    </Image>
+    <Image Include="SimpleGL\images\player_icon.bmp">
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</DeploymentContent>
+    </Image>
+    <Image Include="SimpleGL\images\skybox4.bmp">
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</DeploymentContent>
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <Font Include="SimpleGL\fonts\arial.ttf">
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</DeploymentContent>
+    </Font>
+    <Font Include="SimpleGL\fonts\arialbd.ttf">
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</DeploymentContent>
+    </Font>
+    <Font Include="SimpleGL\fonts\arialbi.ttf">
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</DeploymentContent>
+    </Font>
+    <Font Include="SimpleGL\fonts\ariali.ttf">
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</DeploymentContent>
+    </Font>
+    <Font Include="SimpleGL\fonts\ariblk.ttf">
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</DeploymentContent>
+    </Font>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="SimpleGL\obj3d\cube.obj">
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</DeploymentContent>
+      <FileType>Document</FileType>
+    </None>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

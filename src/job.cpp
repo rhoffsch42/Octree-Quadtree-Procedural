@@ -25,7 +25,7 @@ void	JobBuildHeighMap::deliver(ChunkGenerator& generator) const {
 	int z = ind.z;
 	if (this->index != this->hmap->getIndex() || this->index.y != 0) {
 		std::cerr << "wrong index for job " << this->index << " and hmap " << this->hmap << this->hmap->getIndex() << "\n";
-		std::exit(-14);
+		Misc::breakExit(-14);
 	}
 	if (x < 0 || z < 0 || x >= generator.gridSize.x || z >= generator.gridSize.z) {
 		std::cerr << "out of memory hmap " << this->hmap << " index " << ind << "\n";
@@ -39,7 +39,7 @@ void	JobBuildHeighMap::deliver(ChunkGenerator& generator) const {
 		HeightMap* h = generator.heightMaps[z][x];
 		std::cerr << "Heightmap " << this->hmap << " overriding " << h << " " << ind << "\n";
 		std::cerr << "This shouldn't happen, exiting...\n";
-		//std::exit(-14);
+		//Misc::breakExit(-14);
 	}
 
 	generator.heightMaps[z][x] = this->hmap;
@@ -53,7 +53,7 @@ JobBuildChunk::JobBuildChunk(Math::Vector3 index, Math::Vector3 chunk_size, Heig
 bool	JobBuildChunk::execute(PerlinSettings& perlinSettings) {
 	if (!this->hmap) {// should not be possible
 		std::cerr << "JobBuildChunk error: HeightMap nullptr, for index: " << this->index << "\n";
-		//std::exit(-14);
+		//Misc::breakExit(-14);
 		this->done = false;//should already be false, better be sure
 		return this->done;
 	}
@@ -61,9 +61,9 @@ bool	JobBuildChunk::execute(PerlinSettings& perlinSettings) {
 	this->hmap->unDispose();
 	//this->chunk->glth_buildMesh();
 	this->done = true;
-	#ifdef CHUNK_GEN_DEBUG
+#ifdef CHUNK_GEN_DEBUG
 	std::cout << "job executed : new chunk : " << this->chunk << " " << this->index << "\n";
-	#endif
+#endif
 	return this->done;
 }
 
@@ -75,7 +75,7 @@ void	JobBuildChunk::deliver(ChunkGenerator& generator) const {
 
 	if (this->index != this->chunk->index) {
 		std::cerr << "wrong index for job " << this->index << " and chunk " << this->chunk << this->chunk->index << "\n";
-		std::exit(-14);
+		Misc::breakExit(-14);
 	}
 	if (x < 0 || y < 0 || z < 0 || x >= generator.gridSize.x || y >= generator.gridSize.y || z >= generator.gridSize.z) {
 		std::cerr << "out of memory chunk " << this->chunk << this->index << " on grid: " << ind << "\n";
@@ -89,7 +89,7 @@ void	JobBuildChunk::deliver(ChunkGenerator& generator) const {
 		Chunk* c = generator.grid[z][y][x];
 		std::cerr << "Chunk " << this->chunk << this->index << " overriding " << c << c->index << " on grid: " << ind << "\n";
 		std::cerr << "This shouldn't happen, exiting...\n";
-		//std::exit(-14);
+		//Misc::breakExit(-14);
 	}
 	generator.grid[z][y][x] = this->chunk;
 	generator.map_jobsChunk[this->index] = false;
