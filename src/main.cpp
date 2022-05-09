@@ -832,13 +832,7 @@ void RenderText(Shader& shader, std::string text, float x, float y, float scale,
 }
 #endif//text test
 
-#if 1
-#include "simplegl.h"
-#include "trees.h"
-#include <typeinfo>
-#include <thread>
-#include <chrono>
-using namespace std::chrono_literals;
+#if 0
 
 void	test_poe() {
 	float	crit_chance = 1;
@@ -909,6 +903,16 @@ void	test_poe() {
 		---
 	*/
 }
+
+#endif//poe
+
+#if 1
+#include "simplegl.h"
+#include "trees.h"
+#include <typeinfo>
+#include <thread>
+#include <chrono>
+using namespace std::chrono_literals;
 
 void	pdebug(bool reset = false) {
 	const char* s = "0123456789`~!@#$%^&*()_+-=[]{}\\|;:'\",./<>?";
@@ -1053,512 +1057,6 @@ private:
 
 };
 
-void	scene1() {
-	Glfw	glfw(1600, 900);
-	glfw.setTitle("This title is long, long enough to test how glfw manages oversized titles. At this point I dont really know what to write, so let's just bullshiting it ....................................................... is that enough? Well, it depends of the size of the current window. I dont really know how many characters i have to write for a width of 1920. Is it possible to higher the police ? It could save some characters. Ok, im bored, lets check if this title is long enough!");
-
-	//Program for Obj3d (can render Obj3d) with vertex & fragmetns shaders
-	Obj3dPG			obj3d_prog(OBJ3D_VS_FILE, OBJ3D_FS_FILE);
-
-#ifndef BLUEPRINTS
-	//Create Obj3dBP from .obj files
-	//Blueprint global settings
-	Obj3dBP::defaultSize = 1;
-	Obj3dBP::defaultDataMode = BP_LINEAR;
-	Obj3dBP::rescale = true;
-	Obj3dBP::center = true;
-
-	Obj3dBP			the42BP("obj3d/42.obj");
-	Obj3dBP			cubeBP("obj3d/cube.obj");
-	Obj3dBP			teapotBP("obj3d/teapot2.obj");
-	// Obj3dBP			rocketBP("obj3d/Rocket_Phoenix/AIM-54_Phoenix_OBJ/Aim-54_Phoenix.obj");
-	Obj3dBP			rocketBP("obj3d/ARSENAL_VG33/Arsenal_VG33.obj");
-	// Obj3dBP			lamboBP("obj3d/lambo/Lamborginhi_Aventador_OBJ/Lamborghini_Aventador.obj");
-	Obj3dBP			lamboBP("obj3d/lambo/Lamborginhi_Aventador_OBJ/Lamborghini_Aventador_no_collider.obj");
-	std::cout << "======\n";
-#endif
-#ifndef TEXTURES
-	Texture* texture1 = new Texture("images/lena.bmp");
-	Texture* texture2 = new Texture("images/skybox2.bmp");
-	Texture* texture3 = new Texture("images/skyboxfuck.bmp");
-	//	Texture*	texture4 = new Texture("images/skybox4096.bmp");
-	Texture* texture5 = new Texture("images/skytest.bmp");
-	// Texture*	texture6 = new Texture("obj3d/Rocket_Phoenix/AIM-54_Phoenix_OBJ/Phoenix.bmp");
-	// Texture*	texture6 = new Texture("obj3d/ARSENAL_VG33/Arsenal_VG33.bmp");
-//	Texture*	texture7 = new Texture("obj3d/lambo/Lamborginhi_Aventador_OBJ/Lamborginhi_Aventador_diffuse.bmp");
-	Texture		texture8 = *texture1;
-#endif
-#ifndef OBJ3D
-	std::list<Obj3d*>	obj3dList;
-
-	float s = 1.0f;//scale
-	//Create Obj3d with the blueprint & by copy
-	Obj3d			the42_1(cubeBP, obj3d_prog);//the42BP !
-	the42_1.local.setPos(0, 0, 0);
-	the42_1.setTexture(texture1);
-	the42_1.displayTexture = true;
-	the42_1.setPolygonMode(GL_FILL);
-	the42_1.local.setScale(1, 1, 1);
-
-	Obj3d			the42_2(the42_1);
-	//the42_2.local.setPos(0, 3, -5);
-	the42_2.local.setPos(-4, -2, -2);
-	the42_2.setTexture(texture2);
-	the42_2.displayTexture = false;
-	// the42_2.setScale(3.0f, 0.75f, 0.3f);
-	the42_2.setPolygonMode(GL_LINE);
-
-	Obj3d			teapot1(teapotBP, obj3d_prog);
-	teapot1.local.setPos(0, 0, 2);
-	teapot1.local.getMatrix().setOrder(ROW_MAJOR);
-	// teapot1.setRot(0, 90, 0);
-	teapot1.setTexture(texture1);
-	teapot1.displayTexture = false;
-	teapot1.setPolygonMode(GL_LINE);
-	// teapot1.setScale(1.5, 2, 0.75);
-
-	Obj3d			cube1(cubeBP, obj3d_prog);
-	cube1.local.setPos(0, -2, 3);
-	cube1.setTexture(texture1);
-	cube1.displayTexture = false;
-
-	Object			empty1;
-	empty1.local.setScale(1, 1, 1);
-
-	Obj3d			rocket1(rocketBP, obj3d_prog);
-	// rocket1.local.setPos(-10, -20, -2000);
-	rocket1.local.setPos(0, -300, 0);
-	rocket1.local.rotate(0, 180, 0);
-	rocket1.setTexture(texture5);
-	rocket1.displayTexture = true;
-	// rocket1.setPolygonMode(GL_LINE);
-	s = 10.0f;
-	rocket1.local.setScale(s, s, s);
-	rocket1.setParent(&empty1);
-
-
-	// Properties::defaultSize = 13.0f;
-	Obj3d			lambo1(lamboBP, obj3d_prog);
-	lambo1.local.setPos(-20, 0, 0);
-	// lambo1.local.setScale(1, 1, 1);
-	lambo1.local.setPos(0, -5, 7);
-	lambo1.setTexture(texture1);
-	lambo1.displayTexture = true;
-	lambo1.setPolygonMode(GL_LINE);
-	s = 0.025f;
-	// lambo1.setScale(s, s, s);
-
-	Obj3d			lambo2(lamboBP, obj3d_prog);
-	// lambo2.local.setPos(0, -1.9f, 0);
-	lambo2.local.setPos(0, -6.0f, 0);
-	// lambo2.local.setScale(1, 5, 1);
-	lambo2.local.setRot(0, 180.0f, 0);
-	lambo2.setTexture(texture1);
-	lambo2.displayTexture = true;
-	// lambo2.setPolygonMode(GL_LINE);
-	s = 0.4f;
-	// lambo2.local.setScale(s, s, s);
-	// lambo2.setParent(&the42_1);
-	lambo2.setParent(&rocket1);
-
-	Obj3d			lambo3(lamboBP, obj3d_prog);
-	lambo3.local.setPos(0, -4, 0);
-	lambo3.local.setRot(0, 0.0f, 180);
-	lambo3.setTexture(&texture8);
-	lambo3.displayTexture = true;
-	// lambo3.setPolygonMode(GL_LINE);
-	s = 30.0f;
-	// lambo3.local.setScale(s, s, s);
-	// lambo3.setParent(&the42_1);
-	lambo3.setParent(&lambo2);
-
-	obj3dList.push_back(&the42_1);
-	// obj3dList.push_back(&the42_2);
-	obj3dList.push_back(&teapot1);
-	// obj3dList.push_back(&cube1);
-	obj3dList.push_back(&rocket1);
-	obj3dList.push_back(&lambo1);
-	obj3dList.push_back(&lambo2);
-	obj3dList.push_back(&lambo3);
-
-	if (true) {//spiral
-		// Obj3d*	backObj = &lambo3;
-		for (int i = 0; i < 20; i++) {
-			Obj3d* lamboPlus = new Obj3d(lamboBP, obj3d_prog);
-			lamboPlus->setParent(&lambo3);
-			lamboPlus->displayTexture = (i % 2) ? true : false;
-			lamboPlus->setTexture(&texture8);
-			lamboPlus->setColor(i * 45 % 255, i * 10 % 255, i * 73 % 255);
-			float maxScale = 3;
-			float scale = (float)((i % (int)maxScale) - (maxScale / 2));
-			lamboPlus->local.enlarge(scale, scale, scale);
-			float	val = cosf(Math::toRadian(i * 10)) * 10;
-			float	coef = 1.0f;
-			lamboPlus->local.setPos(lambo3.local.getPos());
-			lamboPlus->local.translate(float(i) / coef, val / coef, val / coef);
-			lamboPlus->local.rotate(Math::Rotation(i * 5, i * 5, i * 5));
-
-			obj3dList.push_back(lamboPlus);
-			// backObj = lamboPlus;
-		}
-	}
-#endif
-
-
-	// Properties::defaultSize = PP_DEFAULT_SIZE;
-
-	std::cout << &rocket1 << "\n";
-	// test_behaviors(rocket1);
-
-	std::cout << "Object # : " << Object::getInstanceAmount() << "\n";
-	std::cout << "Obj3d # : " << Obj3d::getInstanceAmount() << "\n";
-	std::cout << "\n";
-	std::cout << "GL_MAX_CUBE_MAP_TEXTURE_SIZE " << GL_MAX_CUBE_MAP_TEXTURE_SIZE << "\n";
-	std::cout << "GL_MAX_TEXTURE_SIZE " << GL_MAX_TEXTURE_SIZE << "\n";
-
-	SkyboxPG	sky_pg(CUBEMAP_VS_FILE, CUBEMAP_FS_FILE);
-	Skybox		skybox(*texture3, sky_pg);
-
-#ifndef CAM
-	Cam		cam(glfw.getWidth(), glfw.getHeight());
-	cam.local.setPos(0, 0, 10);
-	cam.printProperties();
-	cam.lockedMovement = false;
-	cam.lockedOrientation = false;
-
-	glfw.setMouseAngle(45);
-	std::cout << "MouseAngle: " << glfw.getMouseAngle() << "\n";
-	//Misc::breakExit(0);
-
-	if (false) {//cam anchor to rocket1, bugged with Z rot
-		cam.local.setPos(0, 1.5f, 3.5f);
-		cam.setParent(&rocket1);
-		cam.lockedMovement = true;
-		cam.lockedOrientation = true;
-	}
-#endif
-
-	Fps	fps144(144);
-	Fps	fps60(60);
-	Fps	fps30(30);
-	Fps* defaultFps = &fps144;
-
-	//followObjectArgs	st = { defaultFps, &cam };
-
-
-#ifndef BEHAVIORS
-	std::cout << "behavior:\n";
-	TransformBH		b1;
-	b1.transform.rot.setUnit(ROT_DEG);
-	b1.transform.rot.z = 10 * defaultFps->getTick();
-	b1.modeRot = ADDITIVE;
-	float ss = 1.0f + 0.1f * defaultFps->getTick();
-	//b1.transform.scale = Math::Vector3(ss, ss, ss);
-//	b1.modeScale = MULTIPLICATIVE;
-	std::cout << "___ adding rocket1: " << &rocket1 << "\n";
-	b1.addTarget(&rocket1);
-	b1.addTarget(&lambo1);
-	b1.removeTarget(&lambo1);
-	b1.setTargetStatus(&rocket1, false);
-	std::cout << "rocket1 status: " << b1.getTargetStatus(&rocket1) << "\n";
-	b1.setTargetStatus(&rocket1, true);
-	std::cout << "rocket1 status: " << b1.getTargetStatus(&rocket1) << "\n";
-
-	TransformBH		b2;// = b1;//bug
-	b2.transform.scale = Math::Vector3(0, 0, 0);
-	b2.modeScale = ADDITIVE;
-	// b2.transform.rot.z = 0.0f;
-	b2.transform.rot.x = -45.0f * defaultFps->getTick();
-	// b2.removeTarget(&rocket1);
-	b2.addTarget(&empty1);
-	//bug if i do:
-	b2.addTarget(&empty1);
-	b2.removeTarget(&rocket1);
-
-	TransformBH		b3;// = b1;//bug
-	b3.transform.scale = Math::Vector3(0, 0, 0);
-	b3.modeScale = ADDITIVE;
-	b3.transform.rot.y = 102.0f * defaultFps->getTick();
-	b3.addTarget(&lambo2);
-
-	std::cout << "b1: " << b1.getTargetList().size() << "\n";
-	std::cout << "b2: " << b2.getTargetList().size() << "\n";
-
-	TransformBH		b4;// = b1;//bug
-	b4.transform.scale = Math::Vector3(0, 0, 0);
-	b4.modeScale = ADDITIVE;
-	b4.transform.rot.y = 720.0f * defaultFps->getTick();
-	b4.addTarget(&teapot1);
-	// Misc::breakExit(0);
-
-	if (false) {// check behavior target, add remove
-
-		std::cout << "behaviorsActive: " << (empty1.behaviorsActive ? "true" : "false") << "\n";
-		std::cout << "------------\n";
-		std::cout << "lambo1:\t" << lambo1.behaviorList.size() << "\n";
-		std::cout << "b2:    \t" << b2.getTargetList().size() << "\n";
-		std::cout << "b2.addTarget(&lambo1);\n";
-		b2.addTarget(&lambo1);
-		std::cout << "lambo1:\t" << lambo1.behaviorList.size() << "\n";
-		std::cout << "b2:    \t" << b2.getTargetList().size() << "\n";
-		std::cout << "b2.removeTarget(&lambo1);\n";
-		b2.removeTarget(&lambo1);
-		std::cout << "lambo1:\t" << lambo1.behaviorList.size() << "\n";
-		std::cout << "b2:    \t" << b2.getTargetList().size() << "\n";
-
-		std::cout << "------------\n";
-		std::cout << "lambo1:\t" << lambo1.behaviorList.size() << "\n";
-		std::cout << "b2:    \t" << b2.getTargetList().size() << "\n";
-		std::cout << "lambo1.addBehavior(&b2);\n";
-		lambo1.addBehavior(&b2);
-		std::cout << "lambo1:\t" << lambo1.behaviorList.size() << "\n";
-		std::cout << "b2:    \t" << b2.getTargetList().size() << "\n";
-		std::cout << "lambo1.removeBehavior(&b2);\n";
-		lambo1.removeBehavior(&b2);
-		std::cout << "lambo1:\t" << lambo1.behaviorList.size() << "\n";
-		std::cout << "b2:    \t" << b2.getTargetList().size() << "\n";
-	}
-#endif
-	// Misc::breakExit(0);
-
-#ifndef GAMEMANAGER
-	GameManager	manager;
-	manager.glfw = &glfw;
-	manager.cam = &cam;
-
-	glfw.activateDefaultCallbacks(&manager);
-
-#endif
-
-#ifndef RENDER
-	std::cout << "Begin while loop\n";
-	// cam.local.setScale(s,s,s);//bad, undefined behavior
-	while (!glfwWindowShouldClose(glfw._window)) {
-		if (defaultFps->wait_for_next_frame()) {
-			//////////////////////////////////////////
-			if (true) {
-				if (false) {
-					Math::Matrix4	matRocket = rocket1.getWorldMatrix();
-					matRocket.printData();
-					std::cout << "---------------\n";
-				}
-				if (false) {
-					the42_1.getWorldMatrix().printData();
-				}
-				if (false) {
-					std::cout << "---rocket1\n" << rocket1.local.getScale().toString() << "\n";
-					// rocket1.getWorldMatrix().printData();
-					std::cout << "---lambo2\n" << lambo2.local.getScale().toString() << "\n";
-					// lambo2.getWorldMatrix().printData();
-					std::cout << "---lambo3\n" << lambo3.local.getScale().toString() << "\n";
-					// lambo3.getWorldMatrix().printData();
-					std::cout << "---------------\n" << lamboBP.getDimensions().toString() << "\n";
-					std::cout << "---------------\n";
-				}
-			}
-			////////////////////////////////////////// motion/behaviors
-			//this should be used in another func, life a special func managing all events/behavior at every frames
-			if (true) {
-				b1.run();
-				b2.run();
-				b3.run();
-				b4.run();
-				if (false) {
-					Math::Vector3 p = teapot1.local.getPos();
-					float r = 180 * defaultFps->getTick();
-					p.rotateAround(cam.local.getPos(), Math::Rotation(r, 0, 0));
-					teapot1.local.setPos(p);
-				}
-				else if (true) {
-					float r = 180 * defaultFps->getTick();
-					teapot1.local.rotateAround(cam.local.getPos(), Math::Rotation(r, 0, 0));
-				}
-				// Math::Matrix4	matEmpty = empty1.getWorldMatrix();
-				// matEmpty.printData();
-			}
-			////////////////////////////////////////// motion end
-
-			glfwPollEvents();
-			glfw.updateMouse();//to do before cam's events
-			cam.events(glfw, float(defaultFps->getTick()));
-			// printFps();
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-			//renderObj3d(obj3dList, cam);
-			//renderSkybox(skybox, cam);
-			glfwSwapBuffers(glfw._window);
-
-			if (GLFW_PRESS == glfwGetKey(glfw._window, GLFW_KEY_ESCAPE))
-				glfwSetWindowShouldClose(glfw._window, GLFW_TRUE);
-		}
-	}
-	std::cout << "End while loop\n";
-#endif
-
-	std::cout << "deleting textures...\n";
-	delete texture1;
-	delete texture2;
-	delete texture3;
-	//	delete texture4;
-	delete texture5;
-	//	delete texture6;
-		//delete texture7;
-}
-
-void scene2() {
-	Glfw	glfw(1600, 900);
-	glfw.setTitle("Tests camera anchor");
-
-	//Program for Obj3d (can render Obj3d) with vertex & fragmetns shaders
-	Obj3dPG			obj3d_prog(OBJ3D_VS_FILE, OBJ3D_FS_FILE);
-	SkyboxPG		sky_pg(CUBEMAP_VS_FILE, CUBEMAP_FS_FILE);
-
-	//Blueprint global settings
-	Obj3dBP::defaultSize = 1;
-	Obj3dBP::defaultDataMode = BP_LINEAR;
-	Obj3dBP::rescale = true;
-	Obj3dBP::center = true;
-	Obj3dBP			rocketBP("obj3d/ARSENAL_VG33/Arsenal_VG33.obj");
-
-	Texture* texture3 = new Texture("images/skyboxfuck.bmp");
-	Texture* texture5 = new Texture("images/skytest.bmp");
-
-	Skybox		skybox(*texture3, sky_pg);
-
-
-	std::list<Obj3d*>	obj3dList;
-
-	Obj3d			rocket(rocketBP, obj3d_prog);
-	rocket.local.setPos(0, 0, 0);
-	rocket.setTexture(texture5);
-	rocket.displayTexture = true;
-	float s = 10.0f;
-	rocket.local.setScale(s, s, s);
-
-	Obj3d			rocket2(rocketBP, obj3d_prog);
-	rocket2.local.setPos(5, 0, 0);
-	rocket2.setTexture(texture5);
-	rocket2.displayTexture = true;
-	s = 5000.0f;
-	rocket2.local.setScale(s, s, s);
-
-	obj3dList.push_back(&rocket);
-	obj3dList.push_back(&rocket2);
-
-
-	Cam		cam(glfw.getWidth(), glfw.getHeight());
-	cam.local.setPos(0, 15, 35);
-	cam.printProperties();
-	cam.lockedMovement = false;
-	cam.lockedOrientation = false;
-
-	glfw.setMouseAngle(-1);
-	std::cout << "MouseAngle: " << glfw.getMouseAngle() << "\n";
-	//Misc::breakExit(0);
-
-	//cam.local.setPos(0, 1.5f, 3.5f);
-	AnchorCameraBH	b1;
-	b1.setAnchor(&rocket);
-	b1.addTarget(&cam);
-	b1.copyRotation = true;
-	cam.lockedMovement = true;
-	cam.lockedOrientation = true;
-
-
-	Fps	fps144(144);
-	Fps	fps60(60);
-	Fps* defaultFps = &fps144;
-
-	float	mvt = 30.0f * defaultFps->getTick();
-
-	std::cout << "Begin while loop\n";
-	int c = 0;
-	while (!glfwWindowShouldClose(glfw._window)) {
-		if (defaultFps->wait_for_next_frame()) {
-
-			if (1) {
-				b1.run();
-			}
-
-			//print data
-			if (false) {
-				c++;
-				if (c == 60) {
-					c = 0;
-					system("cls");
-					if (true) {
-						std::cout << "--- ROCKET\n";
-						//rocket.local.getScale().toString() << "\n";
-						std::cout << rocket.local.getRot().toString() << "\n";
-						rocket.getWorldMatrix().printData();
-					}
-					if (true) {
-						std::cout << "--- CAM\n" << cam.local.getRot().toString();
-						std::cout << "- local\n";
-						cam.getLocalProperties().getMatrix().printData();
-						std::cout << "- world\n";
-						cam.getWorldMatrix().printData();
-					}
-				}
-			}
-
-			glfwPollEvents();
-			glfw.updateMouse();//to do before cam's events
-			cam.events(glfw, float(defaultFps->getTick()));
-			if (true) {
-				if (GLFW_PRESS == glfwGetKey(glfw._window, GLFW_KEY_LEFT))
-					rocket.local.rotate(0, mvt, 0);
-				if (GLFW_PRESS == glfwGetKey(glfw._window, GLFW_KEY_RIGHT))
-					rocket.local.rotate(0, -mvt, 0);
-				if (GLFW_PRESS == glfwGetKey(glfw._window, GLFW_KEY_DOWN))
-					rocket.local.rotate(mvt, 0, 0);
-				if (GLFW_PRESS == glfwGetKey(glfw._window, GLFW_KEY_UP))
-					rocket.local.rotate(-mvt, 0, 0);
-				if (GLFW_PRESS == glfwGetKey(glfw._window, GLFW_KEY_KP_1))
-					rocket.local.rotate(0, 0, mvt);
-				if (GLFW_PRESS == glfwGetKey(glfw._window, GLFW_KEY_KP_2))
-					rocket.local.rotate(0, 0, -mvt);
-				if (GLFW_PRESS == glfwGetKey(glfw._window, GLFW_KEY_KP_0))
-					rocket.local.setRot(0, 0, 0);
-
-				Math::Vector3	pos = rocket.local.getPos();
-				if (GLFW_PRESS == glfwGetKey(glfw._window, GLFW_KEY_KP_8))
-					pos.add(0, 0, -mvt);
-				if (GLFW_PRESS == glfwGetKey(glfw._window, GLFW_KEY_KP_5))
-					pos.add(0, 0, mvt);
-				if (GLFW_PRESS == glfwGetKey(glfw._window, GLFW_KEY_KP_4))
-					pos.add(-mvt, 0, 0);
-				if (GLFW_PRESS == glfwGetKey(glfw._window, GLFW_KEY_KP_6))
-					pos.add(mvt, 0, 0);
-				if (GLFW_PRESS == glfwGetKey(glfw._window, GLFW_KEY_KP_7))
-					pos.add(0, -mvt, 0);
-				if (GLFW_PRESS == glfwGetKey(glfw._window, GLFW_KEY_KP_9))
-					pos.add(0, mvt, 0);
-				rocket.local.setPos(pos);
-
-
-				//#define 	GLFW_KEY_RIGHT   262
-				//#define 	GLFW_KEY_LEFT   263
-				//#define 	GLFW_KEY_DOWN   264
-				//#define 	GLFW_KEY_UP   265
-			}
-
-			// printFps();
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-			//renderObj3d(obj3dList, cam);
-			//renderSkybox(skybox, cam);
-			glfwSwapBuffers(glfw._window);
-
-			if (GLFW_PRESS == glfwGetKey(glfw._window, GLFW_KEY_ESCAPE))
-				glfwSetWindowShouldClose(glfw._window, GLFW_TRUE);
-		}
-	}
-	std::cout << "End while loop\n";
-
-	std::cout << "deleting textures...\n";
-	delete texture3;
-	delete texture5;
-}
-
 #define BORDERS_ON	true
 #define BORDERS_OFF	false
 void	fillData(uint8_t* dst, QuadNode* node, int* leafAmount, int baseWidth, bool draw_borders, int threshold, Math::Vector3 color) {
@@ -1610,6 +1108,7 @@ void	fillData(uint8_t* dst, QuadNode* node, int* leafAmount, int baseWidth, bool
 		fillData(dst, node->children[3], leafAmount, baseWidth, draw_borders, threshold, color);
 	}
 }
+
 #define THRESHOLD 0
 QuadNode* textureToQuadTree(Texture* tex) {
 	uint8_t* data = tex->getData();
@@ -1677,12 +1176,8 @@ void	scene_4Tree() {
 	manager.glfw->func[GLFW_KEY_MINUS] = keyCallback_quadTree;
 	manager.glfw->func[GLFW_KEY_ENTER] = keyCallback_quadTree;
 
-	Texture* lena = new Texture(WIN32_VS_FOLDER + "images/lena.bmp");
-	Texture* rgbtest = new Texture(WIN32_VS_FOLDER + "images/test_rgb.bmp");
-	Texture* minirgb = new Texture(WIN32_VS_FOLDER + "images/minirgb.bmp");
-	Texture* red = new Texture(WIN32_VS_FOLDER + "images/red.bmp");
-	Texture* monkey = new Texture(WIN32_VS_FOLDER + "images/monkey.bmp");
-	Texture* flower = new Texture(WIN32_VS_FOLDER + "images/flower.bmp");
+	Texture* lena = new Texture(SIMPLEGL_FOLDER + "images/lena.bmp");
+	Texture* flower = new Texture(SIMPLEGL_FOLDER + "images/flower.bmp");
 
 	Texture* baseImage = flower;
 	int w = baseImage->getWidth();
@@ -1722,8 +1217,8 @@ void	scene_4Tree() {
 
 			// printFps();
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-			//blitToWindow(nullptr, GL_COLOR_ATTACHMENT0, &uiBaseImage);
-			//blitToWindow(nullptr, GL_COLOR_ATTACHMENT0, &ui4Tree);
+			blitToWindow(nullptr, GL_COLOR_ATTACHMENT0, &uiBaseImage);
+			blitToWindow(nullptr, GL_COLOR_ATTACHMENT0, &ui4Tree);
 			glfwSwapBuffers(manager.glfw->_window);
 
 			if (GLFW_PRESS == glfwGetKey(manager.glfw->_window, GLFW_KEY_ESCAPE))
@@ -1733,14 +1228,12 @@ void	scene_4Tree() {
 
 	std::cout << "End while loop\n";
 	std::cout << "deleting textures...\n";
-	delete lena;
-	delete red;
-	delete rgbtest;
 }
 
 class ProceduralManager : public GameManager {
 public:
 	ProceduralManager() : GameManager() {
+		this->cam = nullptr;
 		this->perlin = nullptr;
 		this->core_amount = std::thread::hardware_concurrency();
 		std::cout << " number of cores: " << this->core_amount << "\n";
@@ -1801,7 +1294,7 @@ public:
 	Obj3d* player;
 	int	playerChunkX;
 	int	playerChunkY;
-	std::list<Obj3d*>	renderlist;
+	std::list<Object*>	renderlist;
 	Cam* cam;
 	int				range_chunk_display;
 	int				range_chunk_memory;
@@ -1881,7 +1374,10 @@ void	th_buildData(uint8_t* data, ProceduralManager& manager, int yStart, int yEn
 	screenCornerX = playerPosX - (manager.areaWidth / 2);
 	screenCornerY = playerPosY - (manager.areaHeight / 2);
 
-
+	//std::cout << "yStart " << yStart << "\n";
+	//std::cout << "yEnd " << yEnd << "\n";
+	//std::cout << "aeraWidth " << manager.areaWidth << "\n";
+	//std::cout << "areaHeight " << manager.areaHeight << "\n";
 	for (int y = yStart; y < yEnd; ++y) {
 		for (int x = 0; x < manager.areaWidth; ++x) {
 			double value;
@@ -1965,6 +1461,7 @@ void	scene_procedural() {
 	int thread_amount = manager.core_amount - 1;
 	std::thread* threads_list = new std::thread[thread_amount];
 
+
 	std::cout << "Begin while loop\n";
 	while (!glfwWindowShouldClose(manager.glfw->_window)) {
 		if (defaultFps->wait_for_next_frame()) {
@@ -1980,7 +1477,6 @@ void	scene_procedural() {
 			int playerPosY = WINY - manager.mouseY - (WINY / 2);//center of screen is 0:0   //invert glfw Y to match opengl image
 			Math::Vector3	vec(playerPosX, playerPosY, 0);
 			double dist = (double(vec.len()) / double(WINY * 2));
-			std::cout << playerPosX << ":" << playerPosY << "  \t" << dist << "\n";
 
 			for (size_t i = 0; i < thread_amount; i++) {//compute data with threads
 				int start = ((manager.areaHeight * (i + 0)) / thread_amount);
@@ -1997,10 +1493,16 @@ void	scene_procedural() {
 			uiImage.setSize(uiImage.getTexture()->getWidth() * size_coef, uiImage.getTexture()->getHeight() * size_coef);
 
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-			//blitToWindow(nullptr, GL_COLOR_ATTACHMENT0, &uiImage);
+			blitToWindow(nullptr, GL_COLOR_ATTACHMENT0, &uiImage);
 			glfwSwapBuffers(manager.glfw->_window);
 
-
+			/*
+				arrows	pos offset
+				PAD 74	frequency +-0.1 [0.1 : 64]
+				PAD 85	flattering +-0.1 [0.01 : 10]
+				PAD 96	island +-0.01 [-2 : 2]
+			*/
+			#ifndef KEY_EVENTSSS
 			int mvtSpeed = 5;
 			if (GLFW_PRESS == glfwGetKey(manager.glfw->_window, GLFW_KEY_UP)) {
 				manager.posOffsetY += mvtSpeed;
@@ -2036,89 +1538,28 @@ void	scene_procedural() {
 
 			if (GLFW_PRESS == glfwGetKey(manager.glfw->_window, GLFW_KEY_KP_9)) {
 				manager.island += 0.05;
-				manager.island = std::clamp(manager.island, 0.01, 2.0);
+				manager.island = std::clamp(manager.island, -2.0, 2.0);
 			}
 			if (GLFW_PRESS == glfwGetKey(manager.glfw->_window, GLFW_KEY_KP_6)) {
 				manager.island -= 0.05;
 				manager.island = std::clamp(manager.island, -2.0, 2.0);
 			}
+			if (GLFW_PRESS == glfwGetKey(manager.glfw->_window, GLFW_KEY_KP_0)) {
+				std::cout << "X:Y dist\t" << playerPosX << ":" << playerPosY << "  \t" << dist << "\n";
+				std::cout << "frequency\t" << manager.frequency << "\n";
+				std::cout << "flattering\t" << manager.frequency << "\n";
+				std::cout << "island\t" << manager.frequency << "\n";
+			}
 
 			if (GLFW_PRESS == glfwGetKey(manager.glfw->_window, GLFW_KEY_ESCAPE))
 				glfwSetWindowShouldClose(manager.glfw->_window, GLFW_TRUE);
+			#endif
 		}
 	}
 	delete[] threads_list;
 
 	std::cout << "End while loop\n";
 	std::cout << "deleting textures...\n";
-}
-
-void	buildChunk(ProceduralManager& manager, QuadNode* node, int chunkI, int chunkJ, int threshold) {//can be used for every tree node
-	if (!node)
-		return;
-	//if (node->isLeaf()) {
-	if (node->detail <= threshold) {
-		//std::cout << "leaf: " << node->width << "x" << node->height << " at " << node->x << ":" << node->y << "\n";
-		if (node->width == 0 || node->height == 0) {
-			std::cout << "error with tree data\n"; Misc::breakExit(2);
-		}
-		if (node->width * node->height >= DEBUG_LEAF_AREA && DEBUG_LEAF && DEBUG_BUILD_TOO) {
-			std::cout << "Display new leaf: " << node->width << "x" << node->height << " at " << node->x << ":" << node->y << "\t";
-			std::cout << (int)node->pixel.r << "  \t" << (int)node->pixel.g << "  \t" << (int)node->pixel.b << "\n";
-		}
-#ifndef RENDER_WORLD // make a special render func for that (or change buildChunk)
-		Obj3d* cube = manager.renderlist.front();
-		int polmode = cube->getPolygonMode();
-		uint8_t	elevation = node->pixel.r;
-		Math::Vector3	color = genColor(elevation);
-		if (0 && (node->x == 0 || node->y == 0))
-			cube->setColor(0, 0, 0);
-		else
-			cube->setColor(color.x, color.y, color.z);
-
-		int worldPosX = manager.playerChunkX * manager.chunk_size + node->x + chunkI * manager.chunk_size - (manager.range_chunk_memory / 2 * manager.chunk_size);
-		int worldPosY = manager.playerChunkY * manager.chunk_size + node->y + chunkJ * manager.chunk_size - (manager.range_chunk_memory / 2 * manager.chunk_size);
-
-		cube->local.setPos(worldPosX, 0, worldPosY);
-		cube->local.setScale(node->width, node->pixel.r / 3, node->height);// height is opengl z
-		//cube->local.setScale(node->width, 1, node->height);// height is opengl z
-
-		cube->setPolygonMode(manager.polygon_mode);
-		//renderObj3d(manager.renderlist, *manager.cam);
-		cube->setPolygonMode(polmode);
-#endif
-	}
-	else if (node->children) {
-		buildChunk(manager, node->children[0], chunkI, chunkJ, threshold);
-		buildChunk(manager, node->children[1], chunkI, chunkJ, threshold);
-		buildChunk(manager, node->children[2], chunkI, chunkJ, threshold);
-		buildChunk(manager, node->children[3], chunkI, chunkJ, threshold);
-	}
-}
-
-void	buildWorld(ProceduralManager& manager, QuadNode*** memory4Tree) {
-	//std::cout << "building world...\n";
-
-	int longTreshold = 12;
-	int midTreshold = 8;
-	int threshold = 3;
-
-	int startMid = (manager.range_chunk_memory / 2) - (20 / 2);
-	int endMid = startMid + 20;
-	int start = (manager.range_chunk_memory / 2) - (manager.range_chunk_display / 2);
-	int end = start + manager.range_chunk_display;
-	std::cout << start << " -> " << end << "\t/ " << manager.range_chunk_memory << "\n";
-	for (size_t j = 0; j < manager.range_chunk_memory; j++) {
-		for (size_t i = 0; i < manager.range_chunk_memory; i++) {
-			//std::cout << j << ":" << i << "\n";
-			if (i >= start && i < end && j >= start && j < end)//around player
-				threshold = manager.threshold;
-			else if (i >= startMid && i < endMid && j >= startMid && j < endMid)//around player
-				threshold = midTreshold;
-			buildChunk(manager, memory4Tree[j][i], i, j, threshold);
-			threshold = longTreshold;
-		}
-	}
 }
 
 uint8_t* generatePerlinNoise(ProceduralManager& manager, int posX, int posY, int width, int height) {
@@ -2146,446 +1587,6 @@ uint8_t* generatePerlinNoise(ProceduralManager& manager, int posX, int posY, int
 		}
 	}
 	return data;
-}
-
-void	updateChunksX(ProceduralManager& manager, QuadNode*** chunkMemory4Tree, uint8_t*** chunkMemory, int change) {
-	if (abs(change) > 1) {
-		std::cout << "player went too fast on X, or teleported\n";
-		Misc::breakExit(1);
-	}
-
-	bool displayDebug = false;
-
-	manager.playerChunkX += change;
-	int startX = manager.playerChunkX * manager.chunk_size - (manager.chunk_size * manager.range_chunk_memory / 2);
-	int startY = manager.playerChunkY * manager.chunk_size - (manager.chunk_size * manager.range_chunk_memory / 2);
-
-	if (change > 0) {//if we went on right, we shift everything on left, and rebuild last column
-		for (int i = 0; i < manager.range_chunk_memory; i++) {
-			for (int j = 0; j < manager.range_chunk_memory; j++) {
-				if (i == 0) {//delete first column
-					delete[] chunkMemory[j][i];
-					delete chunkMemory4Tree[j][i];
-					if (displayDebug)
-						std::cout << "delete first column on line " << j << " column " << i << "\n";
-				}
-				if (i == manager.range_chunk_memory - 1) {//last column, rebuild
-					if (displayDebug)
-						std::cout << "rebuild last column on line " << j << " column " << i << "\n";
-					int x, y, w, h;
-					x = startX + manager.chunk_size * i;
-					y = startY + manager.chunk_size * j;
-					w = manager.chunk_size;
-					h = manager.chunk_size;
-					chunkMemory[j][i] = generatePerlinNoise(manager, x, y, w, h);
-					chunkMemory4Tree[j][i] = new QuadNode(chunkMemory[j][i], w, 0, 0, w, h, THRESHOLD);
-				}
-				else {//shift on left
-					if (displayDebug)
-						std::cout << "shift on left on line " << j << " column " << i << "\n";
-					chunkMemory[j][i] = chunkMemory[j][i + 1];
-					chunkMemory4Tree[j][i] = chunkMemory4Tree[j][i + 1];
-				}
-			}
-			if (displayDebug)
-				std::cout << "-------------\n";
-		}
-	}
-	else if (change < 0) {//if we went on left, ie shift everything on right, rebuild first column
-		for (int i = manager.range_chunk_memory - 1; i >= 0; i--) {
-			for (int j = 0; j < manager.range_chunk_memory; j++) {
-				if (i == manager.range_chunk_memory - 1) {//delete last column
-					delete[] chunkMemory[j][i];
-					delete chunkMemory4Tree[j][i];
-					if (displayDebug)
-						std::cout << "delete last column on line " << j << " column " << i << "\n";
-				}
-				if (i == 0) {//first column, rebuild
-					if (displayDebug)
-						std::cout << "rebuild first column on line " << j << " column " << i << "\n";
-					int x, y, w, h;
-					x = startX + manager.chunk_size * i;
-					y = startY + manager.chunk_size * j;
-					w = manager.chunk_size;
-					h = manager.chunk_size;
-					chunkMemory[j][i] = generatePerlinNoise(manager, x, y, w, h);
-					chunkMemory4Tree[j][i] = new QuadNode(chunkMemory[j][i], w, 0, 0, w, h, THRESHOLD);
-				}
-				else {//shift on right
-					if (displayDebug)
-						std::cout << "shift on right on line " << j << " column " << i << "\n";
-					chunkMemory[j][i] = chunkMemory[j][i - 1];
-					chunkMemory4Tree[j][i] = chunkMemory4Tree[j][i - 1];
-				}
-			}
-			if (displayDebug)
-				std::cout << "-------------\n";
-		}
-	}
-	std::cout << "updated Chunks X\n";
-}
-
-void	updateChunksY(ProceduralManager& manager, QuadNode*** chunkMemory4Tree, uint8_t*** chunkMemory, int change) {
-	if (abs(change) > 1) {
-		std::cout << "player went too fast on Y, or teleported\n";
-		Misc::breakExit(1);
-	}
-
-	bool displayDebug = false;
-
-	manager.playerChunkY += change;
-	int startX = manager.playerChunkX * manager.chunk_size - (manager.chunk_size * manager.range_chunk_memory / 2);
-	int startY = manager.playerChunkY * manager.chunk_size - (manager.chunk_size * manager.range_chunk_memory / 2);
-
-	if (change > 0) {//if we went on bottom, we shift everything on top, and rebuild last column
-		for (int j = 0; j < manager.range_chunk_memory; j++) {
-			for (int i = 0; i < manager.range_chunk_memory; i++) {
-				if (j == 0) {//delete first line
-					delete[] chunkMemory[j][i];
-					delete chunkMemory4Tree[j][i];
-					if (displayDebug)
-						std::cout << "delete first line on column " << i << " line " << j << "\n";
-				}
-				if (j == manager.range_chunk_memory - 1) {//last line, rebuild
-					if (displayDebug)
-						std::cout << "rebuild last line on column " << i << " line " << j << "\n";
-					int x, y, w, h;
-					x = startX + manager.chunk_size * i;
-					y = startY + manager.chunk_size * j;
-					w = manager.chunk_size;
-					h = manager.chunk_size;
-					chunkMemory[j][i] = generatePerlinNoise(manager, x, y, w, h);
-					chunkMemory4Tree[j][i] = new QuadNode(chunkMemory[j][i], w, 0, 0, w, h, THRESHOLD);
-				}
-				else {//shift on top
-					if (displayDebug)
-						std::cout << "shift on top on column " << i << " line " << j << "\n";
-					chunkMemory[j][i] = chunkMemory[j + 1][i];
-					chunkMemory4Tree[j][i] = chunkMemory4Tree[j + 1][i];
-				}
-			}
-			if (displayDebug)
-				std::cout << "-------------\n";
-		}
-	}
-	else if (change < 0) {//if we went on left, ie shift everything on right, rebuild first column
-		for (int j = manager.range_chunk_memory - 1; j >= 0; j--) {
-			for (int i = 0; i < manager.range_chunk_memory; i++) {
-				if (j == manager.range_chunk_memory - 1) {//delete last column
-					delete[] chunkMemory[j][i];
-					delete chunkMemory4Tree[j][i];
-					if (displayDebug)
-						std::cout << "delete first line on column " << i << " line " << j << "\n";
-				}
-				if (j == 0) {//first column, rebuild
-					if (displayDebug)
-						std::cout << "rebuild last line on column " << i << " line " << j << "\n";
-					int x, y, w, h;
-					x = startX + manager.chunk_size * i;
-					y = startY + manager.chunk_size * j;
-					w = manager.chunk_size;
-					h = manager.chunk_size;
-					chunkMemory[j][i] = generatePerlinNoise(manager, x, y, w, h);
-					chunkMemory4Tree[j][i] = new QuadNode(chunkMemory[j][i], w, 0, 0, w, h, THRESHOLD);
-				}
-				else {//shift on bottom
-					if (displayDebug)
-						std::cout << "shift on top on column " << i << " line " << j << "\n";
-					chunkMemory[j][i] = chunkMemory[j - 1][i];
-					chunkMemory4Tree[j][i] = chunkMemory4Tree[j - 1][i];
-				}
-			}
-			if (displayDebug)
-				std::cout << "-------------\n";
-		}
-	}
-	std::cout << "updated Chunks Y\n";
-}
-
-static void		keyCallback_vox(GLFWwindow* window, int key, int scancode, int action, int mods) {
-	(void)window; (void)key; (void)scancode; (void)action; (void)mods;
-	//std::cout << __PRETTY_FUNCTION__ << "\n";
-
-	if (action == GLFW_PRESS) {
-		//std::cout << "GLFW_PRESS\n";
-		ProceduralManager* manager = static_cast<ProceduralManager*>(glfwGetWindowUserPointer(window));
-		if (!manager) {
-			std::cout << "static_cast failed\n";
-		}
-		else if (manager->glfw) {
-			if (key == GLFW_KEY_EQUAL) {
-				manager->threshold++;
-				manager->glfw->setTitle(std::to_string(manager->threshold).c_str());
-			}
-			else if (key == GLFW_KEY_MINUS && manager->threshold > 0) {
-				manager->threshold--;
-				manager->glfw->setTitle(std::to_string(manager->threshold).c_str());
-			}
-			else if (key == GLFW_KEY_ENTER) {
-				manager->polygon_mode++;
-				manager->polygon_mode = GL_POINT + (manager->polygon_mode % 3);
-			}
-		}
-	}
-}
-
-void	scene_vox() {
-#ifndef INIT_GLFW
-	Obj3dBP::defaultSize = 1;
-	TestPerlin();
-	ProceduralManager	manager;
-	siv::PerlinNoise perlin(manager.seed);
-	manager.perlin = &perlin;
-	manager.glfw = new Glfw(WINX, WINY);
-	//glDisable(GL_CULL_FACE);
-	manager.glfw->setTitle("Tests vox");
-	manager.glfw->activateDefaultCallbacks(&manager);
-	manager.glfw->func[GLFW_KEY_EQUAL] = keyCallback_vox;
-	manager.glfw->func[GLFW_KEY_MINUS] = keyCallback_vox;
-	manager.glfw->func[GLFW_KEY_ENTER] = keyCallback_vox;
-
-	Obj3dPG		obj3d_prog(OBJ3D_VS_FILE, OBJ3D_FS_FILE);
-	SkyboxPG	sky_pg(CUBEMAP_VS_FILE, CUBEMAP_FS_FILE);
-
-	//Blueprint global settings
-	Obj3dBP::defaultSize = 1;
-	Obj3dBP::defaultDataMode = BP_LINEAR;
-	Obj3dBP::rescale = true;
-	Obj3dBP::center = false;
-	Obj3dBP		cubebp("obj3d/cube.obj");
-
-	Texture* tex_skybox = new Texture("images/skybox4.bmp");
-	Skybox		skybox(*tex_skybox, sky_pg);
-
-	Cam		cam(manager.glfw->getWidth(), manager.glfw->getHeight());
-	cam.speed = 4 * 15;
-	cam.local.setPos(0, 30, 0);
-	cam.printProperties();
-	cam.lockedMovement = false;
-	cam.lockedOrientation = false;
-	//manager.glfw->setMouseAngle(-1);//?
-	std::cout << "MouseAngle: " << manager.glfw->getMouseAngle() << "\n";
-	manager.cam = &cam;
-
-	Fps	fps144(144);
-	Fps	fps60(60);
-	Fps* defaultFps = &fps60;
-
-#endif// INIT_GLFW
-
-#ifndef BASE_OBJ3D
-	Obj3d		cubeo(cubebp, obj3d_prog);
-	cubeo.local.setPos(0, 0, 0);
-	cubeo.local.setScale(1, 1, 1);
-	cubeo.setColor(255, 0, 0);
-	cubeo.displayTexture = false;
-	cubeo.setPolygonMode(GL_LINE);
-	manager.renderlist.push_back(&cubeo);
-
-	Obj3d		player1(cubebp, obj3d_prog);
-	player1.local.setPos(0, 35, 0);
-	player1.local.setScale(1, 2, 1);
-	player1.local.enlarge(5, 5, 5);
-	player1.setColor(255, 0, 0);
-	player1.displayTexture = false;
-	player1.setPolygonMode(GL_FILL);
-	manager.player = &player1;
-
-	std::list<Obj3d*>	playerList;
-	playerList.push_back(&player1);
-#endif
-
-#ifndef CHUNKS
-	// build the heightmaps depending of tile size (for now 7x7 tiles, tile is 30x30 cubes)
-	std::cout << "manager.chunk_size " << manager.chunk_size << "\n";
-	std::cout << "manager.range_chunk_memory " << manager.range_chunk_memory << "\n";
-	std::cout << "manager.range_chunk_display " << manager.range_chunk_display << "\n";
-
-	uint8_t*** chunkMemory = new uint8_t * *[manager.range_chunk_memory];
-	QuadNode*** chunkMemory4Tree = new QuadNode * *[manager.range_chunk_memory];
-	Math::Vector3	playerPos = player1.local.getPos();
-	int	playerChunkX = (int)playerPos.x / manager.chunk_size;
-	int	playerChunkY = (int)playerPos.z / manager.chunk_size;//opengl y is height, so we use opengl z here
-	int startX = playerChunkX * manager.chunk_size - (manager.chunk_size * manager.range_chunk_memory / 2);
-	int startY = playerChunkY * manager.chunk_size - (manager.chunk_size * manager.range_chunk_memory / 2);
-	for (size_t j = 0; j < manager.range_chunk_memory; j++) {
-		chunkMemory[j] = new uint8_t * [manager.range_chunk_memory];
-		chunkMemory4Tree[j] = new QuadNode * [manager.range_chunk_memory];
-		for (size_t i = 0; i < manager.range_chunk_memory; i++) {
-			//std::cout << i << ":" << j << "\n";
-			chunkMemory[j][i] = nullptr;
-			chunkMemory4Tree[j][i] = nullptr;
-			int x, y, w, h;
-			x = startX + manager.chunk_size * i;
-			y = startY + manager.chunk_size * j;
-			w = manager.chunk_size;
-			h = manager.chunk_size;
-			chunkMemory[j][i] = generatePerlinNoise(manager, x, y, w, h);//make a class Rect ?
-			chunkMemory4Tree[j][i] = new QuadNode(chunkMemory[j][i], w, 0, 0, w, h, THRESHOLD);
-		}
-	}
-	int startDisplay = (manager.range_chunk_memory - manager.range_chunk_display) / 2;
-	int endDisplay = startDisplay + manager.range_chunk_display;
-	int memoryTotalRange = manager.chunk_size * manager.range_chunk_memory;
-	uint8_t* dataChunkMemory = new uint8_t[3 * memoryTotalRange * memoryTotalRange];
-	for (size_t j = 0; j < manager.range_chunk_memory; j++) {
-		for (size_t i = 0; i < manager.range_chunk_memory; i++) {
-			int leafamount = 0;
-			Math::Vector3 color(0, 0, 0);
-			if ((i >= startDisplay && i < endDisplay) && (j >= startDisplay && j < endDisplay))
-				color = Math::Vector3(255, 0, 0);
-			fillData(dataChunkMemory + 3 * (j * memoryTotalRange * manager.chunk_size + i * manager.chunk_size),
-				chunkMemory4Tree[j][i], &leafamount, memoryTotalRange, false, THRESHOLD, color);
-		}
-	}
-
-	Texture* grid = new Texture(dataChunkMemory, memoryTotalRange, memoryTotalRange);
-	UIImage		gridPanel(grid);
-	gridPanel.setPos((WINX / 2) + manager.playerChunkX * manager.chunk_size - (manager.range_chunk_memory / 2 * manager.chunk_size),
-		(WINY / 2) + manager.playerChunkY * manager.chunk_size - (manager.range_chunk_memory / 2 * manager.chunk_size));//z cauz opengl
-	gridPanel.setSize(memoryTotalRange, memoryTotalRange);
-#endif // CHUNKS
-
-
-
-	//int thread_amount = manager.core_amount - 1;
-	//std::thread* threads_list = new std::thread[thread_amount];
-
-	std::cout << "Begin while loop\n";
-	while (!glfwWindowShouldClose(manager.glfw->_window)) {
-		if (defaultFps->wait_for_next_frame()) {
-
-			glfwPollEvents();
-			manager.glfw->updateMouse();//to do before cam's events
-			cam.events(*(manager.glfw), float(defaultFps->getTick()));
-
-			//cubeb.local.rotate(50 * defaultFps->getTick(), 50 * defaultFps->getTick(), 0);
-
-			//defaultFps->printFps();
-
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-			buildWorld(manager, chunkMemory4Tree);
-			//renderObj3d(playerList, cam);
-			//renderSkybox(skybox, cam);
-			//blitToWindow(nullptr, GL_COLOR_ATTACHMENT0, &gridPanel);
-			glfwSwapBuffers(manager.glfw->_window);
-
-
-#ifndef KEY_EVENTS
-			int mvtSpeed = 5;
-			if (GLFW_PRESS == glfwGetKey(manager.glfw->_window, GLFW_KEY_UP)) {
-				manager.posOffsetY += mvtSpeed;
-				player1.local.translate(VEC3_FORWARD);
-			}
-			if (GLFW_PRESS == glfwGetKey(manager.glfw->_window, GLFW_KEY_DOWN)) {
-				manager.posOffsetY -= mvtSpeed;
-				player1.local.translate(VEC3_BACKWARD);
-			}
-
-			if (GLFW_PRESS == glfwGetKey(manager.glfw->_window, GLFW_KEY_RIGHT)) {
-				manager.posOffsetX += mvtSpeed;
-				player1.local.translate(VEC3_RIGHT);
-			}
-			if (GLFW_PRESS == glfwGetKey(manager.glfw->_window, GLFW_KEY_LEFT)) {
-				manager.posOffsetX -= mvtSpeed;
-				player1.local.translate(VEC3_LEFT);
-			}
-
-			if (GLFW_PRESS == glfwGetKey(manager.glfw->_window, GLFW_KEY_SPACE)) {
-				player1.local.translate(VEC3_UP);
-			}
-			if (GLFW_PRESS == glfwGetKey(manager.glfw->_window, GLFW_KEY_C)) {
-				player1.local.translate(VEC3_DOWN);
-			}
-
-
-			if (GLFW_PRESS == glfwGetKey(manager.glfw->_window, GLFW_KEY_KP_7)) {
-				manager.frequency += 0.1;
-				manager.frequency = std::clamp(manager.frequency, 0.1, 64.0);
-			}
-			if (GLFW_PRESS == glfwGetKey(manager.glfw->_window, GLFW_KEY_KP_4)) {
-				manager.frequency -= 0.1;
-				manager.frequency = std::clamp(manager.frequency, 0.1, 64.0);
-			}
-
-			if (GLFW_PRESS == glfwGetKey(manager.glfw->_window, GLFW_KEY_KP_8)) {
-				manager.flattering += 0.1;
-				manager.flattering = std::clamp(manager.flattering, 0.01, 10.0);
-			}
-			if (GLFW_PRESS == glfwGetKey(manager.glfw->_window, GLFW_KEY_KP_5)) {
-				manager.flattering -= 0.1;
-				manager.flattering = std::clamp(manager.flattering, 0.01, 10.0);
-			}
-
-			if (GLFW_PRESS == glfwGetKey(manager.glfw->_window, GLFW_KEY_KP_9)) {
-				manager.island += 0.05;
-				manager.island = std::clamp(manager.island, 0.01, 2.0);
-			}
-			if (GLFW_PRESS == glfwGetKey(manager.glfw->_window, GLFW_KEY_KP_6)) {
-				manager.island -= 0.05;
-				manager.island = std::clamp(manager.island, -2.0, 2.0);
-			}
-
-			if (GLFW_PRESS == glfwGetKey(manager.glfw->_window, GLFW_KEY_ESCAPE))
-				glfwSetWindowShouldClose(manager.glfw->_window, GLFW_TRUE);
-#endif
-			Math::Vector3	playerpos = manager.player->local.getPos();
-			int currentchunkX = int(playerpos.x / manager.chunk_size);
-			int currentchunkY = int(playerpos.z / manager.chunk_size);//opengl y is height, so we use opengl z here
-			if (playerpos.x < 0) // cauz x=-29..+29 ----> x / 30 = 0; 
-				currentchunkX--;
-			if (playerpos.z < 0) // same
-				currentchunkY--;
-			if (currentchunkX != manager.playerChunkX) {
-				updateChunksX(manager, chunkMemory4Tree, chunkMemory, currentchunkX - manager.playerChunkX);
-				std::cout << "===<<< Player changed chunk X: " << manager.playerChunkX << ":" << manager.playerChunkY << "\n";
-				std::cout << "filling data to texture... ";
-				for (size_t j = 0; j < manager.range_chunk_memory; j++) {
-					for (size_t i = 0; i < manager.range_chunk_memory; i++) {
-						int leafamount = 0;
-						Math::Vector3 color(0, 0, 0);
-						if ((i >= startDisplay && i < endDisplay) && (j >= startDisplay && j < endDisplay))
-							color = Math::Vector3(255, 0, 0);
-						fillData(dataChunkMemory + 3 * (j * memoryTotalRange * manager.chunk_size + i * manager.chunk_size),
-							chunkMemory4Tree[j][i], &leafamount, memoryTotalRange, false, THRESHOLD, color);
-					}
-				}
-				std::cout << "Done\n";
-				gridPanel.getTexture()->updateData(dataChunkMemory, memoryTotalRange, memoryTotalRange);
-				playerPos = player1.local.getPos();
-				gridPanel.setPos((WINX / 2) + manager.playerChunkX * manager.chunk_size - (manager.range_chunk_memory / 2 * manager.chunk_size),
-					(WINY / 2) + manager.playerChunkY * manager.chunk_size - (manager.range_chunk_memory / 2 * manager.chunk_size));//z cauz opengl
-				gridPanel.setSize(memoryTotalRange, memoryTotalRange);
-			}
-			if (currentchunkY != manager.playerChunkY) {
-				updateChunksY(manager, chunkMemory4Tree, chunkMemory, currentchunkY - manager.playerChunkY);
-				std::cout << "===<<< Player changed chunk Y: " << manager.playerChunkX << ":" << manager.playerChunkY << "\n";
-				std::cout << "filling data to texture... ";
-				for (size_t j = 0; j < manager.range_chunk_memory; j++) {
-					for (size_t i = 0; i < manager.range_chunk_memory; i++) {
-						int leafamount = 0;
-						Math::Vector3 color(0, 0, 0);
-						if ((i >= startDisplay && i < endDisplay) && (j >= startDisplay && j < endDisplay))
-							color = Math::Vector3(255, 0, 0);
-						fillData(dataChunkMemory + 3 * (j * memoryTotalRange * manager.chunk_size + i * manager.chunk_size),
-							chunkMemory4Tree[j][i], &leafamount, memoryTotalRange, false, THRESHOLD, color);
-					}
-				}
-				std::cout << "Done\n";
-				gridPanel.getTexture()->updateData(dataChunkMemory, memoryTotalRange, memoryTotalRange);
-				playerPos = player1.local.getPos();
-				gridPanel.setPos((WINX / 2) + manager.playerChunkX * manager.chunk_size - (manager.range_chunk_memory / 2 * manager.chunk_size),
-					(WINY / 2) + manager.playerChunkY * manager.chunk_size - (manager.range_chunk_memory / 2 * manager.chunk_size));//z cauz opengl
-				gridPanel.setSize(memoryTotalRange, memoryTotalRange);
-			}
-
-		}
-	}
-	//delete[] threads_list;
-
-	std::cout << "End while loop\n";
-	std::cout << "deleting textures...\n";
-	delete tex_skybox;
 }
 
 class OctreeManager : public QuadTreeManager
@@ -2632,6 +1633,7 @@ public:
 		this->polygon_mode = GL_LINE;
 		this->polygon_mode = GL_FILL;
 		this->threshold = 0;
+		this->thresholdUpdated = false;
 
 		this->cpuThreadAmount = std::thread::hardware_concurrency();
 		if (this->cpuThreadAmount < 3) {
@@ -2663,7 +1665,8 @@ public:
 	Math::Vector3		chunk_size;
 	Math::Vector3		gridSize;
 	Math::Vector3		gridSizeDisplayed;
-	unsigned int		threshold;
+	double				threshold;
+	bool				thresholdUpdated;
 
 	unsigned int		cpuThreadAmount;
 };
@@ -2763,7 +1766,7 @@ void	scene_benchmarks() {
 	Fps* defaultFps = &fps;
 
 	Obj3d* frontobj = static_cast<Obj3d*>(m.renderlist.front());
-	Obj3dBP& frontbp = frontobj->getBlueprint();
+	Obj3dBP* frontbp = frontobj->getBlueprint();
 #ifndef SHADER_INIT
 	for (auto o : m.renderlist)
 		o->update();
@@ -2772,10 +1775,10 @@ void	scene_benchmarks() {
 	glUniform3f(renderer->_plain_color, 200, 0, 200);
 
 	glUniform1f(renderer->_tex_coef, 1.0f);
-	glBindVertexArray(frontbp.getVao());
+	glBindVertexArray(frontbp->getVao());
 	glBindTexture(GL_TEXTURE_2D, lambotex->getId());
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	int	vertices_amount = frontbp.getPolygonAmount() * 3;
+	int	vertices_amount = frontbp->getPolygonAmount() * 3;
 #endif
 #define BUFFER_OFFSET(i) ((char *)NULL + (i))
 	glfwSwapInterval(0);//0 = disable vsynx
@@ -2809,7 +1812,7 @@ void	scene_benchmarks() {
 					glBindTexture(GL_TEXTURE_2D, frontobj->getTexture()->getId());
 				}
 				else { glUniform1f(renderer->_tex_coef, 0.0f); }
-				glBindVertexArray(frontbp.getVao());
+				glBindVertexArray(frontbp->getVao());
 
 				for (Object* object : m.renderlist) {
 					Math::Matrix4	MVPmatrix(VPmatrix);
@@ -2818,7 +1821,7 @@ void	scene_benchmarks() {
 
 					glUniformMatrix4fv(renderer->_mat4_mvp, 1, GL_FALSE, MVPmatrix.getData());
 					//if (Obj3dBP::defaultDataMode == BP_LINEAR)
-					if (frontbp.getDataMode() == BP_LINEAR)
+					if (frontbp->getDataMode() == BP_LINEAR)
 						glDrawArrays(GL_TRIANGLES, 0, vertices_amount);
 					else {// should be BP_INDICES
 						glDrawElements(GL_TRIANGLES, vertices_amount, GL_UNSIGNED_INT, 0);
@@ -2862,14 +1865,14 @@ static void		keyCallback_ocTree(GLFWwindow* window, int key, int scancode, int a
 		std::cout << "GLFW_PRESS:" << key << "\n";
 		if (manager->glfw) {
 			if (key == GLFW_KEY_EQUAL) {
-				manager->threshold++;
-				manager->glfw->setTitle(std::to_string(manager->threshold).c_str());
-			}
-			else if (key == GLFW_KEY_MINUS && manager->threshold > 0) {
-				manager->threshold--;
-				manager->glfw->setTitle(std::to_string(manager->threshold).c_str());
-			}
-			else if (key == GLFW_KEY_ENTER) {
+				double inc = std::clamp(manager->threshold * 0.05, 1.0, 5.0);
+				manager->threshold = std::clamp(manager->threshold + inc, 1.0, 100.0);
+				manager->thresholdUpdated = true;
+			} else if (key == GLFW_KEY_MINUS && manager->threshold > 0) {
+				double inc = std::clamp(manager->threshold * (1.0 / 0.05), 1.0, 5.0);
+				manager->threshold = std::clamp(manager->threshold - inc, 1.0, 100.0);
+				manager->thresholdUpdated = true;
+			} else if (key == GLFW_KEY_ENTER) {
 				manager->polygon_mode++;
 				manager->polygon_mode = GL_POINT + (manager->polygon_mode % 3);
 				for (std::list<Object*>::iterator it = manager->renderlistChunk.begin(); it != manager->renderlistChunk.end(); ++it) {
@@ -2903,7 +1906,7 @@ static void		keyCallback_ocTree(GLFWwindow* window, int key, int scancode, int a
 	}
 }
 
-void	grabObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager, Obj3dBP& cubebp, Obj3dPG& obj3d_prog, Texture* tex) {
+unsigned int	grabObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager, Obj3dBP& cubebp, Obj3dPG& obj3d_prog, Texture* tex) {
 	std::cout << "_ " << __PRETTY_FUNCTION__ << "\n";
 	std::cout << generator.getGridChecks() << "\n";
 
@@ -2941,9 +1944,9 @@ void	grabObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager, 
 		manager.renderlistVoxels[i].clear();
 	manager.renderlistChunk.clear();
 
-	int		hiddenBlocks = 0;
-	int		total_polygons = 0;
-	int		cubgrid = 0;
+	unsigned int	hiddenBlocks = 0;
+	unsigned int	total_polygons = 0;
+	unsigned int	cubgrid = 0;
 
 	float	scale_coef = 0.99;
 	float	scale_coe2 = 0.95;
@@ -2974,10 +1977,50 @@ void	grabObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager, 
 		manager.renderlistGrid.push_back(cubeGrid);
 		cubgrid++;
 	}
+	unsigned int sizeArray = 0;
 	if (1) {
+		unsigned int tesselation_lvl = 3;
 		generator.glth_loadChunks();
-		generator.pushDisplayedChunks(&manager.renderlistChunk);
-		generator.pushDisplayedChunks(manager.renderArrayChunk);
+		generator.pushDisplayedChunks(&manager.renderlistChunk, 0);
+		sizeArray = generator.pushDisplayedChunks(manager.renderArrayChunk, 0);
+		if (manager.renderlistChunk.size() != sizeArray) {
+			std::cout << "Warning: difference between list and array size for rendered chunks : "
+				<< manager.renderlistChunk.size() << " != " << sizeArray << "\n";
+			//std::exit(1);
+		}
+
+		//for (auto x = 0; x < sizeArray; x++) {
+		//	Obj3d* o = dynamic_cast<Obj3d*>(manager.renderArrayChunk[x]);
+		//	o->setPolygonMode(GL_LINE);
+		//}
+
+		//merge BPs
+		if (sizeArray) {
+			std::cout << "Merging all chunks... ";
+			std::vector<SimpleVertex> vertices;
+			std::vector<unsigned int> indices;
+			for (auto x = 0; x < sizeArray; x++) {
+				Obj3d* o = dynamic_cast<Obj3d*>(manager.renderArrayChunk[x]);
+				Math::Vector3 pos = o->local.getPos();
+				Obj3dBP* bp = o->getBlueprint();
+				std::vector<SimpleVertex> verts = bp->getVertices();
+				//offset the vertices with the obj3d pos
+				std::for_each(verts.begin(), verts.end(), [pos](SimpleVertex& vertex) { vertex.position += pos; });
+				vertices.insert(vertices.end(), verts.begin(), verts.end());
+
+				total_polygons += bp->getPolygonAmount();
+			}
+			if (generator.fullMeshBP)
+				delete generator.fullMeshBP;
+			if (generator.fullMesh)
+				delete generator.fullMesh;
+			generator.fullMeshBP = new Obj3dBP(vertices, indices);
+			generator.fullMesh = new Obj3d(*generator.fullMeshBP, obj3d_prog);
+			manager.renderlistChunk.clear();
+			manager.renderlistChunk.push_back(generator.fullMesh);
+			std::cout << "Done, " << total_polygons << " polygons\n";
+		}
+
 	}
 	if (1) {
 		for (unsigned int k = startDisplay.z; k < endDisplay.z; k++) {
@@ -2985,8 +2028,8 @@ void	grabObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager, 
 				for (unsigned int i = startDisplay.x; i < endDisplay.x; i++) {
 					Chunk* chunkPtr = generator.grid[k][j][i];
 					if (chunkPtr) {//at this point, the chunk might not be generated yet
-						if (chunkPtr->mesh)
-							chunkPtr->mesh->setPolygonMode(manager.polygon_mode);
+						if (chunkPtr->mesh[0])
+							chunkPtr->mesh[0]->setPolygonMode(manager.polygon_mode);
 
 						if (M_DRAW_GRID_CHUNK) {
 							Obj3d* cubeGrid = new Obj3d(cubebp, obj3d_prog);
@@ -3009,17 +2052,19 @@ void	grabObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager, 
 									root->pixel = Pixel(0, 255, 0);
 							}
 #else
-							Octree<Voxel>* root = chunkPtr->root->getRoot(chunkPtr->root->pos, siz);
-							if (root) {
-								if (root->size.len() != siz.len())
-									root->element._value = 254;
+							Octree<Voxel>* node = chunkPtr->root->getNode(chunkPtr->root->pos, siz);
+							if (node) {
+								if (node->size.len() != siz.len())
+									node->element._value = 254;
 								else
-									root->element._value = 253;
+									node->element._value = 253;
 							}
 #endif
 						}
 #if 0// oldcode, browsing to build 1 obj3d per cube (not chunk)
-						chunkPtr->root->browse(0, [&manager, &cubebp, &obj3d_prog, scale_coef, scale_coe2, chunkPtr, tex, &hiddenBlocks](Octree_old* node) {
+						chunkPtr->root->browse([&manager, &cubebp, &obj3d_prog, scale_coef, scale_coe2, chunkPtr, tex, &hiddenBlocks](Octree_old* node) {
+							if (!node->isLeaf())
+								return;
 							if (M_DISPLAY_BLACK || (node->pixel.r != 0 && node->pixel.g != 0 && node->pixel.b != 0)) {// pixel 0?
 								Math::Vector3	worldPos = chunkPtr->pos + node->pos;
 								Math::Vector3	center = worldPos + (node->size / 2);
@@ -3084,8 +2129,25 @@ void	grabObjectFromGenerator(ChunkGenerator& generator, OctreeManager& manager, 
 		std::cout << "renderlistVoxels[]: " << i.size() << "\n";
 	std::cout << "renderlistOctree: " << manager.renderlistOctree.size() << "\n";
 	std::cout << "renderlistChunk: " << manager.renderlistChunk.size() << "\n";
+	std::cout << "renderArrayChunk: " << sizeArray << "\n";
 	std::cout << "renderlistGrid: " << manager.renderlistGrid.size() << "\n";
 	std::cout << "cubes grid : " << cubgrid << "\n";
+
+	return total_polygons;
+}
+
+void	rebuildWithThreshold(ChunkGenerator& generator, OctreeManager& manager, Obj3dBP& cubebp, Obj3dPG& obj3d_prog, Texture* tex) {
+	int tessLevel = 0;
+	for (auto k = 0; k < generator.gridSize.z; k++) {
+		for (auto j = 0; j < generator.gridSize.y; j++) {
+			for (auto i = 0; i < generator.gridSize.x; i++) {
+				Octree<Voxel>* root = generator.grid[k][j][i]->root;
+				generator.grid[k][j][i]->buildVertexArraysFromOctree(root, Math::Vector3(0, 0, 0), tessLevel, &manager.threshold);
+				generator.grid[k][j][i]->glth_buildMesh();
+			}
+		}
+	}
+	grabObjectFromGenerator(generator, manager, cubebp, obj3d_prog, tex);
 }
 
 void	scene_octree() {
@@ -3211,15 +2273,17 @@ void	scene_octree() {
 #ifndef GENERATOR
 	cam.local.setPos(28, 50, 65);//buried close to the surface
 	cam.local.setPos(280, 50, 65);//
+	cam.local.setPos(320, 100, 65);//
 	//cam.local.setPos(280, -100, 65);//crash
 	//cam.local.setPos(-13, 76, 107);//crash
 	//chunk generator
 	Math::Vector3	playerPos = cam.local.getPos();
 
+	grid_size = 70;
 	int	g = grid_size;
 	int	d = grid_size - 4;// g * 2 / 3;
-	m.gridSize = Math::Vector3(g, g, g);
-	m.gridSizeDisplayed = Math::Vector3(d, d, d);
+	m.gridSize = Math::Vector3(g, g/5, g);
+	m.gridSizeDisplayed = Math::Vector3(d, d/5, d);
 	ChunkGenerator	generator(playerPos, *m.ps, m.chunk_size, m.gridSize, m.gridSizeDisplayed);
 #ifndef INIT_RENDER_ARRAY
 	unsigned int x = generator.gridDisplaySize.x;
@@ -3248,6 +2312,7 @@ void	scene_octree() {
 #ifdef USE_THREADS
 	//chunks builder
 	generator.builderAmount = m.cpuThreadAmount - 2;
+	generator.builderAmount = 22;
 	//GLFWwindow** contexts = new GLFWwindow*[generator.builderAmount + 1];	contexts[generator.builderAmount] = nullptr;
 	std::thread** builders = new std::thread * [generator.builderAmount + 1];	builders[generator.builderAmount] = nullptr;
 	for (size_t i = 0; i < generator.builderAmount; i++) {
@@ -3269,6 +2334,7 @@ void	scene_octree() {
 	std::cout << "notifying threads to build data...\n";
 	generator.cv.notify_all();
 
+	unsigned int polygons = 0;
 	unsigned int frames = 0;
 	bool renderingWithList = true;
 	std::cout << "cam: " << cam.local.getPos().toString() << "\n";
@@ -3284,7 +2350,12 @@ void	scene_octree() {
 				renderingWithList = !renderingWithList;
 				std::cout << "rendering with " << (renderingWithList ? "list\n" : "array\n");
 			}
-			m.glfw->setTitle(std::to_string(fps.getFps()) + " fps");
+			m.glfw->setTitle(
+				std::to_string(fps.getFps()) + " fps | "
+				+ std::to_string(double(polygons/1'000'000.0))
+				+ "M polys | threshold "
+				+ std::to_string(m.threshold)
+			);
 
 			glfwPollEvents();
 			m.glfw->updateMouse();//to do before cam's events
@@ -3297,7 +2368,7 @@ void	scene_octree() {
 					//std::cout << "[renderer] lock chunks_mutex\n";
 					double start = glfwGetTime();
 					std::cout << &generator << " : grabbing meshes...\n";
-					grabObjectFromGenerator(generator, m, cubebp, *renderer, tex_lena);
+					polygons = grabObjectFromGenerator(generator, m, cubebp, *renderer, tex_lena);
 					start = glfwGetTime() - start;
 					std::cout << "grabbed " << m.renderlistChunk.size() << " in " << start << " seconds\n";
 					if (generator.playerChangedChunk)
@@ -3374,6 +2445,12 @@ void	scene_octree() {
 #endif
 			glfwSwapBuffers(m.glfw->_window);
 			generator.try_deleteUnusedData();
+
+			if (m.thresholdUpdated) {
+				rebuildWithThreshold(generator, m, cubebp, *renderer, tex_lena);
+				m.thresholdUpdated = false;
+			}
+
 
 			if (GLFW_PRESS == glfwGetKey(m.glfw->_window, GLFW_KEY_ESCAPE))
 				glfwSetWindowShouldClose(m.glfw->_window, GLFW_TRUE);
@@ -3534,7 +2611,6 @@ void	scene_checkMemory() {
 
 }
 
-#endif //main all
 
 void	th_build_object(GLFWwindow* context, int n, std::list<Object*>* list, Obj3dPG* pg, std::mutex* mutex) {
 	std::cout << __PRETTY_FUNCTION__ << "\n";
@@ -3696,11 +2772,11 @@ void	benchmark_octree() {
 	HeightMap* hmap = new HeightMap(*m.ps, index, size);
 	Chunk* test = new Chunk(index, size, *m.ps, hmap);
 	//test->glth_buildMesh();
-	if (test->meshBP) {
-		std::cout << "polys: " << test->meshBP->getPolygonAmount() << "\n";
-		test->meshBP->freeData(BP_FREE_ALL);
-		delete test->meshBP;
-		test->meshBP = nullptr;
+	if (test->meshBP[0]) {
+		std::cout << "polys: " << test->meshBP[0]->getPolygonAmount() << "\n";
+		test->meshBP[0]->freeData(BP_FREE_ALL);
+		delete test->meshBP[0];
+		test->meshBP[0] = nullptr;
 	}
 	//Misc::breakExit(0);
 	double start = glfwGetTime();
@@ -3722,6 +2798,7 @@ void	benchmark_octree() {
 #define _CRTDBG_MAP_ALLOC
 #include <stdlib.h>
 #include <crtdbg.h>
+#include <cmath>
 
 //thread safe cout : https://stackoverflow.com/questions/14718124/how-to-easily-make-stdcout-thread-safe
 //multithread monitor example : https://stackoverflow.com/questions/51668477/c-lock-a-mutex-as-if-from-another-thread
@@ -3745,11 +2822,8 @@ int		main(int ac, char **av) {
 
 	std::cout << "____START____ :" << Misc::getCurrentDirectory() << "\n";
 	//benchmark_octree();
-	//scene1();
-	//scene2();
 	//scene_4Tree();
 	//scene_procedural();
-	//scene_vox();
 	//testtype(true);	testtype(false); Misc::breakExit(0);
 	//scene_benchmarks();
 	//scene_checkMemory();
@@ -3773,3 +2847,5 @@ int		main(int ac, char **av) {
 	return (EXIT_SUCCESS);
 }
 #endif //main
+
+#endif //main all

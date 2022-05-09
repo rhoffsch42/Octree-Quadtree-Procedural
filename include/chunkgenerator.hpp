@@ -57,8 +57,8 @@ public:
 	// build the chunks meshes and load them to the GPU
 	void			glth_loadChunks();
 
-	void			pushDisplayedChunks(std::list<Object*>* dst) const;
-	void			pushDisplayedChunks(Object** dst) const;
+	void			pushDisplayedChunks(std::list<Object*>* dst, unsigned int tesselation_lvl = 0) const;
+	unsigned int	pushDisplayedChunks(Object** dst, unsigned int tesselation_lvl = 0) const;
 	Math::Vector3	getGridDisplayStart() const;
 
 	std::string		toString() const;
@@ -101,6 +101,9 @@ public:
 	// lock/unlock helper0 (player pos thread)
 	// lock_guard main() -> render loop before calling cam.events()
 	// //lock_guard ChunkGenerator::updateGrid() -> ChunkGenerator::updatePlayerPos() 
+
+	Obj3dBP*		fullMeshBP = nullptr;
+	Obj3d*			fullMesh = nullptr;
 
 	bool			terminateThreads = false;
 	bool			chunksChanged;//related to: job_mutex

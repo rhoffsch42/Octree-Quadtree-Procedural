@@ -146,6 +146,7 @@ bool	ChunkGenerator::updateGrid(Math::Vector3 player_pos) {
 		moving the display grid in the world, and adapt the memory grid after it, independently from the original player offset
 		if for any reason the player offset changes, this will not catch it and will continue moving grids based on above diff
 	*/
+
 	Math::Vector3	new_worldDisplayIndex = this->gridIndex + this->gridDisplayIndex + diff;
 	Math::Vector3	relDisplayIndex = new_worldDisplayIndex - this->gridIndex;
 	Math::Vector3	new_gridIndex;
@@ -493,7 +494,7 @@ void	ChunkGenerator::glth_loadChunks() {
 			for (unsigned int i = 0; i < gridSize.x; i++) {
 				c = grid[k][j][i];
 				//at this point, the chunk might not be generated yet
-				if (c && !c->mesh) {
+				if (c && !c->mesh[0]) {
 					c->glth_buildMesh();
 				}
 			}
@@ -501,7 +502,7 @@ void	ChunkGenerator::glth_loadChunks() {
 	}
 }
 
-void	ChunkGenerator::pushDisplayedChunks(std::list<Object*>* dst) const {
+void	ChunkGenerator::pushDisplayedChunks(std::list<Object*>* dst, unsigned int tesselation_lvl) const {
 	/*
 		same as in glth_loadChunks() but more complicated
 		we would need to select the chunks to remove (change the render list with a map?),
@@ -514,15 +515,15 @@ void	ChunkGenerator::pushDisplayedChunks(std::list<Object*>* dst) const {
 			for (unsigned int i = gridDisplayIndex.x; i < endDisplay.x; i++) {
 				c = grid[k][j][i];
 				//at this point, the chunk might not be generated yet
-				if (c && c->mesh) {//mesh can be null if the chunk is empty (see glth_buildMesh())
-					dst->push_back(c->mesh);
+				if (c && c->mesh[tesselation_lvl]) {//mesh can be null if the chunk is empty (see glth_buildMesh())
+					dst->push_back(c->mesh[tesselation_lvl]);
 				}
 			}
 		}
 	}
 }
 
-void	ChunkGenerator::pushDisplayedChunks(Object** dst) const {
+unsigned int	ChunkGenerator::pushDisplayedChunks(Object** dst, unsigned int tesselation_lvl) const {
 	/*
 		same as in glth_loadChunks() but more complicated
 		we would need to select the chunks to remove (change the render list with a map?),
@@ -536,14 +537,15 @@ void	ChunkGenerator::pushDisplayedChunks(Object** dst) const {
 			for (unsigned int i = gridDisplayIndex.x; i < endDisplay.x; i++) {
 				c = grid[k][j][i];
 				//at this point, the chunk might not be generated yet
-				if (c && c->mesh) {//mesh can be null if the chunk is empty (see glth_buildMesh())
-					dst[n] = c->mesh;
+				if (c && c->mesh[tesselation_lvl]) {//mesh can be null if the chunk is empty (see glth_buildMesh())
+					dst[n] = c->mesh[tesselation_lvl];
 					n++;
 				}
 			}
 		}
 	}
 	dst[n] = nullptr;
+	return n;
 }
 
 Math::Vector3	ChunkGenerator::getGridDisplayStart() const {

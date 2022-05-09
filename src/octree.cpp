@@ -255,26 +255,25 @@ bool		Octree<T>::isLeaf() const {
 }
 
 template <typename T>
-Octree<T>*	Octree<T>::getRoot(const Math::Vector3& target_pos, const Math::Vector3& target_size) {
+Octree<T>*	Octree<T>::getNode(const Math::Vector3& target_pos, const Math::Vector3& target_size) {
 	static int ii = 0;
 	ii++;
 
-	Math::Vector3	target_summit = target_pos + target_size;//the highest summit of the root;
+	Math::Vector3	target_summit = target_pos + target_size;//the highest summit of the node;
 
 	if (target_pos.x < this->pos.x || target_pos.y < this->pos.y || target_pos.z < this->pos.z || \
 		this->summit.x <= target_pos.x || this->summit.y <= target_pos.y || this->summit.z <= target_pos.z) {
-		// ie the required root is fully or partially outside of the current root
+		// ie the required node is fully or partially outside of the current node
 		//std::cout << ">>1";
 		return nullptr;
 	}
-	else if (this->pos.x == target_pos.x && this->pos.y == target_pos.y && this->pos.z == target_pos.z && \
-		this->size.x == target_size.x && this->size.y == target_size.y && this->size.z == target_size.z) {
-		//found the exact root (pos and size)
+	else if (this->pos == target_pos && this->size == target_size) {
+		//found the exact node (pos and size)
 		//std::cout << ">>2";
 		return this;
 	}
 	else if (this->isLeaf()) {
-		//the exact root is contained in this current leaf root
+		//the exact node is contained in this current leaf node
 		//	/!\ size could be invalid, from the current octree perspective
 		//std::cout << ">>3";
 		return this;
@@ -290,15 +289,15 @@ Octree<T>*	Octree<T>::getRoot(const Math::Vector3& target_pos, const Math::Vecto
 			index += 2;
 
 		if (this->children[index]) {//if not, then it will return null, should be impossible (detected with summits)
-			return this->children[index]->getRoot(target_pos, target_size);
+			return this->children[index]->getNode(target_pos, target_size);
 			//std::cout << ">>4";
 		}
 		else {
 			std::cout << "Problem with data in " << __PRETTY_FUNCTION__ << "\n";
 			std::cout << "\ttarget pos: \t" << target_pos.toString() << "\n";
 			std::cout << "\ttarget size:\t" << target_size.toString() << "\n";
-			std::cout << "\troot pos:   \t" << this->pos.toString() << "\n";
-			std::cout << "\troot size:  \t" << this->size.toString() << "\n";
+			std::cout << "\tnode pos:   \t" << this->pos.toString() << "\n";
+			std::cout << "\tnode size:  \t" << this->size.toString() << "\n";
 			exit(0);
 			return nullptr;
 		}
@@ -306,7 +305,7 @@ Octree<T>*	Octree<T>::getRoot(const Math::Vector3& target_pos, const Math::Vecto
 }
 
 template <typename T>
-bool		Octree<T>::contain(const T& elem, const Math::Vector3& pos, const Math::Vector3& size) {
+bool		Octree<T>::contains(const T& elem, const Math::Vector3& pos, const Math::Vector3& size) {
 	//the user has to send corrent pos and size
 	Math::Vector3	unitSize(1, 1, 1);
 
@@ -314,11 +313,11 @@ bool		Octree<T>::contain(const T& elem, const Math::Vector3& pos, const Math::Ve
 		for (int y = 0; y < size.y; y++) {
 			for (int z = 0; z < size.z; z++) {
 				Math::Vector3	currentPos = pos + Math::Vector3(x, y, z);
-				Octree<T>* subroot = this->getRoot(currentPos, unitSize);
+				Octree<T>* subnode = this->getNode(currentPos, unitSize);
 
 				// if neighbor is out of the current octree (we're on the edge)// we could check with the right neighboring octree (chunk)
 				// || equal to elem
-				if (!subroot || subroot->element._value == elem._value) {
+				if (!subnode || subnode->element._value == elem._value) {
 					return true;
 				}
 			}
@@ -332,9 +331,9 @@ template <typename T>
 void		Octree<T>::verifyNeighbors(const T& filter) {
 	Math::Vector3	maxSummit(this->summit);
 	Math::Vector3	minSummit(this->pos);
-	Octree<T>*		mainRoot = this;
+	Octree<T>*		root = this;
 
-	this->browse(0, [mainRoot, &minSummit, &maxSummit, &filter](Octree<T>* node) {
+	this->browse([root, &minSummit, &maxSummit, &filter](Octree<T>* node) {
 		node->neighbors = 0;
 		/*
 			we need to know if there is EMPTY_VOXEL in the neighbour right next to us (more consuming),
@@ -342,16 +341,17 @@ void		Octree<T>::verifyNeighbors(const T& filter) {
 				if all voxels are the same, there is no problem. we could use a first octree to map non empty voxels,
 				then on each leaf, make another octree maping the different voxels
 			even if we can, it is not optimal, we need to know if the adjacent nodes (at lowest threshold) are all not empty
-			we could getRoot() with a size of 1, so depending of current size:
-				size.x*size.y*2 amount of getRoot() for back/front
-				size.y*size.z*2 amount of getRoot() for left/right
-				size.x*size.z*2 amount of getRoot() for top/down
-			or getRoot() on size/2 until we find all adjacent leafs, and check if empty
+			we could getNode() with a size of 1, so depending of current size:
+				size.x*size.y*2 amount of getNode() for back/front
+				size.y*size.z*2 amount of getNode() for left/right
+				size.x*size.z*2 amount of getNode() for top/down
+			or getNode() on size/2 until we find all adjacent leafs, and check if empty
 
 		*/
-		//#define USE_SAMESIZE_SEARCH
+//#define USE_SAMESIZE_SEARCH
 #define USE_DETAILLED_SEARCH
 //#define USE_BACKTRACKING_SEARCH
+
 #ifdef USE_SAMESIZE_SEARCH
 			/*
 				this requires that the entire node should be non empty
@@ -360,26 +360,26 @@ void		Octree<T>::verifyNeighbors(const T& filter) {
 			*/
 		Math::Vector3	left = node->pos - Math::Vector3(node->size.x, 0, 0);
 		Math::Vector3	right = node->pos + Math::Vector3(node->size.x, 0, 0);
-		Math::Vector3	down = node->pos - Math::Vector3(0, node->size.y, 0);
-		Math::Vector3	up = node->pos + Math::Vector3(0, node->size.y, 0);
+		Math::Vector3	bot = node->pos - Math::Vector3(0, node->size.y, 0);
+		Math::Vector3	top = node->pos + Math::Vector3(0, node->size.y, 0);
 		Math::Vector3	back = node->pos - Math::Vector3(0, 0, node->size.z);
 		Math::Vector3	front = node->pos + Math::Vector3(0, 0, node->size.z);
-		Math::Vector3* sides[6] = { &left, &right, &down, &up, &back, &front };
+		Math::Vector3*	sides[6] = { &left, &right, &bot, &top, &back, &front };
+		uint8_t			tags[6] = { NEIGHBOR_LEFT, NEIGHBOR_RIGHT, NEIGHBOR_BOTTOM, NEIGHBOR_TOP, NEIGHBOR_BACK, NEIGHBOR_FRONT };
 
 		for (size_t i = 0; i < 6; i++) {
-			Octree_old* root = mainRoot->getRoot(*sides[i], node->size);
-			if (root && root->isLeaf() \
-				&& (root->pixel.r != filter.r || root->pixel.g != filter.g || root->pixel.b != filter.b)) {
-				node->neighbors++;
+			Octree* subnode = root->getNode(*sides[i], node->size);
+			if (subnode	&& subnode->element._value != filter._value) {
+				subnode->neighbors |= tags[i];
 			}
 		}
 #endif
 #ifdef USE_DETAILLED_SEARCH
 		/*
-			getRoot() with neighbors size of 1, so depending of node size:
-				size.x*size.y*2 amount of getRoot() for back/front
-				size.y*size.z*2 amount of getRoot() for left/right
-				size.x*size.z*2 amount of getRoot() for top/down
+			getNode() with neighbors size of 1, so depending of node size:
+				size.x*size.y*2 amount of getNode() for back/front
+				size.y*size.z*2 amount of getNode() for left/right
+				size.x*size.z*2 amount of getNode() for top/down
 		*/
 
 		Math::Vector3	posleft = node->pos - Math::Vector3(1, 0, 0);
@@ -393,24 +393,22 @@ void		Octree<T>::verifyNeighbors(const T& filter) {
 		Math::Vector3	sizeYaxis(node->size.x, 1, node->size.z);
 		Math::Vector3	sizeZaxis(node->size.x, node->size.y, 1);
 
-		if (!mainRoot->contain(filter, posleft, sizeXaxis)) { node->neighbors |= NEIGHBOR_LEFT; }
-		if (!mainRoot->contain(filter, posright, sizeXaxis)) { node->neighbors |= NEIGHBOR_RIGHT; }
-		if (!mainRoot->contain(filter, posdown, sizeYaxis)) { node->neighbors |= NEIGHBOR_BOTTOM; }
-		if (!mainRoot->contain(filter, posup, sizeYaxis)) { node->neighbors |= NEIGHBOR_TOP; }
-		if (!mainRoot->contain(filter, posback, sizeZaxis)) { node->neighbors |= NEIGHBOR_BACK; }
-		if (!mainRoot->contain(filter, posfront, sizeZaxis)) { node->neighbors |= NEIGHBOR_FRONT; }
+		if (!root->contains(filter, posleft, sizeXaxis)) { node->neighbors |= NEIGHBOR_LEFT; }
+		if (!root->contains(filter, posright, sizeXaxis)) { node->neighbors |= NEIGHBOR_RIGHT; }
+		if (!root->contains(filter, posdown, sizeYaxis)) { node->neighbors |= NEIGHBOR_BOTTOM; }
+		if (!root->contains(filter, posup, sizeYaxis)) { node->neighbors |= NEIGHBOR_TOP; }
+		if (!root->contains(filter, posback, sizeZaxis)) { node->neighbors |= NEIGHBOR_BACK; }
+		if (!root->contains(filter, posfront, sizeZaxis)) { node->neighbors |= NEIGHBOR_FRONT; }
 
 #endif
 #ifdef USE_BACKTRACKING_SEARCH
-		// getRoot() on size/2 until we find all adjacent leafs, and check if empty
+		// getNode() on size/2 until we find all adjacent leafs, and check if empty
 		// backtracking
 #endif
 	});
 }
 
 
-////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////
 
@@ -606,24 +604,24 @@ bool		Octree_old::isLeaf() const {
 	return (this->children == nullptr);
 }
 
-Octree_old* Octree_old::getRoot(Math::Vector3 target_pos, Math::Vector3 target_size) {
+Octree_old* Octree_old::getNode(Math::Vector3 target_pos, Math::Vector3 target_size) {
 	static int ii = 0;
 	ii++;
 
-	Math::Vector3	target_summit = target_pos + target_size;//the highest summit of the root;
+	Math::Vector3	target_summit = target_pos + target_size;//the highest summit of the node;
 
 	if (target_pos.x < this->pos.x || target_pos.y < this->pos.y || target_pos.z < this->pos.z || \
 		this->summit.x <= target_pos.x || this->summit.y <= target_pos.y || this->summit.z <= target_pos.z) {
-		// ie the required root is fully or partially outside of the current root
+		// ie the required node is fully or partially outside of the current node
 		//std::cout << ">>1";
 		return nullptr;
 	} else if (this->pos.x == target_pos.x && this->pos.y == target_pos.y && this->pos.z == target_pos.z && \
 		this->size.x == target_size.x && this->size.y == target_size.y && this->size.z == target_size.z) {
-		//found the exact root (pos and size)
+		//found the exact node (pos and size)
 		//std::cout << ">>2";
 		return this;
 	} else if (this->isLeaf()) {
-		//the exact root is contained in this current leaf root
+		//the exact node is contained in this current leaf node
 		//	/!\ size could be invalid, from the current octree perspective
 		//std::cout << ">>3";
 		return this;
@@ -638,14 +636,14 @@ Octree_old* Octree_old::getRoot(Math::Vector3 target_pos, Math::Vector3 target_s
 			index += 2;
 
 		if (this->children[index]) {//if not, then it will return null, should be impossible (detected with summits)
-			return this->children[index]->getRoot(target_pos, target_size);
+			return this->children[index]->getNode(target_pos, target_size);
 			//std::cout << ">>4";
 		} else {
 			std::cout << "Problem with data in " << __PRETTY_FUNCTION__ << "\n";
 			std::cout << "\ttarget pos: \t" << target_pos.toString() << "\n";
 			std::cout << "\ttarget size:\t" << target_size.toString() << "\n";
-			std::cout << "\troot pos:   \t" << this->pos.toString() << "\n";
-			std::cout << "\troot size:  \t" << this->size.toString() << "\n";
+			std::cout << "\tnode pos:   \t" << this->pos.toString() << "\n";
+			std::cout << "\tnode size:  \t" << this->size.toString() << "\n";
 			exit(0);
 			return nullptr;
 		}
@@ -660,12 +658,12 @@ bool		Octree_old::contain(Pixel pix, Math::Vector3 pos, Math::Vector3 size) {
 		for (int y = 0; y < size.y; y++) {
 			for (int z = 0; z < size.z; z++) {
 				Math::Vector3	currentPos = pos + Math::Vector3(x, y, z);
-				Octree_old* subroot = this->getRoot(currentPos, unitSize);
+				Octree_old* subnode = this->getNode(currentPos, unitSize);
 
 				// if neighbor is out of the current octree (we're on the edge)// we could check with the right neighboring octree (chunk)
 				// || equal to pix
-				if (!subroot \
-					|| (subroot->pixel.r == pix.r && subroot->pixel.g == pix.g && subroot->pixel.b == pix.b)) {
+				if (!subnode \
+					|| (subnode->pixel.r == pix.r && subnode->pixel.g == pix.g && subnode->pixel.b == pix.b)) {
 					return true;
 				}
 			}
@@ -677,8 +675,8 @@ bool		Octree_old::contain(Pixel pix, Math::Vector3 pos, Math::Vector3 size) {
 void		Octree_old::verifyNeighbors(Pixel filter) {
 	Math::Vector3	maxSummit(this->summit);
 	Math::Vector3	minSummit(this->pos);
-	Octree_old*			mainRoot = this;
-	this->browse(0, [mainRoot, &minSummit, &maxSummit, &filter](Octree_old* node) {
+	Octree_old*			root = this;
+	this->browse([root, &minSummit, &maxSummit, &filter](Octree_old* node) {
 		node->neighbors = 0;
 /*
 	we need to know if there is EMPTY_VOXEL in the neighbour right next to us (more consuming),
@@ -686,11 +684,11 @@ void		Octree_old::verifyNeighbors(Pixel filter) {
 		if all voxels are the same, there is no problem. we could use a first octree to map non empty voxels,
 		then on each leaf, make another octree maping the different voxels
 	even if we can, it is not optimal, we need to know if the adjacent nodes (at lowest threshold) are all not empty
-	we could getRoot() with a size of 1, so depending of current size:
-		size.x*size.y*2 amount of getRoot() for back/front
-		size.y*size.z*2 amount of getRoot() for left/right
-		size.x*size.z*2 amount of getRoot() for top/down
-	or getRoot() on size/2 until we find all adjacent leafs, and check if empty
+	we could getNode() with a size of 1, so depending of current size:
+		size.x*size.y*2 amount of getNode() for back/front
+		size.y*size.z*2 amount of getNode() for left/right
+		size.x*size.z*2 amount of getNode() for top/down
+	or getNode() on size/2 until we find all adjacent leafs, and check if empty
 
 */
 //#define USE_SAMESIZE_SEARCH
@@ -711,19 +709,19 @@ void		Octree_old::verifyNeighbors(Pixel filter) {
 		Math::Vector3*	sides[6] = { &left, &right, &down, &up, &back, &front };
 
 		for (size_t i = 0; i < 6; i++) {
-			Octree_old* root = mainRoot->getRoot(*sides[i], node->size);
-			if (root && root->isLeaf() \
-				&& (root->pixel.r != filter.r || root->pixel.g != filter.g || root->pixel.b != filter.b)) {
+			Octree_old* node = root->getNode(*sides[i], node->size);
+			if (node && node->isLeaf() \
+				&& (node->pixel.r != filter.r || node->pixel.g != filter.g || node->pixel.b != filter.b)) {
 				node->neighbors++;
 			}
 		}
 #endif
 #ifdef USE_DETAILLED_SEARCH
 		/*
-			getRoot() with neighbors size of 1, so depending of node size:
-				size.x*size.y*2 amount of getRoot() for back/front
-				size.y*size.z*2 amount of getRoot() for left/right
-				size.x*size.z*2 amount of getRoot() for top/down
+			getNode() with neighbors size of 1, so depending of node size:
+				size.x*size.y*2 amount of getNode() for back/front
+				size.y*size.z*2 amount of getNode() for left/right
+				size.x*size.z*2 amount of getNode() for top/down
 		*/
 
 		Math::Vector3	posleft = node->pos - Math::Vector3(1, 0, 0);
@@ -737,16 +735,16 @@ void		Octree_old::verifyNeighbors(Pixel filter) {
 		Math::Vector3	sizeYaxis(node->size.x, 1, node->size.z);
 		Math::Vector3	sizeZaxis(node->size.x, node->size.y, 1);
 
-		if (!mainRoot->contain(filter, posleft, sizeXaxis)) { node->neighbors |= NEIGHBOR_LEFT; }
-		if (!mainRoot->contain(filter, posright, sizeXaxis)) { node->neighbors |= NEIGHBOR_RIGHT; }
-		if (!mainRoot->contain(filter, posdown, sizeYaxis)) { node->neighbors |= NEIGHBOR_BOTTOM; }
-		if (!mainRoot->contain(filter, posup, sizeYaxis)) { node->neighbors |= NEIGHBOR_TOP; }
-		if (!mainRoot->contain(filter, posback, sizeZaxis)) { node->neighbors |= NEIGHBOR_BACK; }
-		if (!mainRoot->contain(filter, posfront, sizeZaxis)) { node->neighbors |= NEIGHBOR_FRONT; }
+		if (!root->contain(filter, posleft, sizeXaxis)) { node->neighbors |= NEIGHBOR_LEFT; }
+		if (!root->contain(filter, posright, sizeXaxis)) { node->neighbors |= NEIGHBOR_RIGHT; }
+		if (!root->contain(filter, posdown, sizeYaxis)) { node->neighbors |= NEIGHBOR_BOTTOM; }
+		if (!root->contain(filter, posup, sizeYaxis)) { node->neighbors |= NEIGHBOR_TOP; }
+		if (!root->contain(filter, posback, sizeZaxis)) { node->neighbors |= NEIGHBOR_BACK; }
+		if (!root->contain(filter, posfront, sizeZaxis)) { node->neighbors |= NEIGHBOR_FRONT; }
 
 #endif
 #ifdef USE_BACKTRACKING_SEARCH
-			// getRoot() on size/2 until we find all adjacent leafs, and check if empty
+			// getNode() on size/2 until we find all adjacent leafs, and check if empty
 			// backtracking
 #endif
 	});

@@ -91,6 +91,22 @@ void	JobBuildChunk::deliver(ChunkGenerator& generator) const {
 		std::cerr << "This shouldn't happen, exiting...\n";
 		//Misc::breakExit(-14);
 	}
+	//build the vertex array (should be done directly in JobBuildChunk::execute())
+	//(should be updated when the chunk distance crosses a step distance...)
+	Math::Vector3 playerGridIndex = generator.worldToGrid(generator.currentChunkWorldIndex);
+	double maxDist = 18;// chunks
+	double step = maxDist / TESSELATION_LVLS;
+	double playerDist = (ind - playerGridIndex).len();
+	double threshold = (playerDist / maxDist) * 100;
+	int tessLevel = 0;
+	if (playerDist > 1) {
+		playerDist -= 3;
+		tessLevel = std::clamp(int(playerDist / step), 0, TESSELATION_LVLS-3);
+	}
+	threshold = 0;
+	this->chunk->buildVertexArraysFromOctree(this->chunk->root, Math::Vector3(0, 0, 0), tessLevel, &threshold);
+	this->chunk->clearOctreeData();
+
 	generator.grid[z][y][x] = this->chunk;
 	generator.map_jobsChunk[this->index] = false;
 	//std::cout << this->chunk << " chunk " << this->chunk->index << " plugged in " << ind << "\n";

@@ -133,37 +133,44 @@ public:
 		? should the empty node be null instead of storing them in the octree?
 		? should the average ignore empty nodes?
 	*/
-	Octree<T>*		getRoot(const Math::Vector3& target_pos, const Math::Vector3& target_size);
-	bool			contain(const T& elem, const Math::Vector3& pos, const Math::Vector3& size);//	need operator==()
+	Octree<T>*		getNode(const Math::Vector3& target_pos, const Math::Vector3& target_size);
+	bool			contains(const T& elem, const Math::Vector3& pos, const Math::Vector3& size);//	need operator==()
 	void			verifyNeighbors(const T& filter);
 	//virtual T		getAverage(T*** arr, Math::Vector3 pos, Math::Vector3 size) = 0;
 	//virtual double	measureDetail(T*** arr, Math::Vector3 pos, Math::Vector3 size, T average) = 0;
 
-	template<class UnaryPredicate>
-	void	browse(int threshold, UnaryPredicate p) {
-		if (this->detail <= threshold || this->isLeaf()) {
+	template<typename T, typename U>
+	void	browse_until(T condition, U func) {
+		if (condition(this)) {
 			if (this->size.x == 0 || this->size.y == 0 || this->size.z == 0) {
 				std::cout << "error with tree data\n";
-				exit(1);
+				std::exit(1);
 			}
-			p(this);// lamda-expr
-			//return a bool to stop the browse? is it possible?
-			/*
-				func ptr works too, but args cant be transfered like in lambda-expr
-				create a lambda expression using the func and args instead
-			*/
+			func(this);//return a bool to stop the browse? is it possible?
 		}
 		else if (this->children) {
 			for (size_t i = 0; i < CHILDREN; i++) {
 				if (this->children[i])
-					this->children[i]->browse(threshold, p);
+					this->children[i]->browse_until(condition, func);
+			}
+		}
+	}
+
+	//equivalent to browse_until node.isleaf() = true
+	template<typename U>
+	void	browse(U func) {
+		func(this);
+		if (this->children) {
+			for (size_t i = 0; i < CHILDREN; i++) {
+				if (this->children[i])
+					this->children[i]->browse(func);
 			}
 		}
 	}
 
 	Octree**		children;
 	T				element;
-	double			detail;//average difference between the average element and all elements
+	double			detail;//average difference between the averaged (if not leaf) element and all elements contained in children that are leaves
 	Math::Vector3	pos;
 	Math::Vector3	size;
 	Math::Vector3	summit;//the opposite summit of the cube
@@ -186,7 +193,7 @@ public:
 		? should the empty node be null instead of storing them in the octree?
 		? should the average ignore empty nodes?
 	*/
-	Octree_old*		getRoot(Math::Vector3 target_pos, Math::Vector3 target_size);
+	Octree_old*		getNode(Math::Vector3 target_pos, Math::Vector3 target_size);
 	bool		contain(Pixel pix, Math::Vector3 pos, Math::Vector3 size);
 	void		verifyNeighbors(Pixel filter);
 

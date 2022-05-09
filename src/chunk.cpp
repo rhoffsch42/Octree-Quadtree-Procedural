@@ -12,9 +12,10 @@ Chunk::Chunk(const Math::Vector3& chunk_index, const Math::Vector3& chunk_size, 
 	this->pos.y *= chunk_size.y;
 	this->pos.z *= chunk_size.z;
 	this->size = chunk_size;
-	this->meshBP = nullptr;
-	this->mesh = nullptr;
-
+	for (int i = 0; i < TESSELATION_LVLS; i++) {
+		this->meshBP[i] = nullptr;
+		this->mesh[i] = nullptr;
+	}
 	uint8_t***		data;
 	data = new uint8_t * *[this->size.z];
 	for (unsigned int k = 0; k < this->size.z; k++) {
@@ -89,13 +90,13 @@ Chunk::Chunk(const Math::Vector3& chunk_index, const Math::Vector3& chunk_size, 
 		}
 	}
 	// important note: all chunks have their octree starting at pos 0 0 0.
-	int threshold = 0;
-	this->root = new Octree<Voxel>(voxels, Math::Vector3(0, 0, 0), this->size, threshold);
+	this->root = new Octree<Voxel>(voxels, Math::Vector3(0, 0, 0), this->size, OCTREE_THRESHOLD);
 	this->root->verifyNeighbors(Voxel(255));
-	if (this->buildVertexArrayFromOctree(this->root, Math::Vector3(0, 0, 0)) == 0) {
-		std::cout << "Error: failed to build vertex array for the chuck " << this << std::endl;
-		Misc::breakExit(23);
-	}
+
+	//if (this->buildVertexArraysFromOctree(this->root, Math::Vector3(0, 0, 0)) == 0) {
+	//	std::cout << "Error: failed to build vertex array for the chuck " << this << std::endl;
+	//	Misc::breakExit(23);
+	//}
 	//delete tmp pix
 	for (unsigned int k = 0; k < this->size.z; k++) {
 		for (unsigned int j = 0; j < this->size.y; j++) {
@@ -116,14 +117,16 @@ Chunk::Chunk(const Math::Vector3& chunk_index, const Math::Vector3& chunk_size, 
 	delete[] data;
 
 	//delete root? not when we will edit it to destroy some voxels
-	delete this->root;
-	this->root = nullptr;
+	//delete this->root;
+	//this->root = nullptr;
 }
 
 Chunk::~Chunk() {
 	if (this->root) { delete this->root; }
-	if (this->meshBP) { delete this->meshBP; }
-	if (this->mesh) { delete this->mesh; }
+	for (int i = 0; i < TESSELATION_LVLS; i++) {
+		if (this->meshBP[i]) { delete this->meshBP[i]; }
+		if (this->mesh[i]) { delete this->mesh[i]; }
+	}
 }
 
 
@@ -132,29 +135,31 @@ Chunk::~Chunk() {
 	If there are vertices, it uses them to build a mesh, then it deletes the vertices.
 */
 void	Chunk::glth_buildMesh() {
-	//std::cout << "Chunk::_vertexArray size: " << this->_vertexArray.size() << "\n";
-	if (!this->_vertexArray.empty()) {//if there are some voxels in the chunk
-		if (this->meshBP) {
-			std::cout << "overriding mesh bp: " << this->meshBP << " on chunk: " << this << "\n";
-			Misc::breakExit(31);
-		}
-		if (this->mesh) {
-			std::cout << "overriding mesh: " << this->mesh << " on chunk: " << this << "\n";
-			Misc::breakExit(31);
-		}
+	for (int i = 0; i < TESSELATION_LVLS; i++) {
+		//std::cout << "Chunk::_vertexArray size: " << this->_vertexArray.size() << "\n";
+		if (!this->_vertexArray[i].empty()) {//if there are some voxels in the chunk
+			if (this->meshBP[i]) {
+				std::cout << "overriding mesh bp: " << this->meshBP[i] << " on chunk: " << this << "\n";
+				Misc::breakExit(31);
+			}
+			if (this->mesh[i]) {
+				std::cout << "overriding mesh: " << this->mesh[i] << " on chunk: " << this << "\n";
+				Misc::breakExit(31);
+			}
 
-		this->meshBP = new Obj3dBP(this->_vertexArray, this->_indices, BP_DONT_NORMALIZE);
-		//this->meshBP->freeData(BP_FREE_ALL);
-		this->mesh = new Obj3d(*this->meshBP, *Chunk::renderer);
-		this->mesh->local.setPos(this->pos);
+			this->meshBP[i] = new Obj3dBP(this->_vertexArray[i], this->_indices[i], BP_DONT_NORMALIZE);
+			//this->meshBP[i]->freeData(BP_FREE_ALL);
+			this->mesh[i] = new Obj3d(*this->meshBP[i], *Chunk::renderer);
+			this->mesh[i]->local.setPos(this->pos);
 
-		/*
-			Delete vertex array of the mesh so we don't build it again later.
-			To rebuild the mesh (for whatever reason), call buildVertexArrayFromOctree() first.
-				pb: for now the root octree is deleted (in Chunk constructor)
-		*/
-		this->_vertexArray.clear();
-		this->_indices.clear();
+			/*
+				Delete vertex array of the mesh so we don't build it again later.
+				To rebuild the mesh (for whatever reason), call buildVertexArrayFromOctree() first.
+					pb: for now the root octree is deleted (in Chunk constructor)
+			*/
+			this->_vertexArray[i].clear();
+			this->_indices[i].clear();
+		}
 	}
 }
 
@@ -176,7 +181,7 @@ int	Chunk::buildVertexArrayFromOctree(Octree_old* root, Math::Vector3 pos_offset
 	}
 	std::vector<SimpleVertex>	vertices = Chunk::cubeBlueprint->getVertices();
 	std::vector<SimpleVertex>*	ptr_vertex_array = &this->_vertexArray;
-	root->browse(0, [&pos_offset, ptr_vertex_array, &vertices](Octree_old* node) {
+	root->browse([&pos_offset, ptr_vertex_array, &vertices](Octree_old* node) {
 		if ((node->pixel.r < VOXEL_EMPTY.r \
 			|| node->pixel.g < VOXEL_EMPTY.g \
 			|| node->pixel.b < VOXEL_EMPTY.b) \
@@ -204,7 +209,8 @@ int	Chunk::buildVertexArrayFromOctree(Octree_old* root, Math::Vector3 pos_offset
 }
 #endif
 
-int	Chunk::buildVertexArrayFromOctree(Octree<Voxel>* root, Math::Vector3 pos_offset) {
+//builds all tesselation levels, we could make another func: void Octree::getVertexArray(std::vector<SimpleVertex>& dst, uint8_t tesselationLevel)
+int	Chunk::buildVertexArraysFromOctree(Octree<Voxel>* root, Math::Vector3 pos_offset, const uint8_t tessLevel, const double* threshold) {
 	/*
 		for each chunck, build a linear vertex array with concatened faces and corresponding attributes (texcoord, color, etc)
 		it will use the chunk matrix so for the vertex position we simply add the chunk pos and the node pos to the vertex.position of the face
@@ -214,28 +220,89 @@ int	Chunk::buildVertexArrayFromOctree(Octree<Voxel>* root, Math::Vector3 pos_off
 			cons: we need to remap data at every chunck change
 				-> display list? check what it is
 	*/
-	static std::vector<SimpleVertex>	vertices = Chunk::cubeBlueprint->getVertices();//lambda can access it
+	static const std::vector<SimpleVertex>	vertices = Chunk::cubeBlueprint->getVertices();//lambda can access it
+	this->clearMeshesData();
 
-	std::vector<SimpleVertex>*	ptr_vertex_array = &this->_vertexArray;
+	std::vector<SimpleVertex>*	ptr_vertex_array = this->_vertexArray;
 	uint8_t neighbors_flags[] = { NEIGHBOR_FRONT, NEIGHBOR_RIGHT, NEIGHBOR_LEFT, NEIGHBOR_BOTTOM, NEIGHBOR_TOP, NEIGHBOR_BACK };
-	root->browse(0, [&pos_offset, ptr_vertex_array, &neighbors_flags](Octree<Voxel>* node) {
-		if (node->element != Voxel(255) && node->neighbors < NEIGHBOR_ALL) {// should be < NEIGHBOR_ALL or (node->n & NEIGHBOR_ALL) != 0
-			for (size_t i = 0; i < 6; i++) {//6 faces
-				if ((node->neighbors & neighbors_flags[i]) != neighbors_flags[i]) {
-					for (size_t j = 0; j < 6; j++) {// push the 2 triangles = 2 * 3 vertex
-						SimpleVertex	vertex = (vertices)[i * 6 + j];
-						vertex.position.x *= node->size.x;
-						vertex.position.y *= node->size.y;
-						vertex.position.z *= node->size.z;
-						vertex.position += node->pos;
-						ptr_vertex_array->push_back(vertex);
+
+	//#define EVERY_TESSELATION_LEVELS
+	#define	TESSELATION_WITH_THRESHOLD
+
+	#ifdef EVERY_TESSELATION_LEVELS
+	root->browse(
+		[&pos_offset, ptr_vertex_array, &neighbors_flags](Octree<Voxel>* node) {
+			//inverse of std::pow(2, x)
+			int tesselation_lvl = std::log2(node->size.x); // todo: should be node->depth ?
+
+			if (node->element._value != 255 && node->neighbors < NEIGHBOR_ALL) {// should be < NEIGHBOR_ALL or (node->n & NEIGHBOR_ALL) != 0
+				for (size_t i = 0; i < 6; i++) {//6 faces
+					if ((node->neighbors & neighbors_flags[i]) != neighbors_flags[i]) {
+						for (size_t j = 0; j < 6; j++) {// push the 2 triangles = 2 * 3 vertex
+							SimpleVertex	vertex = (vertices)[i * 6 + j];
+							vertex.position.x *= node->size.x;
+							vertex.position.y *= node->size.y;
+							vertex.position.z *= node->size.z;
+							vertex.position += node->pos;
+							ptr_vertex_array[tesselation_lvl].push_back(vertex);
+							if (node->isLeaf()) {//meaning it has to be pushed to lower tesselation lvls too
+								for (int t = tesselation_lvl - 1; t >= 0; t--)
+									ptr_vertex_array[t].push_back(vertex);
+							}
+						}
 					}
 				}
 			}
 		}
-	});
+	);
+	#endif
+	#ifdef TESSELATION_WITH_THRESHOLD
+	root->browse_until(
+		[tessLevel, threshold](Octree<Voxel>* node) {
+			int tesselation_lvl = std::log2(node->size.x); // todo: should be node->depth ?
+			double t = threshold ? *threshold : 0;
+			return (node->detail <= t && node->element._value < 200) || tesselation_lvl == tessLevel; //should be % of empty voxel > 50
+		},
+		[&pos_offset, ptr_vertex_array, &neighbors_flags](Octree<Voxel>* node) {
+			//inverse of std::pow(2, x)
+			int tesselation_lvl = std::log2(node->size.x); // todo: should be node->depth ?
+
+			if (node->element._value != 255 && node->neighbors < NEIGHBOR_ALL) {// should be < NEIGHBOR_ALL or (node->n & NEIGHBOR_ALL) != 0
+				for (size_t i = 0; i < 6; i++) {//6 faces
+					if ((node->neighbors & neighbors_flags[i]) != neighbors_flags[i]) {
+						for (size_t j = 0; j < 6; j++) {// push the 2 triangles = 2 * 3 vertex
+							SimpleVertex	vertex = (vertices)[i * 6 + j];
+							vertex.position.x *= node->size.x;
+							vertex.position.y *= node->size.y;
+							vertex.position.z *= node->size.z;
+							vertex.position += node->pos;
+							ptr_vertex_array[0].push_back(vertex);
+						}
+					}
+				}
+			}
+		}
+	);
+#endif
+
 	//std::cout << "\t> vertex array ready: " << this->_vertexArray.size() << std::endl;
 	return 1;
+}
+
+void	Chunk::clearMeshesData() {
+	for (auto i = 0; i < TESSELATION_LVLS; i++) {
+		this->_vertexArray[i].clear();
+		this->_indices[i].clear();
+		delete this->meshBP[i];
+		delete this->mesh[i];
+		this->meshBP[i] = nullptr;
+		this->mesh[i] = nullptr;
+	}
+}
+
+void	Chunk::clearOctreeData() {
+	delete this->root;
+	this->root = nullptr;
 }
 
 //#define TINY_VERTEX
@@ -244,6 +311,7 @@ typedef TinyVertex VertexClass;
 #else
 typedef SimpleVertex VertexClass;
 #endif
+#ifdef TINY_VERTEX
 /*
 	build the obj3d with indices and no duplicate vertices.
 	as each vertex is common to 3 faces, each faces will have the same color for the said vertex
@@ -285,7 +353,7 @@ int	Chunk::buildVertexArrayFromOctree_homogeneous(Octree<Voxel>* root, Math::Vec
 		build a vec with all vertices
 		build an set to have the list of vertices without duplicates
 	*/
-	root->browse(0, [&full_vertex_vec, &vertex_set](Octree<Voxel>* node) {
+	root->browse([&full_vertex_vec, &vertex_set](Octree<Voxel>* node) {
 		if (node->element != Voxel(255) && node->neighbors < NEIGHBOR_ALL) {// should be < NEIGHBOR_ALL or (node->n & NEIGHBOR_ALL) != 0
 			for (size_t i = 0; i < 6; i++) {//6 faces
 				if ((node->neighbors & neighbors_flags[i]) != neighbors_flags[i]) {
@@ -350,6 +418,7 @@ int	Chunk::buildVertexArrayFromOctree_homogeneous(Octree<Voxel>* root, Math::Vec
 	// if TINY_VERTEX save the array in the chunk
 	return 1;
 }
+#endif
 
 std::string		Chunk::toString() const {
 	std::stringstream ss;
