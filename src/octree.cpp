@@ -348,7 +348,7 @@ void		Octree<T>::verifyNeighbors(const T& filter) {
 			or getNode() on size/2 until we find all adjacent leafs, and check if empty
 
 		*/
-//#define USE_SAMESIZE_SEARCH
+#define USE_SAMESIZE_SEARCH
 #define USE_DETAILLED_SEARCH
 //#define USE_BACKTRACKING_SEARCH
 
@@ -358,49 +358,71 @@ void		Octree<T>::verifyNeighbors(const T& filter) {
 				check isLeaf: as long as all non-empty voxels are the same, we're sure there is no empty voxels here
 					cf average method
 			*/
-		Math::Vector3	left = node->pos - Math::Vector3(node->size.x, 0, 0);
-		Math::Vector3	right = node->pos + Math::Vector3(node->size.x, 0, 0);
-		Math::Vector3	bot = node->pos - Math::Vector3(0, node->size.y, 0);
-		Math::Vector3	top = node->pos + Math::Vector3(0, node->size.y, 0);
-		Math::Vector3	back = node->pos - Math::Vector3(0, 0, node->size.z);
-		Math::Vector3	front = node->pos + Math::Vector3(0, 0, node->size.z);
-		Math::Vector3*	sides[6] = { &left, &right, &bot, &top, &back, &front };
-		uint8_t			tags[6] = { NEIGHBOR_LEFT, NEIGHBOR_RIGHT, NEIGHBOR_BOTTOM, NEIGHBOR_TOP, NEIGHBOR_BACK, NEIGHBOR_FRONT };
-
-		for (size_t i = 0; i < 6; i++) {
-			Octree* subnode = root->getNode(*sides[i], node->size);
-			if (subnode	&& subnode->element._value != filter._value) {
-				subnode->neighbors |= tags[i];
-			}
-		}
+		Math::Vector3	node_left = node->pos - Math::Vector3(node->size.x, 0, 0);
+		Math::Vector3	node_right = node->pos + Math::Vector3(node->size.x, 0, 0);
+		Math::Vector3	node_bot = node->pos - Math::Vector3(0, node->size.y, 0);
+		Math::Vector3	node_top = node->pos + Math::Vector3(0, node->size.y, 0);
+		Math::Vector3	node_back = node->pos - Math::Vector3(0, 0, node->size.z);
+		Math::Vector3	node_front = node->pos + Math::Vector3(0, 0, node->size.z);
+		Math::Vector3*	node_sides[6] = { &node_left, &node_right, &node_bot, &node_top, &node_back, &node_front };
 #endif
+
 #ifdef USE_DETAILLED_SEARCH
 		/*
+		              |         |
+		              |xxxxxxxxx|
+		        `````x|`````````|x`````
+		             x| current |x
+		             x|  node   |x      adjacent voxels (x) are checked, size of 1x1x1
+		             x|         |x
+		        _____x|_________|x_____
+		              |xxxxxxxxx|
+		              |         |
+			
 			getNode() with neighbors size of 1, so depending of node size:
 				size.x*size.y*2 amount of getNode() for back/front
 				size.y*size.z*2 amount of getNode() for left/right
 				size.x*size.z*2 amount of getNode() for top/down
 		*/
-
-		Math::Vector3	posleft = node->pos - Math::Vector3(1, 0, 0);
-		Math::Vector3	posright = node->pos + Math::Vector3(node->size.x, 0, 0);
-		Math::Vector3	posdown = node->pos - Math::Vector3(0, 1, 0);
-		Math::Vector3	posup = node->pos + Math::Vector3(0, node->size.y, 0);
-		Math::Vector3	posback = node->pos - Math::Vector3(0, 0, 1);
-		Math::Vector3	posfront = node->pos + Math::Vector3(0, 0, node->size.z);
+		Math::Vector3	close_left = node->pos - Math::Vector3(1, 0, 0);
+		Math::Vector3	close_right = node->pos + Math::Vector3(node->size.x, 0, 0);
+		Math::Vector3	close_bot = node->pos - Math::Vector3(0, 1, 0);
+		Math::Vector3	close_top = node->pos + Math::Vector3(0, node->size.y, 0);
+		Math::Vector3	close_back = node->pos - Math::Vector3(0, 0, 1);
+		Math::Vector3	close_front = node->pos + Math::Vector3(0, 0, node->size.z);
 
 		Math::Vector3	sizeXaxis(1, node->size.y, node->size.z);
 		Math::Vector3	sizeYaxis(node->size.x, 1, node->size.z);
 		Math::Vector3	sizeZaxis(node->size.x, node->size.y, 1);
 
-		if (!root->contains(filter, posleft, sizeXaxis)) { node->neighbors |= NEIGHBOR_LEFT; }
-		if (!root->contains(filter, posright, sizeXaxis)) { node->neighbors |= NEIGHBOR_RIGHT; }
-		if (!root->contains(filter, posdown, sizeYaxis)) { node->neighbors |= NEIGHBOR_BOTTOM; }
-		if (!root->contains(filter, posup, sizeYaxis)) { node->neighbors |= NEIGHBOR_TOP; }
-		if (!root->contains(filter, posback, sizeZaxis)) { node->neighbors |= NEIGHBOR_BACK; }
-		if (!root->contains(filter, posfront, sizeZaxis)) { node->neighbors |= NEIGHBOR_FRONT; }
-
+		Math::Vector3*	close_sides[6] = { &close_left, &close_right, &close_bot, &close_top, &close_back, &close_front };
+		Math::Vector3*	sides_axis[6] = { &sizeXaxis, &sizeXaxis, &sizeYaxis, &sizeYaxis, &sizeZaxis, &sizeZaxis };
 #endif
+		uint8_t			tags[6] = { NEIGHBOR_LEFT, NEIGHBOR_RIGHT, NEIGHBOR_BOTTOM, NEIGHBOR_TOP, NEIGHBOR_BACK, NEIGHBOR_FRONT };
+
+		for (size_t i = 0; i < 6; i++) {
+			#ifdef USE_SAMESIZE_SEARCH
+			Octree* subnode = root->getNode(*node_sides[i], node->size);
+			if (subnode	&& subnode->element._value != filter._value && subnode->isLeaf()) {
+				node->neighbors |= tags[i];
+			}
+			#endif
+			#ifdef USE_DETAILLED_SEARCH
+			if ((node->neighbors & tags[i]) != tags[i]) {
+				if (!root->contains(filter, *close_sides[i], *sides_axis[i])) { node->neighbors |= tags[i]; }
+			}
+
+			#endif
+		}
+
+
+		//if (!root->contains(filter, close_left, sizeXaxis)) { node->neighbors |= NEIGHBOR_LEFT; }
+		//if (!root->contains(filter, close_right, sizeXaxis)) { node->neighbors |= NEIGHBOR_RIGHT; }
+		//if (!root->contains(filter, close_bot, sizeYaxis)) { node->neighbors |= NEIGHBOR_BOTTOM; }
+		//if (!root->contains(filter, close_top, sizeYaxis)) { node->neighbors |= NEIGHBOR_TOP; }
+		//if (!root->contains(filter, close_back, sizeZaxis)) { node->neighbors |= NEIGHBOR_BACK; }
+		//if (!root->contains(filter, close_front, sizeZaxis)) { node->neighbors |= NEIGHBOR_FRONT; }
+
 #ifdef USE_BACKTRACKING_SEARCH
 		// getNode() on size/2 until we find all adjacent leafs, and check if empty
 		// backtracking

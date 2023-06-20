@@ -11,7 +11,12 @@
 
 //#define OCTREE_OLD
 #define OCTREE_THRESHOLD 0
+/*
+	0 = no tesselation, taking smallest voxels (size = 1)
+	5 = log2(32), max level, ie the size of a chunk
+*/
 #define TESSELATION_LVLS 6
+
 
 class Chunk //could inherit from Object
 {
@@ -37,7 +42,7 @@ public:
 	Obj3d	*mesh[TESSELATION_LVLS];//same
 
 	void	glth_buildMesh(); //with _vertexArray
-	int		buildVertexArraysFromOctree(Octree<Voxel>* root, Math::Vector3 pos_offset = Math::Vector3(0, 0, 0), const uint8_t tessLevel = 0, const double* threshold = nullptr);
+	int		buildVertexArraysFromOctree(Octree<Voxel>* root, Math::Vector3 pos_offset = Math::Vector3(0, 0, 0), const uint8_t desiredTessLevel = 0, const double* threshold = nullptr);
 	void	clearMeshesData();
 	void	clearOctreeData();
 	//bool operator<(const Chunk& rhs) const//tmp

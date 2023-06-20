@@ -133,6 +133,8 @@ Chunk::~Chunk() {
 /*
 	Before calling this function, empty vertices means empty chunk.
 	If there are vertices, it uses them to build a mesh, then it deletes the vertices.
+
+	tess lvls: it actually builds all tess lvl meshes
 */
 void	Chunk::glth_buildMesh() {
 	for (int i = 0; i < TESSELATION_LVLS; i++) {
@@ -210,7 +212,7 @@ int	Chunk::buildVertexArrayFromOctree(Octree_old* root, Math::Vector3 pos_offset
 #endif
 
 //builds all tesselation levels, we could make another func: void Octree::getVertexArray(std::vector<SimpleVertex>& dst, uint8_t tesselationLevel)
-int	Chunk::buildVertexArraysFromOctree(Octree<Voxel>* root, Math::Vector3 pos_offset, const uint8_t tessLevel, const double* threshold) {
+int	Chunk::buildVertexArraysFromOctree(Octree<Voxel>* root, Math::Vector3 pos_offset, const uint8_t desiredTessLevel, const double* threshold) {
 	/*
 		for each chunck, build a linear vertex array with concatened faces and corresponding attributes (texcoord, color, etc)
 		it will use the chunk matrix so for the vertex position we simply add the chunk pos and the node pos to the vertex.position of the face
@@ -222,12 +224,20 @@ int	Chunk::buildVertexArraysFromOctree(Octree<Voxel>* root, Math::Vector3 pos_of
 	*/
 	static const std::vector<SimpleVertex>	vertices = Chunk::cubeBlueprint->getVertices();//lambda can access it
 	this->clearMeshesData();
+	if (!this->root) {
+		std::cout << "WARNING: attempting to build vertex arrays from a missing octree, it might have been deleted before.\n";
+		//throw
+	}
 
 	std::vector<SimpleVertex>*	ptr_vertex_array = this->_vertexArray;
 	uint8_t neighbors_flags[] = { NEIGHBOR_FRONT, NEIGHBOR_RIGHT, NEIGHBOR_LEFT, NEIGHBOR_BOTTOM, NEIGHBOR_TOP, NEIGHBOR_BACK };
 
 	//#define EVERY_TESSELATION_LEVELS
 	#define	TESSELATION_WITH_THRESHOLD
+	/*
+		0 = no tesselation, taking smallest voxels (size = 1)
+		5 = log2(32), max level, ie the size of a chunk
+	*/
 
 	#ifdef EVERY_TESSELATION_LEVELS
 	root->browse(
@@ -258,29 +268,34 @@ int	Chunk::buildVertexArraysFromOctree(Octree<Voxel>* root, Math::Vector3 pos_of
 	#endif
 	#ifdef TESSELATION_WITH_THRESHOLD
 	root->browse_until(
-		[tessLevel, threshold](Octree<Voxel>* node) {
+		[desiredTessLevel, threshold](Octree<Voxel>* node) {
 			int tesselation_lvl = std::log2(node->size.x); // todo: should be node->depth ?
 			double t = threshold ? *threshold : 0;
-			return (node->detail <= t && node->element._value < 200) || tesselation_lvl == tessLevel; //should be % of empty voxel > 50
+			return ((node->detail <= t && node->element._value < 200) || tesselation_lvl == desiredTessLevel); //should be % of empty voxel > 50
 		},
-		[&pos_offset, ptr_vertex_array, &neighbors_flags](Octree<Voxel>* node) {
+		[&pos_offset, ptr_vertex_array, &neighbors_flags, desiredTessLevel, threshold](Octree<Voxel>* node) {
 			//inverse of std::pow(2, x)
 			int tesselation_lvl = std::log2(node->size.x); // todo: should be node->depth ?
+			double t = threshold ? *threshold : 0;
 
-			if (node->element._value != 255 && node->neighbors < NEIGHBOR_ALL) {// should be < NEIGHBOR_ALL or (node->n & NEIGHBOR_ALL) != 0
-				for (size_t i = 0; i < 6; i++) {//6 faces
-					if ((node->neighbors & neighbors_flags[i]) != neighbors_flags[i]) {
-						for (size_t j = 0; j < 6; j++) {// push the 2 triangles = 2 * 3 vertex
-							SimpleVertex	vertex = (vertices)[i * 6 + j];
-							vertex.position.x *= node->size.x;
-							vertex.position.y *= node->size.y;
-							vertex.position.z *= node->size.z;
-							vertex.position += node->pos;
-							ptr_vertex_array[0].push_back(vertex);
+			// recheck with the same condition because we want only the node at the desired tess level, or threshold, or leaf
+			if ((node->detail <= t && node->element._value < 200) || tesselation_lvl == desiredTessLevel || node->isLeaf()) {
+				if (node->element._value != 255 && node->neighbors < NEIGHBOR_ALL) {// should be < NEIGHBOR_ALL or (node->n & NEIGHBOR_ALL) != 0
+					for (size_t i = 0; i < 6; i++) {//6 faces
+						if ((node->neighbors & neighbors_flags[i]) != neighbors_flags[i]) {
+							for (size_t j = 0; j < 6; j++) {// push the 2 triangles = 2 * 3 vertex
+								SimpleVertex	vertex = (vertices)[i * 6 + j];
+								vertex.position.x *= node->size.x;
+								vertex.position.y *= node->size.y;
+								vertex.position.z *= node->size.z;
+								vertex.position += node->pos;
+								ptr_vertex_array[desiredTessLevel].push_back(vertex);
+							}
 						}
 					}
 				}
 			}
+
 		}
 	);
 #endif

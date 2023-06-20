@@ -48,3 +48,5 @@
 #define WINY 1080
 #define SIMPLEGL_FOLDER		std::string("SimpleGL/")
 #define WIN32_VS_FOLDER		std::string("")
+
+#define TREES_DEBUG

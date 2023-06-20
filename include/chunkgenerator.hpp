@@ -39,58 +39,62 @@ typedef UIImage*	minimapTile;
 //		or indexes as a vector[], with .size() beeing the # of dimensions
 
 
+// should separate ChunkGenerator and ChunkGrid
 class ChunkGenerator
 {
 public:
 	//grid_size_displayed will be clamped between 1 -> grid_size
 	ChunkGenerator(Math::Vector3 player_pos, const PerlinSettings& perlin_settings, Math::Vector3 chunk_size, Math::Vector3 grid_size, Math::Vector3 grid_size_displayed);
 	~ChunkGenerator();
-	void			th_updater(Cam* cam);
-	std::string		getGridChecks() const;
-	bool			updateGrid(Math::Vector3 player_pos);
+	void			th_updater(Cam* cam);//grid
+	std::string		getGridChecks() const;//tmp debug //grid
+	//returns true if player step in another chunk
+	bool			updateGrid(Math::Vector3 player_pos);//grid
 	void			updateChunkJobsToDo();
 	void			updateChunkJobsDone();
 	void			build(PerlinSettings& perlinSettings, std::string& threadIDstr);
 	void			th_builders(GLFWwindow* context);
-	bool			buildMeshesAndMapTiles();
+	bool			glth_buildMeshesAndMapTiles();
 
-	// build the chunks meshes and load them to the GPU
-	void			glth_loadChunks();
+	// Build the chunks meshes and load them to the GPU. Must be executed in the OpenGL thread
+	void			glth_loadChunks();//grid
 
-	void			pushDisplayedChunks(std::list<Object*>* dst, unsigned int tesselation_lvl = 0) const;
-	unsigned int	pushDisplayedChunks(Object** dst, unsigned int tesselation_lvl = 0) const;
-	Math::Vector3	getGridDisplayStart() const;
+	//push chunks with the asked tesselation level, inside the list dst.
+	void			pushDisplayedChunks(std::list<Object*>* dst, unsigned int tesselation_lvl = 0) const;//grid
+	//push chunks with the asked tesselation level, inside the array dst. Then returns the next index (last chunk added + 1)
+	unsigned int	pushDisplayedChunks(Object** dst, unsigned int tesselation_lvl = 0, unsigned int starting_index = 0) const;//grid
+	Math::Vector3	getGridDisplayStart() const;//grid
 
 	std::string		toString() const;
-	Math::Vector3	worldToGrid(const Math::Vector3& index) const;
-	Math::Vector3	gridToWorld(const Math::Vector3& index) const;
+	Math::Vector3	worldToGrid(const Math::Vector3& index) const;//grid
+	Math::Vector3	gridToWorld(const Math::Vector3& index) const;//grid
 
 	bool			try_deleteUnusedData();
 
-	Math::Vector3	chunkSize;
-	Math::Vector3	gridSize;
+	Math::Vector3	chunkSize;//grid
+	Math::Vector3	gridSize;//grid
 	Math::Vector3	gridDisplaySize;// must be <= gridSize
 
 	/*
 		world index of the start of the grid (0:0:0)
 	*/
-	Math::Vector3	gridIndex;
+	Math::Vector3	gridIndex;//grid
 	/*
 		index in grid
 	*/
-	Math::Vector3	gridDisplayIndex;
+	Math::Vector3	gridDisplayIndex;//grid
 	/*
 		player chunk in world
 	*/
-	Math::Vector3	currentChunkWorldIndex;
+	Math::Vector3	currentChunkWorldIndex;//grid
 
 	HeightMap***	heightMaps;//2d grid
 	Chunk* ***		grid;//3d grid
-	Math::Vector3	playerPos;
+	Math::Vector3	playerPos;//grid
 
 	PerlinSettings	settings;
 	uint8_t			builderAmount;
-	bool			playerChangedChunk;
+	bool			playerChangedChunk;//grid
 
 	std::condition_variable	cv;
 	std::mutex		chunks_mutex;
@@ -102,13 +106,13 @@ public:
 	// lock_guard main() -> render loop before calling cam.events()
 	// //lock_guard ChunkGenerator::updateGrid() -> ChunkGenerator::updatePlayerPos() 
 
-	Obj3dBP*		fullMeshBP = nullptr;
-	Obj3d*			fullMesh = nullptr;
+	Obj3dBP*		fullMeshBP = nullptr;//all chunks merged//grid
+	Obj3d*			fullMesh = nullptr;//grid
 
 	bool			terminateThreads = false;
 	bool			chunksChanged;//related to: job_mutex
 	bool			_chunksReadyForMeshes;
-	bool			gridMemoryMoved;//not used for now
+	bool			gridMemoryMoved;//not used for now//grid
 	uint8_t			threadsReadyToBuildChunks;
 
 	std::map<Math::Vector3, bool>	map_jobsHmap;//store directly the jobs ptr?
@@ -119,8 +123,11 @@ public:
 	std::vector<Chunk*>				trashChunks;
 private:
 	ChunkGenerator();
-	void	_updatePlayerPos(const Math::Vector3& player_pos);
-	void	_deleteUnusedData();
+	void			_updatePlayerPos(const Math::Vector3& player_pos);//grid
+	//calculate if we need to move the memory grid and load new chunks
+	Math::Vector3	_calculateGridDiff(Math::Vector3 playerdiff);
+	void			_translateGrid(Math::Vector3 gridDiff, std::vector<Chunk*>* chunksToDelete, std::vector<HeightMap*>* hmapsToDelete);
+	void			_deleteUnusedData();
 };
 
 /*

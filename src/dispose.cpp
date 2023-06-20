@@ -10,13 +10,12 @@ IDisposable::~IDisposable() {
 	}
 }
 
-bool	IDisposable::tryDispose() {
+bool	IDisposable::dispose() {
 	this->_access.lock();
 	if (this->_disposed == this->_max) {
 		this->_access.unlock();
 		return false;
-	}
-	else {
+	} else {
 		this->_disposed++;
 		this->_access.unlock();
 		return true;

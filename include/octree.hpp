@@ -141,12 +141,12 @@ public:
 
 	template<typename T, typename U>
 	void	browse_until(T condition, U func) {
+		func(this);//return a bool to stop the browse? is it possible?
 		if (condition(this)) {
 			if (this->size.x == 0 || this->size.y == 0 || this->size.z == 0) {
 				std::cout << "error with tree data\n";
 				std::exit(1);
 			}
-			func(this);//return a bool to stop the browse? is it possible?
 		}
 		else if (this->children) {
 			for (size_t i = 0; i < CHILDREN; i++) {
@@ -156,7 +156,7 @@ public:
 		}
 	}
 
-	//equivalent to browse_until node.isleaf() = true
+	//equivalent to browse_until node.isleaf() == true
 	template<typename U>
 	void	browse(U func) {
 		func(this);

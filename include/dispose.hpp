@@ -5,11 +5,14 @@
 #include <mutex>
 
 /*
-	default maximum disposed time: UINT32_MAX
+*   Interface used to monitor how many other entitys are disposing of this resource.
+*	A typical use is to avoid deletion of disposed resources.
+*	default maximum concurent dispose : UINT32_MAX
 */
 class IDisposable {
 public:
-	bool			tryDispose();
+	/* it uses mutex::lock() */
+	bool			dispose();
 	void			unDispose();
 	unsigned int	getdisposedCount() const;
 	unsigned int	getMaxdisposedCount() const;
