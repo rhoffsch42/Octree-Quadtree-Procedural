@@ -2,7 +2,9 @@
 
 #include "heightmap.hpp" // also for PerlinSettings
 #include "chunkgenerator.hpp"
+#include "chunkgrid.hpp"
 class ChunkGenerator;
+class ChunkGrid;
 
 // nouveau check du helper qui voit que certains chunk sont pas crees, les jobs sont crees mais pas finis, donc il cree des doublons de job... qui sont repluggés apres...
 // empecher le helper0 de creer des jobs doublons
@@ -22,9 +24,12 @@ class JobBuildGenerator : public Job
 {
 public:
 	virtual bool	execute(PerlinSettings& perlinSettings) = 0;
+	#ifdef USE_OLD_GENERATOR
 	virtual void	deliver(ChunkGenerator& generator) const = 0;
-
-	Math::Vector3	index;
+	#else
+	virtual void	deliver(ChunkGenerator& generator, ChunkGrid& grid) const = 0;
+	#endif
+	Math::Vector3	index;//world
 	Math::Vector3	chunkSize;
 protected:
 	JobBuildGenerator(Math::Vector3 ind, Math::Vector3 chunk_size);
@@ -35,8 +40,11 @@ class JobBuildHeighMap : public JobBuildGenerator
 public:
 	JobBuildHeighMap(Math::Vector3 index, Math::Vector3 chunk_size);
 	virtual bool	execute(PerlinSettings& perlinSettings);
+	#ifdef USE_OLD_GENERATOR
 	virtual void	deliver(ChunkGenerator& generator) const;
-
+	#else
+	virtual	void	deliver(ChunkGenerator& generator, ChunkGrid& grid) const;
+	#endif
 	HeightMap* hmap = nullptr;
 };
 
@@ -44,8 +52,12 @@ class JobBuildChunk : public JobBuildGenerator
 {
 public:
 	JobBuildChunk(Math::Vector3 index, Math::Vector3 chunk_size, HeightMap* hmap_ptr);
-	virtual bool execute(PerlinSettings& perlinSettings);
+	virtual bool	execute(PerlinSettings& perlinSettings);
+	#ifdef USE_OLD_GENERATOR
 	virtual void	deliver(ChunkGenerator& generator) const;
+	#else
+	virtual void	deliver(ChunkGenerator& generator, ChunkGrid& grid) const;
+	#endif
 
 	HeightMap* hmap = nullptr;
 	Chunk* chunk = nullptr;

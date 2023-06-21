@@ -132,7 +132,7 @@
     <ClCompile Include="src\dispose.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="chunkgrid.cpp">
+    <ClCompile Include="src\chunkgrid.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -245,7 +245,7 @@
     <ClInclude Include="include\dispose.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="chunkgrid.hpp">
+    <ClInclude Include="include\chunkgrid.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

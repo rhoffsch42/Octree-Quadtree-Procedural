@@ -38,8 +38,9 @@ typedef UIImage*	minimapTile;
 // class tab with iter xyzwabcdef...uv 24 dimensions
 //		or indexes as a vector[], with .size() beeing the # of dimensions
 
+//#define USE_OLD_GENERATOR
+#ifdef USE_OLD_GENERATOR
 
-// should separate ChunkGenerator and ChunkGrid
 class ChunkGenerator
 {
 public:
@@ -52,12 +53,12 @@ public:
 	bool			updateGrid(Math::Vector3 player_pos);//grid
 	void			updateChunkJobsToDo();
 	void			updateChunkJobsDone();
-	void			build(PerlinSettings& perlinSettings, std::string& threadIDstr);
+	void			executeAllJobs(PerlinSettings& perlinSettings, std::string& threadIDstr);
 	void			th_builders(GLFWwindow* context);
 	bool			glth_buildMeshesAndMapTiles();
 
 	// Build the chunks meshes and load them to the GPU. Must be executed in the OpenGL thread
-	void			glth_loadChunks();//grid
+	void			glth_loadChunksToGPU();//grid
 
 	//push chunks with the asked tesselation level, inside the list dst.
 	void			pushDisplayedChunks(std::list<Object*>* dst, unsigned int tesselation_lvl = 0) const;//grid
@@ -131,10 +132,75 @@ private:
 };
 
 /*
-	avoir des chunk bien plus grand que 32, genre 500. (le temps de generation peut etre long)
+	avoir des chunk bien plus grand que 32, genre 256. (le temps de generation peut etre long)
 	ajuster le threshold selon la distance avec le joueur
 		si un des coins du cube de la node est dans le range, alors descendre le threshold
 
 	on genere seulement les chunk voisins (3*3*3 - 1)
 	on diplay seulement les nodes en dessous d'un certain range en adaptant les threshold
 */
+
+#else
+#include "chunkgrid.hpp"
+class ChunkGrid;
+
+class ChunkGenerator
+{
+public:
+	//grid_size_displayed will be clamped between 1 -> grid_size
+	ChunkGenerator(const PerlinSettings& perlin_settings);
+	~ChunkGenerator();
+	void			th_updater(Cam* cam, ChunkGrid* grid);//grid
+
+	// returns true if the job was successfully created
+	bool			createHeightmapJob(Math::Vector3 chunkWorldIndex, Math::Vector3 chunkSize);
+	// returns true if the job was successfully created
+	bool			createChunkJob(Math::Vector3 chunkWorldIndex, Math::Vector3 chunkSize, HeightMap* heightmap);
+	void			updateChunkJobsToDo(ChunkGrid& grid);
+	void			updateChunkJobsDone(ChunkGrid& grid);
+	void			executeAllJobs(PerlinSettings& perlinSettings, std::string& threadIDstr);
+	void			th_builders(GLFWwindow* context);
+	//bool			glth_buildMeshesAndMapTiles();
+
+	bool			try_deleteUnusedData();
+
+	PerlinSettings	settings;
+	uint8_t			builderAmount;
+
+	std::condition_variable	cv;
+	std::mutex		job_mutex;
+	std::mutex		trash_mutex;
+	std::mutex		terminateBuilders;//old code
+	std::mutex		mutex_cam;// cam mutex
+	// lock/unlock helper0 (player pos thread)
+	// lock_guard main() -> render loop before calling cam.events()
+	// //lock_guard ChunkGenerator::updateGrid() -> ChunkGenerator::updatePlayerPos() 
+
+	bool			terminateThreads = false;
+	bool			chunksChanged;//related to: job_mutex
+	//bool			_chunksReadyForMeshes;
+	uint8_t			threadsReadyToBuildChunks;
+
+	std::map<Math::Vector3, bool>	map_jobsHmap;//store directly the jobs ptr?
+	std::map<Math::Vector3, bool>	map_jobsChunk;
+	std::list<JobBuildGenerator*>	jobsToDo;
+	std::list<JobBuildGenerator*>	jobsDone;
+	std::vector<HeightMap*>			trashHeightMaps;
+	std::vector<Chunk*>				trashChunks;
+private:
+	ChunkGenerator();
+	void			_deleteUnusedData();
+};
+
+//class GridManager
+//{
+//public:
+//	GridManager();
+//	~GridManager();
+//
+//	ChunkGrid		grid;
+//	ChunkGenerator generator;
+//private:
+//};
+
+#endif

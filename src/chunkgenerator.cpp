@@ -20,6 +20,8 @@ using namespace std::chrono_literals;
  #define D_SPACER_END ""
 #endif
 
+#ifdef USE_OLD_GENERATOR
+
 ChunkGenerator::ChunkGenerator(Math::Vector3 player_pos, const PerlinSettings& perlin_settings, Math::Vector3 chunk_size, Math::Vector3 grid_size, Math::Vector3 grid_size_displayed)
 	: chunkSize(chunk_size),
 	gridSize(grid_size),//better be odd for equal horizon on every cardinal points
@@ -362,7 +364,7 @@ void	ChunkGenerator::updateChunkJobsDone() {
 	//this->chunksChanged = true;
 }
 
-void	ChunkGenerator::build(PerlinSettings& perlinSettings, std::string& threadIDstr) {
+void	ChunkGenerator::executeAllJobs(PerlinSettings& perlinSettings, std::string& threadIDstr) {
 	JobBuildGenerator* job = nullptr;
 
 	while (!this->jobsToDo.empty()) {
@@ -464,7 +466,7 @@ bool	ChunkGenerator::glth_buildMeshesAndMapTiles() {
 	}
 }
 
-void	ChunkGenerator::glth_loadChunks() {
+void	ChunkGenerator::glth_loadChunksToGPU() {
 	/*
 		not ideal. each time there are new chunks on 1 dimension, it rechecks the entire grid
 		ex: grid 1000x1000x1000. 1000x1000 new chunks to load, but 1000x1000x1000 iterations
@@ -537,7 +539,7 @@ unsigned int	ChunkGenerator::pushDisplayedChunks(Object** dst, unsigned int tess
 	dst[starting_index] = nullptr;
 	//D("pushDisplayedChunks() ret starting_index " << starting_index << "\n")
 	D_(std::cout << "Done\n")
-		return starting_index;
+	return starting_index;
 }
 
 Math::Vector3	ChunkGenerator::getGridDisplayStart() const {
@@ -649,3 +651,276 @@ void	ChunkGenerator::_deleteUnusedData() {
 		this->trashChunks.erase(std::remove(this->trashChunks.begin(), this->trashChunks.end(), nullptr), this->trashChunks.end());
 	}
 }
+
+#else
+
+ChunkGenerator::ChunkGenerator(const PerlinSettings& perlin_settings) : settings(perlin_settings) {
+	D(__PRETTY_FUNCTION__ << "\n")
+
+	this->chunksChanged = false;
+	this->builderAmount = 1;
+	this->threadsReadyToBuildChunks = 0;
+}
+
+ChunkGenerator::~ChunkGenerator() {}
+
+void	ChunkGenerator::th_updater(Cam* cam, ChunkGrid* grid) {
+	Math::Vector3 playerPos;
+	while (!this->terminateThreads) {//no mutex for reading?
+		this->mutex_cam.lock();
+		playerPos = cam->local.getPos();
+		this->mutex_cam.unlock();
+
+		if (grid->updateGrid(playerPos)) {//player changed chunk
+			D("[helper0] grid updated with player pos, as he changed chunk\n")
+		}
+		else {
+			//D("[helper0] grid unchanged, player in same grid\n")
+		}
+		#ifdef USE_OLD_GENERATOR
+		#else
+		this->cv.notify_all();
+		#endif
+		this->updateChunkJobsDone(*grid);//before updateChunkJobsToDo()
+		//D("[helper0] jobs done updated\n")
+		this->updateChunkJobsToDo(*grid);
+		//D("[helper0] jobsToDo updated\n")
+
+		D_(std::cout << ".")
+			std::this_thread::sleep_for(100ms);
+	}
+	D("[helper0] exiting...\n")
+}
+
+bool	ChunkGenerator::createHeightmapJob(Math::Vector3 hmapWorldIndex, Math::Vector3 chunkSize) {
+	if (!this->map_jobsHmap[hmapWorldIndex]) {
+		this->jobsToDo.push_back(new JobBuildHeighMap(hmapWorldIndex, chunkSize));
+		this->map_jobsHmap[hmapWorldIndex] = true;
+
+		#ifdef CHUNK_GEN_DEBUG
+		D("new JobBuildHeighMap: WorldIndex : " << hmapWorldIndex << "\n")
+		#endif
+		return true;
+	}
+
+	#ifdef CHUNK_GEN_DEBUG
+	D("already created JobBuildHeighMap: WorldIndex : " << hmapWorldIndex << "\n")
+	#endif
+	return false;
+}
+
+bool	ChunkGenerator::createChunkJob(const Math::Vector3 chunkWorldIndex, const Math::Vector3 chunkSize, HeightMap* heightmap) {
+	if (!this->map_jobsChunk[chunkWorldIndex] && heightmap->dispose()) {
+		this->jobsToDo.push_back(new JobBuildChunk(chunkWorldIndex, chunkSize, heightmap));
+		this->map_jobsChunk[chunkWorldIndex] = true;
+
+		#ifdef CHUNK_GEN_DEBUG
+		D("new JobBuildChunk: WorldIndex : " << chunkWorldIndex << " hmap: " << heightmap << "\n")
+		#endif
+		return true;
+	}
+
+	#ifdef CHUNK_GEN_DEBUG
+	D("duplicate JobBuildChunk: WorldIndex : " << chunkWorldIndex << " hmap: " << heightmap << "\n")
+	#endif
+	return false;
+}
+
+
+void	ChunkGenerator::updateChunkJobsToDo(ChunkGrid& grid) {
+	std::thread::id					threadID = std::this_thread::get_id();
+	std::unique_lock<std::mutex>	chunks_lock(grid.chunks_mutex);
+	std::unique_lock<std::mutex>	job_lock(this->job_mutex);
+
+	if (this->jobsToDo.size() || this->jobsDone.size()) {
+		// wait all jobs to be done and delivered before creating new ones
+		return;
+	}
+
+	Math::Vector3	gridSize = grid.getSize();
+	Math::Vector3	chunkSize = grid.getChunkSize();
+	HMapPtr**		hmaps = grid.getHeightMaps();
+	ChunkPtr***		chunks = grid.getGrid();
+
+	Math::Vector3		index;
+	unsigned int		newChunkJobs = 0;
+	unsigned int		newHmapJobs = 0;
+
+	for (int z = 0; z < gridSize.z; z++) {
+		for (int x = 0; x < gridSize.x; x++) {
+
+			if (!hmaps[z][x]) {
+				index = grid.gridToWorld(Math::Vector3(x, 0, z));
+				if (createHeightmapJob(index, chunkSize))
+					newHmapJobs++;
+			}
+
+			for (int y = 0; y < gridSize.y; y++) {
+
+				if (!chunks[z][y][x] && hmaps[z][x]) {
+					index = grid.gridToWorld(Math::Vector3(x, y, z));
+					if (createChunkJob(index, chunkSize, hmaps[z][x]))
+						newChunkJobs++;
+				}
+
+			}
+		}
+	}
+
+	job_lock.unlock();
+	chunks_lock.unlock();
+	if (this->jobsToDo.size()) {
+		D("[helper0 " << threadID << "]\tnew jobs: " << newChunkJobs << " chunks, " << newHmapJobs << " hmaps, total: " << this->jobsToDo.size() << "\n")
+		D("[helper0 " << threadID << "]\tnotifying all...\n")
+		this->cv.notify_all();
+	}
+}
+
+void	ChunkGenerator::updateChunkJobsDone(ChunkGrid& grid) {
+	std::unique_lock<std::mutex> chunks_lock(grid.chunks_mutex);
+	std::unique_lock<std::mutex> job_lock(this->job_mutex);
+	if (this->jobsDone.empty()) {
+		//D(<< "No jobs to deliver...\n")
+		return;
+	}
+	JobBuildGenerator* job = nullptr;
+
+	while (this->jobsDone.size()) {
+		job = this->jobsDone.front();
+		this->jobsDone.pop_front();
+
+		if (!job->done) {
+			std::cerr << "job not done but is in the jobsDone list: " << job << job->index << "\n";
+			std::cerr << "exiting...\n";
+			Misc::breakExit(-14);
+		}
+		#ifdef USE_OLD_GENERATOR
+		job->deliver(*this);
+		#else
+		job->deliver(*this, grid);
+		#endif
+		delete job;//no custom destructor: nothing to delete manually for now
+	}
+	if (!this->jobsDone.empty()) {
+		std::cerr << "jobsDone not empty, wth? : " << this->jobsDone.size() << "\nexiting...\n";
+		Misc::breakExit(-14);
+	}
+	//this->chunksChanged = true;
+}
+
+void	ChunkGenerator::executeAllJobs(PerlinSettings& perlinSettings, std::string& threadIDstr) {
+	JobBuildGenerator* job = nullptr;
+	std::unique_lock<std::mutex> job_lock(this->job_mutex);
+
+	while (!this->jobsToDo.empty()) {
+		// grab job
+		//D(<< threadIDstr << "grabbing job\n")
+		job = this->jobsToDo.front();
+		this->jobsToDo.pop_front();
+		job->assigned = true;
+
+		job_lock.unlock();
+		job->execute(perlinSettings);
+		job_lock.lock();
+
+		job->assigned = false;
+		if (job->done)
+			this->jobsDone.push_back(job);
+		else
+			this->jobsToDo.push_back(job);
+
+		//D(<< threadIDstr << "job done " << job->index << "\n")
+		job = nullptr;
+	}
+	D(threadIDstr << "nomore job found... \n")
+}
+
+void	ChunkGenerator::th_builders(GLFWwindow* context) {
+	D(__PRETTY_FUNCTION__ << "\n")
+		//glfwMakeContextCurrent(context);
+		std::thread::id threadID = std::this_thread::get_id();
+	std::stringstream ss;
+	ss << threadID;
+	std::string	threadIDstr = "[" + ss.str() + "]\t";
+	D(threadIDstr << " started\n")
+
+		//build job variables
+		PerlinSettings		perlinSettings(this->settings);//if they change later, we have to update them, cpy them when finding a job?
+	JobBuildGenerator* job = nullptr;
+	unsigned int		thread_jobsdone = 0;
+	std::unique_lock<std::mutex> job_lock(this->job_mutex);
+
+	while (!this->terminateThreads) {
+		if (!this->jobsToDo.empty()) {
+			// grab job
+			//D(threadIDstr << "grabbing job\n")
+			job = this->jobsToDo.front();
+			this->jobsToDo.pop_front();
+			job->assigned = true;
+
+			job_lock.unlock();
+			job->execute(perlinSettings);
+			job_lock.lock();
+
+			job->assigned = false;
+			if (job->done) {
+				this->jobsDone.push_back(job);
+				thread_jobsdone++;
+			}
+			else
+				this->jobsToDo.push_back(job);
+
+			//D(threadIDstr << "job done " << job->index << "\n")
+			job = nullptr;
+		}
+		//else {
+		//	D(threadIDstr << "no job found... \n")
+		//}
+
+		//D(threadIDstr << "waiting \n")
+		this->cv.wait(job_lock, [this] { return (!this->jobsToDo.empty() || this->terminateThreads); });//wait until jobs list in not empty
+		//D(threadIDstr << "waking up from cv.wait() \n")
+	}
+	job_lock.unlock();
+
+	//D(threadIDstr << "yyy Jobs done : " << thread_jobsdone << ". Exiting...\n")
+	//glfwSetWindowShouldClose(context, GLFW_TRUE);
+	//glfwMakeContextCurrent(nullptr);
+}
+
+bool	ChunkGenerator::try_deleteUnusedData() {
+	if (this->trash_mutex.try_lock()) {
+		this->_deleteUnusedData();
+		this->trash_mutex.unlock();
+		return true;
+	}
+	return false;
+}
+
+void	ChunkGenerator::_deleteUnusedData() {
+	//todo : use unique_ptr in the vectors
+	size_t size = this->trashHeightMaps.size();
+	if (size) {
+		for (auto it = this->trashHeightMaps.begin(); it != this->trashHeightMaps.end(); /*it++;*/) { //avoid it invalidation, inc manually when needed
+			if ((*it)->getdisposedCount() == 0) {
+				delete (*it);
+				it = this->trashHeightMaps.erase(it);
+			}
+			else {
+				it++;
+			}
+		}
+		D(" X deleted hmaps: " << (size - this->trashHeightMaps.size()) << "\n")
+	}
+	size = this->trashChunks.size();
+	if (size) {
+		for (auto& ptr : this->trashChunks) {
+			delete ptr;
+			ptr = nullptr;
+		}
+		D(" X deleted chunks: " << (size - this->trashChunks.size()) << "\n")
+			this->trashChunks.erase(std::remove(this->trashChunks.begin(), this->trashChunks.end(), nullptr), this->trashChunks.end());
+	}
+}
+
+#endif
