@@ -24,11 +24,7 @@ class JobBuildGenerator : public Job
 {
 public:
 	virtual bool	execute(PerlinSettings& perlinSettings) = 0;
-	#ifdef USE_OLD_GENERATOR
-	virtual void	deliver(ChunkGenerator& generator) const = 0;
-	#else
 	virtual void	deliver(ChunkGenerator& generator, ChunkGrid& grid) const = 0;
-	#endif
 	Math::Vector3	index;//world
 	Math::Vector3	chunkSize;
 protected:
@@ -40,11 +36,7 @@ class JobBuildHeighMap : public JobBuildGenerator
 public:
 	JobBuildHeighMap(Math::Vector3 index, Math::Vector3 chunk_size);
 	virtual bool	execute(PerlinSettings& perlinSettings);
-	#ifdef USE_OLD_GENERATOR
-	virtual void	deliver(ChunkGenerator& generator) const;
-	#else
 	virtual	void	deliver(ChunkGenerator& generator, ChunkGrid& grid) const;
-	#endif
 	HeightMap* hmap = nullptr;
 };
 
@@ -53,11 +45,7 @@ class JobBuildChunk : public JobBuildGenerator
 public:
 	JobBuildChunk(Math::Vector3 index, Math::Vector3 chunk_size, HeightMap* hmap_ptr);
 	virtual bool	execute(PerlinSettings& perlinSettings);
-	#ifdef USE_OLD_GENERATOR
-	virtual void	deliver(ChunkGenerator& generator) const;
-	#else
 	virtual void	deliver(ChunkGenerator& generator, ChunkGrid& grid) const;
-	#endif
 
 	HeightMap* hmap = nullptr;
 	Chunk* chunk = nullptr;

@@ -17,6 +17,15 @@
 */
 #define TESSELATION_LVLS 6
 
+#define	PRINT_INDEX		0b10000000
+#define	PRINT_POS		0b01000000
+#define	PRINT_SIZE		0b00100000
+#define	PRINT_ROOT		0b00010000
+#define	PRINT_MESHBP	0b00001000
+#define	PRINT_MESH		0b00000100
+#define PRINT_VERTEX	0b00000010
+#define PRINT_INDICES	0b00000001
+#define	PRINT_ALL		0b11111111
 
 class Chunk //could inherit from Object
 {
@@ -26,20 +35,20 @@ public:
 
 	Chunk(const Math::Vector3 &chunk_index, const Math::Vector3 &chunk_size, PerlinSettings &perlinSettings, HeightMap *map = nullptr); //if a hmap is specified, its sizes must fit, undefined behavior if sizes are too small
 	~Chunk();
-	std::string toString() const;
+	std::string toString(uint8_t flags = PRINT_ALL) const;
 
-	Math::Vector3 index;
-	Math::Vector3 pos;
-	Math::Vector3 size;
+	Math::Vector3	index;
+	Math::Vector3	pos;
+	Math::Vector3	size;
 #ifdef OCTREE_OLD
-	Octree_old *root;
+	Octree_old*		root;
 #else
-	Octree<Voxel> *root;
+	Octree<Voxel>*	root;
 #endif
 
 	//opengl
-	Obj3dBP *meshBP[TESSELATION_LVLS];//1,2,4,8,16,32 : sizes of smallest voxel 
-	Obj3d	*mesh[TESSELATION_LVLS];//same
+	Obj3dBP*	meshBP[TESSELATION_LVLS];//1,2,4,8,16,32 : sizes of smallest voxel 
+	Obj3d*		mesh[TESSELATION_LVLS];//same
 
 	void	glth_buildMesh(); //with _vertexArray
 	int		buildVertexArraysFromOctree(Octree<Voxel>* root, Math::Vector3 pos_offset = Math::Vector3(0, 0, 0), const uint8_t desiredTessLevel = 0, const double* threshold = nullptr);

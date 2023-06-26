@@ -157,6 +157,7 @@
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\octree.cpp" />
     <ClCompile Include="src\quadtree.cpp" />
+    <ClCompile Include="src\utils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\chunk.hpp" />
@@ -168,6 +169,7 @@
     <ClInclude Include="include\octree.hpp" />
     <ClInclude Include="include\quadtree.hpp" />
     <ClInclude Include="include\trees.h" />
+    <ClInclude Include="include\utils.hpp" />
     <ClInclude Include="SimpleGL\include\behavior.hpp" />
     <ClInclude Include="SimpleGL\include\behaviormanaged.hpp" />
     <ClInclude Include="SimpleGL\include\blueprint.hpp" />

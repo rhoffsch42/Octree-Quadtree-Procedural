@@ -1,5 +1,7 @@
 #include "chunk.hpp"
-#include <iostream>
+#include "trees.h"
+//#include <iostream>
+#include <sstream>
 #include <set>
 
 Obj3dBP* Chunk::cubeBlueprint = nullptr;
@@ -435,11 +437,34 @@ int	Chunk::buildVertexArrayFromOctree_homogeneous(Octree<Voxel>* root, Math::Vec
 }
 #endif
 
-std::string		Chunk::toString() const {
+std::string		Chunk::toString(uint8_t flags) const {
 	std::stringstream ss;
-	ss << "index: " << this->index << "\n";
-	ss << "pos: " << this->pos << "\n";
-	ss << "size: " << this->size << "\n";
-	ss << "root: " << this->root << "\n";
+
+	if (FLAG_HAS(flags, PRINT_INDEX))
+		ss << "Chunk world index" << this->index << " ";
+	if (FLAG_HAS(flags, PRINT_POS))
+		ss << "pos" << this->pos << " ";
+	if (FLAG_HAS(flags, PRINT_SIZE))
+		ss << "size" << this->size << " ";
+	if (FLAG_HAS(flags, PRINT_ROOT))
+		ss << "root: " << this->root << " ";
+	if (FLAG_HAS(flags, PRINT_MESHBP))
+		ss << "meshBP: " << this->meshBP[0] << " ";
+	if (FLAG_HAS(flags, PRINT_MESH))
+		ss << "mesh: " << this->mesh[0] << " ";
+
+	if (FLAG_HAS(flags, PRINT_MESH)) {
+		ss << "[";
+		for (int i = 0; i < TESSELATION_LVLS; i++) {
+			ss << (this->mesh[i] ? "*" : ".");
+		}
+		ss << "] ";
+	}
+
+	if (FLAG_HAS(flags, PRINT_VERTEX))
+		ss << "vertexArray size: " << this->_vertexArray->size() << " ";
+	if (FLAG_HAS(flags, PRINT_INDICES))
+		ss << "indices size: " << this->_indices->size() << " ";
+
 	return ss.str();
 }

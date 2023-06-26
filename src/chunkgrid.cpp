@@ -30,7 +30,7 @@ void	_deleteUnusedDataLocal(std::vector<Chunk*>* chunk_trash, std::vector<Height
 				it++;
 			}
 		}
-		D(" X deleted hmaps: " << (size - hmap_trash->size()) << "\n")
+		D("deleted hmaps: " << (size - hmap_trash->size()) << "\n")
 	}
 	size = chunk_trash->size();
 	if (size) {
@@ -38,17 +38,17 @@ void	_deleteUnusedDataLocal(std::vector<Chunk*>* chunk_trash, std::vector<Height
 			delete ptr;
 			ptr = nullptr;
 		}
-		D(" X deleted chunks: " << (size - chunk_trash->size()) << "\n")
+		D("deleted chunks: " << (size - chunk_trash->size()) << "\n")
 			chunk_trash->erase(std::remove(chunk_trash->begin(), chunk_trash->end(), nullptr), chunk_trash->end());
 	}
 }
 
-ChunkGrid::ChunkGrid(Math::Vector3 chunk_size, Math::Vector3 grid_size, Math::Vector3 grid_display_size)
-	: _chunkSize(chunk_size), _gridSize(grid_size), _gridDisplaySize(grid_display_size)
+ChunkGrid::ChunkGrid(Math::Vector3 chunk_size, Math::Vector3 grid_size, Math::Vector3 rendered_grid_size)
+	: _chunkSize(chunk_size), _gridSize(grid_size), _renderedGridSize(rendered_grid_size)
 {
 	D(__PRETTY_FUNCTION__ << "\n")
 	D("gridSize : " << this->_gridSize << "\n")
-	D("gridDisplaySize : " << this->_gridDisplaySize << "\n")
+	D("renderedGridSize : " << this->_renderedGridSize << "\n")
 	D("chunkSize : " << this->_chunkSize << "\n")
 
 	this->_heightMaps = new HMapPtr* [this->_gridSize.z];
@@ -70,16 +70,18 @@ ChunkGrid::ChunkGrid(Math::Vector3 chunk_size, Math::Vector3 grid_size, Math::Ve
 		}
 	}
 
+	this->chunksChanged = true;
+	this->gridShifted = true;
 	this->playerChangedChunk = true;
 	this->_gridWorldIndex = Math::Vector3(0, 0, 0);
-	this->_gridDisplayIndex = Math::Vector3(0, 0, 0);
+	this->_renderedGridIndex = Math::Vector3(0, 0, 0);
 
-	//center the player in the grid display
+	//center the player in the rendered grid
 	this->_playerChunkWorldIndex = Math::Vector3(0, 0, 0);
 	this->_playerChunkWorldIndex += Math::Vector3(
-		int(this->_gridDisplaySize.x / 2),
-		int(this->_gridDisplaySize.y / 2),
-		int(this->_gridDisplaySize.z / 2));
+		int(this->_renderedGridSize.x / 2),
+		int(this->_renderedGridSize.y / 2),
+		int(this->_renderedGridSize.z / 2));
 
 	//this->updateGrid(Math::Vector3(0,0,0));
 }
@@ -109,30 +111,6 @@ ChunkGrid::~ChunkGrid() {
 		delete this->_fullMeshBP;
 }
 
-void			ChunkGrid::th_updater(Cam* cam) {
-	Math::Vector3 playerPos;
-	/*
-	while (!this->terminateThreads) {//no mutex for reading?
-		this->mutex_cam.lock();//do we really need it ? only reading
-		playerPos = cam->local.getPos();
-		this->mutex_cam.unlock();
-
-		if (this->updateGrid(playerPos)) {//player changed chunk
-			D("[helper0] grid updated with player pos, as he changed chunk\n")
-		}
-		this->updateChunkJobsDone();//before updateChunkJobsToDo()
-		//D("[helper0] jobs done updated\n")
-		this->updateChunkJobsToDo();
-		//D("[helper0] jobsToDo updated\n")
-
-		D_(std::cout << ".")
-		std::this_thread::sleep_for(100ms);
-	}
-	*/
-
-	D("[helper0] exiting...\n")
-}
-
 bool			ChunkGrid::updateGrid(Math::Vector3 player_pos) {
 	std::unique_lock<std::mutex> chunks_lock(this->chunks_mutex);
 
@@ -147,32 +125,28 @@ bool			ChunkGrid::updateGrid(Math::Vector3 player_pos) {
 	if (diffGrid.len() == 0)
 		return true;
 
+	D("Grid must be shifted, translation...\n")
+	D("checks...\n" << this->getGridChecks())
 	std::vector<Chunk*>		chunksToDelete;
 	std::vector<HeightMap*>	hmapsToDelete;
 	this->_translateGrid(diffGrid, &chunksToDelete, &hmapsToDelete);
 
 	//debug checks before rebuild
 	D("checks...\n" << this->getGridChecks())
+	D("removed hmaps  \t" << hmapsToDelete.size() << "\n")
+	D("removed chunks \t" << chunksToDelete.size() << "\n")
 	this->_chunksReadyForMeshes = false;
 	chunks_lock.unlock();
 
-	#ifdef USE_OLD_GENERATOR
-	this->cv.notify_all();
-	//send useless data to dustbins
-	generator.trash_mutex.lock();
-	generator.trashHeightMaps.insert(generator.trashHeightMaps.end(), hmapsToDelete.begin(), hmapsToDelete.end());
-	generator.trashChunks.insert(generator.trashChunks.end(), chunksToDelete.begin(), chunksToDelete.end());
-	generator.trash_mutex.unlock();
-	#else
-	_deleteUnusedDataLocal(&chunksToDelete, &hmapsToDelete);
-	#endif
+	D("Deleting...\n")
+	_deleteUnusedDataLocal(&chunksToDelete, &hmapsToDelete);//todo: this must be sent to the trashes in the generator, and let thread do it
 	return true;
 }
 
 void			ChunkGrid::_updatePlayerPosition(const Math::Vector3& player_pos) {
 	/*
 		update chain :
-		player_pos > playerChunkWorldIndex > gridDisplayIndex > gridIndex
+		player_pos > playerChunkWorldIndex > renderedGridIndex > gridIndex
 	*/
 	this->_playerWorldPos = player_pos;
 	this->_playerChunkWorldIndex.x = int(this->_playerWorldPos.x / this->_chunkSize.x);
@@ -186,112 +160,106 @@ void			ChunkGrid::_updatePlayerPosition(const Math::Vector3& player_pos) {
 		this->_playerChunkWorldIndex.z--;
 }
 Math::Vector3	ChunkGrid::_calculateGridDiff(Math::Vector3 playerdiff) {
-	Math::Vector3	diffGrid;
+	Math::Vector3	gridDiff;
 	Math::Vector3	new_gridIndex;
-	Math::Vector3	new_worldDisplayIndex = this->_gridWorldIndex + this->_gridDisplayIndex + playerdiff;
-	Math::Vector3	relDisplayIndex = new_worldDisplayIndex - this->_gridWorldIndex;
+	Math::Vector3	new_renderedWorldIndex = this->_gridWorldIndex + this->_renderedGridIndex + playerdiff;
+	Math::Vector3	relative_renderedIndex = new_renderedWorldIndex - this->_gridWorldIndex;
 	/*
-		moving the display grid in the world, and adapt the memory grid after it, independently from the original player offset
+		moving the rendered grid in the world, and adapt the memory grid after it, independently from the original player offset
 		if for any reason the player offset changes, this will not catch it and will continue moving grids based on above diff
 	*/
 
-	if (relDisplayIndex.x < 0)
-		new_gridIndex.x = std::min(new_worldDisplayIndex.x, this->_gridWorldIndex.x);
+	if (relative_renderedIndex.x < 0)
+		new_gridIndex.x = std::min(new_renderedWorldIndex.x, this->_gridWorldIndex.x);
 	else
-		new_gridIndex.x = std::max(new_worldDisplayIndex.x + this->_gridDisplaySize.x - this->_gridSize.x, this->_gridWorldIndex.x);
-	if (relDisplayIndex.y < 0)
-		new_gridIndex.y = std::min(this->_gridWorldIndex.y, new_worldDisplayIndex.y);
+		new_gridIndex.x = std::max(new_renderedWorldIndex.x + this->_renderedGridSize.x - this->_gridSize.x, this->_gridWorldIndex.x);
+	if (relative_renderedIndex.y < 0)
+		new_gridIndex.y = std::min(this->_gridWorldIndex.y, new_renderedWorldIndex.y);
 	else
-		new_gridIndex.y = std::max(new_worldDisplayIndex.y + this->_gridDisplaySize.y - this->_gridSize.y, this->_gridWorldIndex.y);
-	if (relDisplayIndex.z < 0)
-		new_gridIndex.z = std::min(this->_gridWorldIndex.z, new_worldDisplayIndex.z);
+		new_gridIndex.y = std::max(new_renderedWorldIndex.y + this->_renderedGridSize.y - this->_gridSize.y, this->_gridWorldIndex.y);
+	if (relative_renderedIndex.z < 0)
+		new_gridIndex.z = std::min(this->_gridWorldIndex.z, new_renderedWorldIndex.z);
 	else
-		new_gridIndex.z = std::max(new_worldDisplayIndex.z + this->_gridDisplaySize.z - this->_gridSize.z, this->_gridWorldIndex.z);
-	diffGrid = new_gridIndex - this->_gridWorldIndex;
-	this->_gridDisplayIndex = new_worldDisplayIndex - new_gridIndex;
+		new_gridIndex.z = std::max(new_renderedWorldIndex.z + this->_renderedGridSize.z - this->_gridSize.z, this->_gridWorldIndex.z);
+	gridDiff = new_gridIndex - this->_gridWorldIndex;
+	this->_renderedGridIndex = new_renderedWorldIndex - new_gridIndex;
 	this->_gridWorldIndex = new_gridIndex;
 
-	//D("\t--gridSize       \t" << this->gridSize << "\n")
-	//D("\t--gridDisplaySize\t" << this->gridDisplaySize << "\n")
+	//D("\t--_gridSize             \t" << this->_gridSize << "\n")
+	//D("\t--renderedGridSize      \t" << this->renderedGridSize << "\n")
 	D("\t--playerdiff            \t" << playerdiff << "\n")
-	D("\t--diffGrid              \t" << diffGrid << "\n")
+	D("\t--gridDiff              \t" << gridDiff << "\n")
 	D("\t--_gridWorldIndex       \t" << this->_gridWorldIndex << "\n")
 	D("\t--_playerChunkWorldIndex\t" << this->_playerChunkWorldIndex << "\n")
-	D("\t--_gridDisplayIndex     \t" << this->_gridDisplayIndex << "\n")
+	D("\t--_renderedGridIndex    \t" << this->_renderedGridIndex << "\n")
 
-	return diffGrid;
+	return gridDiff;
 }
 void			ChunkGrid::_translateGrid(Math::Vector3 gridDiff, std::vector<Chunk*>* chunksToDelete, std::vector<HeightMap*>* hmapsToDelete) {
 	//grid (memory)
-	std::vector<int>		indexZ;
-	std::vector<int>		indexY;
-	std::vector<int>		indexX;
+	std::vector<int>		indexes_Z;
+	std::vector<int>		indexes_Y;
+	std::vector<int>		indexes_X;
 	std::vector<Chunk*>		chunks;
 	std::vector<HeightMap*>	hmaps;
+	chunks.reserve(this->_gridSize.x * this->_gridSize.y * this->_gridSize.z);
+	hmaps.reserve(this->_gridSize.x * this->_gridSize.z);
 
 	//store the chunks and heightmaps with their new index 3D
-	for (int z = 0; z < this->_gridSize.z; z++) {
-		for (int y = 0; y < this->_gridSize.y; y++) {
+	for (int y = 0; y < this->_gridSize.y; y++) {//important that Y is the first loop, so the first z*x indexes of hmaps array are all valid
+		for (int z = 0; z < this->_gridSize.z; z++) {
 			for (int x = 0; x < this->_gridSize.x; x++) {
-				indexZ.push_back(z - gridDiff.z);//each chunk goes in the opposite way of the player movement
-				indexY.push_back(y - gridDiff.y);
-				indexX.push_back(x - gridDiff.x);
+				indexes_Z.push_back(z - gridDiff.z);//each chunk goes in the opposite way of the player movement
+				indexes_Y.push_back(y - gridDiff.y);
+				indexes_X.push_back(x - gridDiff.x);
 				chunks.push_back(this->_grid[z][y][x]);
 				this->_grid[z][y][x] = nullptr; // if the main RENDER thread reads here, he is fucked
 				if (y == 0) {// there is only one hmap for an entire column of chunks
 					hmaps.push_back(this->_heightMaps[z][x]);
 					this->_heightMaps[z][x] = nullptr;// if the main RENDER thread reads here, he is fucked
 				}
-				else {
-					hmaps.push_back(nullptr);	// to match the chunks index for the next hmap
-				}
+				//else { // useless as all hmaps have already been pushed (Y=0 loop was done first)
+				//	hmaps.push_back(nullptr);	// to match the chunks index for the next hmap 
+				//}
 			}
 		}
 	}
 	D("chunks referenced: " << chunks.size() << "\n")
 	D("hmaps referenced (with nulls): " << hmaps.size() << "\n")
 
-	//reassign the chunks
 	D("reassigning chunks...\n")
 	for (size_t n = 0; n < chunks.size(); n++) {
-		if (indexZ[n] < this->_gridSize.z && indexY[n] < this->_gridSize.y && indexX[n] < this->_gridSize.x \
-			&& indexZ[n] >= 0 && indexY[n] >= 0 && indexX[n] >= 0) {
-			this->_grid[indexZ[n]][indexY[n]][indexX[n]] = chunks[n];
+		if (indexes_Z[n] < this->_gridSize.z && indexes_Y[n] < this->_gridSize.y && indexes_X[n] < this->_gridSize.x \
+			&& indexes_Z[n] >= 0 && indexes_Y[n] >= 0 && indexes_X[n] >= 0) {
+			this->_grid[indexes_Z[n]][indexes_Y[n]][indexes_X[n]] = chunks[n];
 		}
 		else {//is outside of the memory grid
 			chunksToDelete->push_back(chunks[n]);
-			//meaning the opposite side has to be nulled
-			//int x = indexX[n] + this->_gridSize.x * (indexX[n] < 0 ? 1 : -1)
-			//int y = indexY[n] + this->_gridSize.y * (indexY[n] < 0 ? 1 : -1)
-			//int iz = indexZ[n] + this->_gridSize.z * (indexZ[n] < 0 ? 1 : -1)
-			//int x = int(indexX[n] + this->_gridSize.x) % int(this->_gridSize.x);
-			//int y = int(indexY[n] + this->_gridSize.y) % int(this->_gridSize.y);
-			//int z = int(indexZ[n] + this->_gridSize.z) % int(this->_gridSize.z);
-			//this->_grid[z][y][x] = nullptr;
 		}
 	}
 
-	//reassign the heightmaps
 	D("reassigning heightmaps...\n")
-	for (size_t n = 0; n < hmaps.size(); n = n + 4) {
+	//unsigned int hmap_not_assigned = 0;
+	//unsigned int hmap_null_not_assigned = 0;
+	size_t step = this->_gridSize.x * this->_gridSize.z;
+	for (size_t n = 0; n < step; n++) {
 		if (hmaps[n]) {
-			if (indexZ[n] < this->_gridSize.z && indexX[n] < this->_gridSize.x \
-				&& indexZ[n] >= 0 && indexX[n] >= 0) {
-				this->_heightMaps[indexZ[n]][indexX[n]] = hmaps[n];
+			if (indexes_Z[n] < this->_gridSize.z && indexes_X[n] < this->_gridSize.x \
+				&& indexes_Z[n] >= 0 && indexes_X[n] >= 0) {
+				this->_heightMaps[indexes_Z[n]][indexes_X[n]] = hmaps[n];
 			}
 			else {//is outside of the memory grid
 				hmapsToDelete->push_back(hmaps[n]);
-				//meaning the opposite side has to be nulled
-				//int x = indexX[n] + this->gridSize.x * (indexX[n] < 0 ? 1 : -1)
-				//int z = indexZ[n] + this->gridSize.z * (indexZ[n] < 0 ? 1 : -1)
-				/*
-				int x = int(indexX[n] + this->gridSize.x) % int(this->gridSize.x);
-				int z = int(indexZ[n] + this->gridSize.z) % int(this->gridSize.z);
-				this->heightMaps[z][x] = nullptr;
-				*/
+				//hmap_not_assigned++;
 			}
 		}
+		//else {
+		//	hmap_null_not_assigned++;
+		//}
 	}
+	//D("hmap_not_assigned : " << hmap_not_assigned << "\n")
+	//D("hmap_null_not_assigned : " << hmap_null_not_assigned << "\n")
+	this->gridShifted = true;
 }
 
 void			ChunkGrid::glth_loadChunksToGPU() {
@@ -316,18 +284,18 @@ void			ChunkGrid::glth_loadChunksToGPU() {
 		}
 	}
 }
-void			ChunkGrid::pushDisplayedChunks(std::list<Object*>* dst, unsigned int tesselation_lvl) const {
+void			ChunkGrid::pushRenderedChunks(std::list<Object*>* dst, unsigned int tesselation_lvl) const {
 	/*
 	same as in glth_loadChunks() but more complicated
 	we would need to select the chunks to remove (change the render list with a map?),
 	and push only the new chunks
 	*/
-	D("Pushing chunks to a list<Object*> ...\n")
+	//D("Pushing rendered chunks to a list<Object*> ...\n")
 	Chunk* c = nullptr;
-	Math::Vector3	endDisplay = this->_gridDisplayIndex + this->_gridDisplaySize;
-	for (unsigned int k = this->_gridDisplayIndex.z; k < endDisplay.z; k++) {
-		for (unsigned int j = this->_gridDisplayIndex.y; j < endDisplay.y; j++) {
-			for (unsigned int i = this->_gridDisplayIndex.x; i < endDisplay.x; i++) {
+	Math::Vector3	renderedGridEndIndex = this->_renderedGridIndex + this->_renderedGridSize;
+	for (unsigned int k = this->_renderedGridIndex.z; k < renderedGridEndIndex.z; k++) {
+		for (unsigned int j = this->_renderedGridIndex.y; j < renderedGridEndIndex.y; j++) {
+			for (unsigned int i = this->_renderedGridIndex.x; i < renderedGridEndIndex.x; i++) {
 				c = this->_grid[k][j][i];
 				//at this point, the chunk might not be generated yet
 				if (c && c->mesh[tesselation_lvl]) {//mesh can be null if the chunk is empty (see glth_buildMesh())
@@ -338,18 +306,18 @@ void			ChunkGrid::pushDisplayedChunks(std::list<Object*>* dst, unsigned int tess
 		}
 	}
 }
-unsigned int	ChunkGrid::pushDisplayedChunks(Object** dst, unsigned int tesselation_lvl, unsigned int starting_index) const {
+unsigned int	ChunkGrid::pushRenderedChunks(Object** dst, unsigned int tesselation_lvl, unsigned int starting_index) const {
 	/*
 		same problem as in glth_loadChunks() but more complicated
 		we would need to select the chunks to remove (change the render list with a map?),
 		and push only the new chunks
 	*/
-	D("Pushing chunks to a Object* array ...\n")
+	//D("Pushing rendered chunks to a Object* array ...\n")
 	Chunk* c = nullptr;
-	Math::Vector3	endDisplay = this->_gridDisplayIndex + this->_gridDisplaySize;
-	for (unsigned int k = this->_gridDisplayIndex.z; k < endDisplay.z; k++) {
-		for (unsigned int j = this->_gridDisplayIndex.y; j < endDisplay.y; j++) {
-			for (unsigned int i = this->_gridDisplayIndex.x; i < endDisplay.x; i++) {
+	Math::Vector3	renderedGridEndIndex = this->_renderedGridIndex + this->_renderedGridSize;
+	for (unsigned int k = this->_renderedGridIndex.z; k < renderedGridEndIndex.z; k++) {
+		for (unsigned int j = this->_renderedGridIndex.y; j < renderedGridEndIndex.y; j++) {
+			for (unsigned int i = this->_renderedGridIndex.x; i < renderedGridEndIndex.x; i++) {
 				c = this->_grid[k][j][i];
 				//at this point, the chunk might not be generated yet
 				if (c && c->mesh[tesselation_lvl]) {//mesh can be null if the chunk is empty (see glth_buildMesh())
@@ -361,7 +329,7 @@ unsigned int	ChunkGrid::pushDisplayedChunks(Object** dst, unsigned int tesselati
 		}
 	}
 	dst[starting_index] = nullptr;
-	//D("pushDisplayedChunks() ret starting_index " << starting_index << "\n")
+	//D("pushRenderedChunks() ret starting_index " << starting_index << "\n")
 	return starting_index;
 }
 
@@ -379,7 +347,6 @@ void			ChunkGrid::replaceHeightMap(HeightMap* new_hmap, Math::Vector3 index) {
 		delete old;
 	}
 }
-
 void			ChunkGrid::replaceChunk(Chunk* new_chunk, Math::Vector3 index) {
 	unsigned int	x = index.x;
 	unsigned int	y = index.y;
@@ -390,18 +357,21 @@ void			ChunkGrid::replaceChunk(Chunk* new_chunk, Math::Vector3 index) {
 	}
 	Chunk* old = this->_grid[z][y][x];
 	this->_grid[z][y][x] = new_chunk;
+	this->chunksChanged = true;
 	if (old) {
 		D("Deleting Chunk in grid[" << z << "][" << y << "][" << x << "]" << old << ", replaced by " << new_chunk << "\n")
-		delete old;
+		D(" >> " << old->toString() << "\n")
+		D(" >> " << new_chunk->toString() << "\n")
+		delete old;//should send to trash and not delete ! need IDisposable
 	}
 }
 
 HMapPtr**		ChunkGrid::getHeightMaps() const { return this->_heightMaps; }
 ChunkPtr***		ChunkGrid::getGrid() const { return this->_grid; }
 Math::Vector3	ChunkGrid::getSize() const { return this->_gridSize; }
-Math::Vector3	ChunkGrid::getDisplaySize() const { return this->_gridDisplaySize; }
+Math::Vector3	ChunkGrid::getRenderedSize() const { return this->_renderedGridSize; }
 Math::Vector3	ChunkGrid::getChunkSize() const { return this->_chunkSize; }
-Math::Vector3	ChunkGrid::getDisplayIndex() const { return Math::Vector3(); }
+Math::Vector3	ChunkGrid::getRenderedGridIndex() const { return Math::Vector3(); }// ???
 Math::Vector3	ChunkGrid::getWorldIndex() const { return this->_gridWorldIndex; }
 Math::Vector3	ChunkGrid::getPlayerChunkWorldIndex() const { return this->_playerChunkWorldIndex; }
 Obj3dBP*		ChunkGrid::getFullMeshBP() const { return this->_fullMeshBP; }
@@ -417,7 +387,11 @@ std::string		ChunkGrid::toString() const {
 			for (int i = 0; i < this->_gridSize.x; i++) {
 				ss << "[" << k << "]";
 				ss << "[" << j << "]";
-				ss << "[" << i << "]\t" << this->_grid[k][j][i]->toString() << "\n";
+				ss << "[" << i << "] " << this->_grid[k][j][i] << "\t";
+				if (this->_grid[k][j][i])
+					ss << this->_grid[k][j][i]->toString() << "\n";
+				else
+					ss << "nullptr\n";
 			}
 		}
 	}
@@ -447,13 +421,16 @@ std::string		ChunkGrid::getGridChecks() const {
 			}
 		}
 	}
+	int barsize = 20;
+	int total = hmnonulls + hmnulls;
+	int bar = barsize * hmnonulls / total;
+	ss << " > Grid checks: \n";
+	ss << " > Heightmaps:\t[" << std::string(bar, '=') << std::string(barsize - bar, ' ') << "] ";
+	ss << hmnonulls << " nonull, " << hmnulls << " nulls, " << hmnonulls + hmnulls << " total\n";
+	total = nonulls + nulls;
+	bar = barsize * nonulls / total;
+	ss << " > Chunks:\t[" << std::string(bar, '=') << std::string(barsize - bar, ' ') << "] ";
+	ss << nonulls << " nonull, " << nulls << " nulls, " << nonulls + nulls << " total\n";
 
-	ss << " > grid checks\n";
-	ss << " > nonull: " << nonulls << "\n";
-	ss << " > nulls: " << nulls << "\n";
-	ss << " >> total: " << nonulls + nulls << "\n";
-	ss << " > hmap nonull: " << hmnonulls << "\n";
-	ss << " > hmnulls: " << hmnulls << "\n";
-	ss << " >> total: " << hmnonulls + hmnulls << "\n";
 	return ss.str();
 }

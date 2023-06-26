@@ -1,6 +1,21 @@
 #include "dispose.hpp"
 #include "misc.hpp"
 
+#ifdef TREES_DEBUG
+ #define TREES_DISPOSE_DEBUG
+#endif
+#ifdef TREES_DISPOSE_DEBUG 
+ #define D(x) std::cout << "[Dispose] " << x ;
+ #define D_(x) x ;
+ #define D_SPACER "-- dispose.cpp -------------------------------------------------\n"
+ #define D_SPACER_END "----------------------------------------------------------------\n"
+#else 
+ #define D(x)
+ #define D_(x)
+ #define D_SPACER ""
+ #define D_SPACER_END ""
+#endif
+
 IDisposable::IDisposable() {}
 IDisposable::IDisposable(unsigned int max_disposed) : _max(max_disposed) {}
 IDisposable::~IDisposable() {
