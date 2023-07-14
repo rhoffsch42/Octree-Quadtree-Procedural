@@ -192,7 +192,7 @@ void	ChunkGenerator::updateJobsToDo(ChunkGrid& grid) {
 		D("[helper0 " << threadID << "]\tnotifying all...\n")
 		this->cv.notify_all();
 	}
-	job_lock.unlock();
+	job_lock.unlock();// should be done automaticaly with unique_lock
 }
 
 void	ChunkGenerator::updateJobsDone(ChunkGrid& grid) {
@@ -252,15 +252,15 @@ void	ChunkGenerator::executeAllJobs(PerlinSettings& perlinSettings, std::string&
 
 void	ChunkGenerator::th_builders(GLFWwindow* context) {
 	D(__PRETTY_FUNCTION__ << "\n")
-		//glfwMakeContextCurrent(context);
-		std::thread::id threadID = std::this_thread::get_id();
+	//glfwMakeContextCurrent(context);
+	std::thread::id threadID = std::this_thread::get_id();
 	std::stringstream ss;
 	ss << threadID;
 	std::string	threadIDstr = "[" + ss.str() + "]\t";
 	D(threadIDstr << " started\n")
 
-		//build job variables
-		PerlinSettings		perlinSettings(this->settings);//if they change later, we have to update them, cpy them when finding a job?
+	//build job variables
+	PerlinSettings		perlinSettings(this->settings);//if they change later, we have to update them, cpy them when finding a job?
 	JobBuildGenerator* job = nullptr;
 	unsigned int		thread_jobsdone = 0;
 	std::unique_lock<std::mutex> job_lock(this->job_mutex);
