@@ -18,7 +18,7 @@ class JobBuildGenerator;
 //#define CHUNK_GEN_DEBUG
 
 //make a class for that
-typedef uint8_t**	hmap;
+//typedef uint8_t**	hmap;
 typedef UIImage*	minimapTile;
 
 /*

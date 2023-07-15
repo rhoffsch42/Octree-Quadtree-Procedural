@@ -1154,10 +1154,10 @@ static void		keyCallback_ocTree(GLFWwindow* window, int key, int scancode, int a
 }
 
 unsigned int	grabObjects(ChunkGenerator& generator, ChunkGrid& grid, OctreeManager& manager, Obj3dBP& cubebp, Obj3dPG& obj3d_prog, Texture* tex) {
-	D(__PRETTY_FUNCTION__ << "\n")
+	D(__PRETTY_FUNCTION__ << "\n");
 	INFO(grid.getGridChecks() << "\n");
 
-#if M_DRAW_MINIMAP == 1
+	#if M_DRAW_MINIMAP == 1
 		//assemble minimap (currently inverted on the Y axis)
 		float	zmax = generator.gridSize.z * generator.chunkSize.z;//for gl convertion
 	for (unsigned int k = 0; k < generator.gridSize.z; k++) {
@@ -1173,7 +1173,7 @@ unsigned int	grabObjects(ChunkGenerator& generator, ChunkGrid& grid, OctreeManag
 		}
 	}
 	//blitToWindow(nullptr, GL_COLOR_ATTACHMENT0, &uiBaseImage);
-#endif
+	#endif
 
 	//todo use smart pointers (not for renderlistVoxels)
 	for (auto i : manager.renderlist)
@@ -1201,20 +1201,21 @@ unsigned int	grabObjects(ChunkGenerator& generator, ChunkGrid& grid, OctreeManag
 	std::stringstream polygon_debug;
 	polygon_debug << "chunks polygons: ";
 
+	GridGeometry	geometry = grid.getGeometry();
 	// rendered box
-	Math::Vector3	startRendered = grid.getRenderedGridIndex();
-	Math::Vector3	endRendered = startRendered + grid.getRenderedSize();
+	Math::Vector3	startRendered = geometry.renderedGridIndex;// grid.getRenderedGridIndex();
+	Math::Vector3	endRendered = startRendered + geometry.renderedGridSize; //grid.getRenderedSize();
 #if 0 // all the grid
 	startRendered = Math::Vector3();
-	endRendered = Math::Vector3(generator.gridSize);
+	endRendered = geometry.gridSize; //Math::Vector3(generator.gridSize);
 #endif
 	D(" > rendered " << startRendered << " -> " << endRendered << "\n")
 
 	if (M_DRAW_BOX_GRID) {
-		Math::Vector3 pos = grid.getWorldIndex();
-		pos.scale(grid.getChunkSize());
-		Math::Vector3 scale = grid.getSize();
-		scale.scale(grid.getChunkSize());
+		Math::Vector3 pos = geometry.gridWorldIndex; // grid.getWorldIndex();
+		Math::Vector3 scale = geometry.gridSize;
+		pos.scale(geometry.chunkSize);
+		scale.scale(geometry.chunkSize);
 		Obj3d* cubeGrid = new Obj3d(cubebp, obj3d_prog);
 		cubeGrid->setColor(255, 0, 0);
 		cubeGrid->local.setPos(pos);
@@ -1251,14 +1252,14 @@ unsigned int	grabObjects(ChunkGenerator& generator, ChunkGrid& grid, OctreeManag
 		if (M_MERGE_CHUNKS) {//merge BPs for a single draw call with the renderArrayChunk
 			if (sizeArray) {
 				INFO("Merging all chunks...\n");
-					std::vector<SimpleVertex> vertices;
+				std::vector<SimpleVertex> vertices;
 				std::vector<unsigned int> indices;
 				for (unsigned int x = 0; x < sizeArray; x++) {
 					Obj3d* o = dynamic_cast<Obj3d*>(manager.renderArrayChunk[x]);
 					if (!o) {
-						D("sizeArray " << sizeArray << " | renderArrayChunk_maxsize " << manager.renderArrayChunk_maxsize << " | x " << x << "\n")
-							D("dynamic cast failed on object: " << manager.renderArrayChunk[x] << "\n")
-							Misc::breakExit(456);
+						D("sizeArray " << sizeArray << " | renderArrayChunk_maxsize " << manager.renderArrayChunk_maxsize << " | x " << x << "\n");
+						D("dynamic cast failed on object: " << manager.renderArrayChunk[x] << "\n");
+						Misc::breakExit(456);
 					}
 					Math::Vector3 pos = o->local.getPos();
 					Obj3dBP* bp = o->getBlueprint();
@@ -1268,23 +1269,27 @@ unsigned int	grabObjects(ChunkGenerator& generator, ChunkGrid& grid, OctreeManag
 					vertices.insert(vertices.end(), verts.begin(), verts.end());
 					if (x % 50 == 0) { D_(std::cout << x << " ") }
 				}
-				D_(std::cout << "\n")
+				D_(std::cout << "\n");
 
-					Obj3dBP* fullMeshBP = grid.getFullMeshBP();
+
+				#ifndef RECREATE_FULLMESH
+				// recreating full mesh without updating it in the ChunkGrid:: ?? todo: it should crash when entering a new chunk, check that and fix if needed
+				Obj3dBP* fullMeshBP = grid.getFullMeshBP();
 				Obj3d* fullMesh = grid.getFullMesh();
-				D(std::cout << "Deleting old fullMesh...\n")
-					if (fullMeshBP)
-						delete fullMeshBP;
+				D(std::cout << "Deleting old fullMesh...\n");
+				if (fullMeshBP)
+					delete fullMeshBP;
 				if (fullMesh)
 					delete fullMesh;
-				D(std::cout << "Building new fullMesh...\n")
-					fullMeshBP = new Obj3dBP(vertices, indices, BP_DONT_NORMALIZE);
-				D(std::cout << "BP ready\n")
-					fullMesh = new Obj3d(*fullMeshBP, obj3d_prog);
-				D(std::cout << "Obj3d ready.\n")
-					manager.renderlistChunk.clear();
+				D(std::cout << "Building new fullMesh...\n");
+				fullMeshBP = new Obj3dBP(vertices, indices, BP_DONT_NORMALIZE);
+				D(std::cout << "BP ready\n");
+				fullMesh = new Obj3d(*fullMeshBP, obj3d_prog);
+				D(std::cout << "Obj3d ready.\n");
+				manager.renderlistChunk.clear();
 				manager.renderlistChunk.push_back(fullMesh);
-				D(std::cout << "Done, " << sizeArray << " chunks merged.\n")
+				D(std::cout << "Done, " << sizeArray << " chunks merged.\n");
+				#endif
 			}
 		}
 
@@ -1423,7 +1428,7 @@ unsigned int	grabObjects(ChunkGenerator& generator, ChunkGrid& grid, OctreeManag
 	//INFO("renderArrayChunk: " << sizeArray << "\n");
 	//INFO("renderlistGrid: " << manager.renderlistGrid.size() << "\n");
 	//INFO("cubes grid : " << cubgrid << "\n");
-	//D(D_SPACER_END)
+	//D(D_SPACER_END);
 
 	return total_polygons;
 }
@@ -1992,7 +1997,7 @@ int		main(int ac, char **av) {
 	//scene_procedural();
 	//scene_benchmarks();
 	//scene_checkMemory();
-	//scene_octree();
+	scene_octree();
 	//scene_test_thread();
 	// while(1);
 

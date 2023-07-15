@@ -7,6 +7,16 @@
 typedef Chunk* ChunkPtr;
 typedef HeightMap* HMapPtr;
 
+typedef struct s_grid_gemoetry
+{
+	Math::Vector3	chunkSize;
+	Math::Vector3	gridSize;
+	Math::Vector3	renderedGridSize;
+	Math::Vector3	gridWorldIndex;
+	Math::Vector3	renderedGridIndex;
+	Math::Vector3	playerChunkWorldIndex;
+} GridGeometry;
+
 class ChunkGrid
 {
 public:
@@ -14,28 +24,26 @@ public:
 	~ChunkGrid();
 
 	bool			updateGrid(Math::Vector3 player_pos);
-
 	// Build the chunks meshes and load them to the GPU. Must be executed in the OpenGL thread
 	void			glth_loadChunksToGPU();
 	//push chunks with the asked tesselation level, inside the list dst.
 	void			pushRenderedChunks(std::list<Object*>* dst, unsigned int tesselation_lvl = 0) const;
 	//push chunks with the asked tesselation level, inside the array dst. Then returns the next index (last chunk added + 1)
 	unsigned int	pushRenderedChunks(Object** dst, unsigned int tesselation_lvl = 0, unsigned int starting_index = 0) const;
-
 	void			replaceHeightMap(HeightMap* new_hmap, Math::Vector3 index);
 	void			replaceChunk(Chunk* new_chunkp, Math::Vector3 index);
 
 	HMapPtr**		getHeightMaps() const;
 	ChunkPtr***		getGrid() const;
+	Obj3dBP*		getFullMeshBP() const;
+	Obj3d*			getFullMesh() const;
 	Math::Vector3	getSize() const;
 	Math::Vector3	getRenderedSize() const;
 	Math::Vector3	getChunkSize() const;
 	Math::Vector3	getWorldIndex() const;
 	Math::Vector3	getRenderedGridIndex() const;
 	Math::Vector3	getPlayerChunkWorldIndex() const;
-	Obj3dBP*		getFullMeshBP() const;
-	Obj3d*			getFullMesh() const;
-
+	GridGeometry	getGeometry() const;
 
 	Math::Vector3	worldToGrid(const Math::Vector3& index) const;
 	Math::Vector3	gridToWorld(const Math::Vector3& index) const;
@@ -47,20 +55,22 @@ public:
 	bool			gridShifted;
 	bool			playerChangedChunk;
 private:
-	Math::Vector3	_chunkSize;// needed only to determine the playerChunkWorldIndex
-	Math::Vector3	_gridSize;
-	Math::Vector3	_renderedGridSize;// must be <= gridSize
-	Math::Vector3	_gridWorldIndex;// world index of the start of the grid (0:0:0)
-	Math::Vector3	_renderedGridIndex;// index in grid
-	Math::Vector3	_playerWorldPos;// world position
-	Math::Vector3	_playerChunkWorldIndex;
-
 	HMapPtr**		_heightMaps;//2d grid
 	ChunkPtr***		_grid;//3d grid
 
 	bool			_chunksReadyForMeshes = false;
 	Obj3dBP*		_fullMeshBP = nullptr;//all chunks merged
 	Obj3d*			_fullMesh = nullptr;
+
+	// Grid geometry
+	Math::Vector3	_chunkSize;// needed only to determine the playerChunkWorldIndex
+	Math::Vector3	_gridSize;
+	Math::Vector3	_renderedGridSize;// must be <= gridSize
+	Math::Vector3	_gridWorldIndex;// world index of the start of the grid (0:0:0)
+	Math::Vector3	_renderedGridIndex;// index in grid
+	Math::Vector3	_playerChunkWorldIndex;
+
+	Math::Vector3	_playerWorldPos;
 
 	ChunkGrid();
 	void			_updatePlayerPosition(const Math::Vector3& pos);
