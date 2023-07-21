@@ -3,50 +3,88 @@
 #include "heightmap.hpp" // also for PerlinSettings
 #include "chunkgenerator.hpp"
 #include "chunkgrid.hpp"
+//class PerlinSettings;
 class ChunkGenerator;
 class ChunkGrid;
 
-// nouveau check du helper qui voit que certains chunk sont pas crees, les jobs sont crees mais pas finis, donc il cree des doublons de job... qui sont repluggés apres...
-// empecher le helper0 de creer des jobs doublons
 class Job
 {
 public:
-	Job();
-	//virtual bool	execute() = 0;
-	//args could differ, make a struct with args and a dyn_cast in execute()?
-	//can lambda expressions [] work?
+	virtual bool	execute() = 0;
+	virtual bool	deliver() const = 0;
 
-	bool	assigned;
-	bool	done;
+	bool	assigned = false;
+	bool	done = false;
+protected:
+	Job();
 };
 
 class JobBuildGenerator : public Job
 {
 public:
-	virtual bool	execute(PerlinSettings& perlinSettings) = 0;
-	virtual void	deliver(ChunkGenerator& generator, ChunkGrid& grid) const = 0;
-	Math::Vector3	index;//world
-	Math::Vector3	chunkSize;
+	JobBuildGenerator() = delete;
+	bool			prepare(PerlinSettings* settings);
+	virtual bool	execute() = 0;
+	virtual bool	deliver() const = 0;
+	Math::Vector3	getChunkSize() const;
+	Math::Vector3	getWorldIndex() const;
 protected:
-	JobBuildGenerator(Math::Vector3 ind, Math::Vector3 chunk_size);
+	JobBuildGenerator(ChunkGenerator* generator, ChunkGrid* grid, Math::Vector3 worldIndex, Math::Vector3 chunkSize);
+	ChunkGenerator* _generator;
+	PerlinSettings* _settings = nullptr; // Provided by the thread executing the job, using prepare() before execute().
+	ChunkGrid*		_grid;
+	Math::Vector3	_chunkSize;
+	Math::Vector3	_worldIndex;
 };
 
-class JobBuildHeighMap : public JobBuildGenerator
+#ifndef GDGDGDDF
+class JobBuildHeightMap : public JobBuildGenerator
 {
 public:
-	JobBuildHeighMap(Math::Vector3 index, Math::Vector3 chunk_size);
-	virtual bool	execute(PerlinSettings& perlinSettings);
-	virtual	void	deliver(ChunkGenerator& generator, ChunkGrid& grid) const;
-	HeightMap* hmap = nullptr;
+	JobBuildHeightMap(ChunkGenerator* generator, ChunkGrid* grid, Math::Vector3 worldIndex, Math::Vector3 chunk_size);
+	virtual bool	execute();
+	virtual	bool	deliver() const;
+private:
+	HeightMap*	_hmap = nullptr;
 };
 
 class JobBuildChunk : public JobBuildGenerator
 {
 public:
-	JobBuildChunk(Math::Vector3 index, Math::Vector3 chunk_size, HeightMap* hmap_ptr);
-	virtual bool	execute(PerlinSettings& perlinSettings);
-	virtual void	deliver(ChunkGenerator& generator, ChunkGrid& grid) const;
+	JobBuildChunk(ChunkGenerator* generator, ChunkGrid* grid, Math::Vector3 worldIndex, Math::Vector3 chunk_size, HeightMap* hmap);
+	virtual bool	execute();
+	virtual bool	deliver() const;
 
-	HeightMap* hmap = nullptr;
-	Chunk* chunk = nullptr;
+	HeightMap*	_hmap = nullptr;
+	Chunk*		_chunk = nullptr;
 };
+
+
+#define LOD_0	0b00000001
+#define LOD_1	0b00000010
+#define LOD_2	0b00000100
+#define LOD_3	0b00001000
+#define LOD_4	0b00010000
+#define LOD_5	0b00100000
+#define LOD_ALL	0b11111111
+
+/*
+	Currently build all LODs
+*/
+class JobBuildChunkVertexArray : public Job
+{
+public:
+	/*
+		octreeThresholds should have LODS_AMOUNT values (1 for each LOD). Extras will be ignored, missing ones will be defaulted to 0 (full octree details).
+		ie: octreeThresholds.resize(LODS_AMOUNT, 0)
+	*/
+	JobBuildChunkVertexArray(ChunkShPtr* chunk, uint8_t LODsFlag, std::vector<uint8_t> octreeThresholds);
+	bool	execute();
+	bool	deliver();
+private:
+	ChunkShPtr				_chunk;
+	uint8_t					_LODsFlag;
+	std::vector<uint8_t>	_octreeThresholds;
+	std::vector<uint8_t>	_vertexArray[LODS_AMOUNT];
+};
+#endif

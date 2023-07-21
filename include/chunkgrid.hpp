@@ -4,8 +4,7 @@
 #include "heightmap.hpp"
 #include "chunkgenerator.hpp"
 
-typedef Chunk* ChunkPtr;
-typedef HeightMap* HMapPtr;
+typedef HeightMap*				HMapPtr;
 
 typedef struct s_grid_gemoetry
 {
@@ -25,16 +24,16 @@ public:
 
 	bool			updateGrid(Math::Vector3 player_pos);
 	// Build the chunks meshes and load them to the GPU. Must be executed in the OpenGL thread
-	void			glth_loadChunksToGPU();
-	//push chunks with the asked tesselation level, inside the list dst.
-	void			pushRenderedChunks(std::list<Object*>* dst, unsigned int tesselation_lvl = 0) const;
-	//push chunks with the asked tesselation level, inside the array dst. Then returns the next index (last chunk added + 1)
-	unsigned int	pushRenderedChunks(Object** dst, unsigned int tesselation_lvl = 0, unsigned int starting_index = 0) const;
+	void			glth_loadAllChunksToGPU();
+	//push chunks with the asked LOD, inside the list dst.
+	void			pushRenderedChunks(std::list<Object*>* dst, unsigned int lod = 0) const;
+	//push chunks with the asked LOD, inside the array dst. Then returns the next index (last chunk added + 1)
+	unsigned int	pushRenderedChunks(Object** dst, unsigned int lod = 0, unsigned int starting_index = 0) const;
 	void			replaceHeightMap(HeightMap* new_hmap, Math::Vector3 index);
-	void			replaceChunk(Chunk* new_chunkp, Math::Vector3 index);
+	void			replaceChunk(Chunk* new_chunk, Math::Vector3 index);
 
 	HMapPtr**		getHeightMaps() const;
-	ChunkPtr***		getGrid() const;
+	ChunkShPtr***	getGrid() const;
 	Obj3dBP*		getFullMeshBP() const;
 	Obj3d*			getFullMesh() const;
 	Math::Vector3	getSize() const;
@@ -56,7 +55,7 @@ public:
 	bool			playerChangedChunk;
 private:
 	HMapPtr**		_heightMaps;//2d grid
-	ChunkPtr***		_grid;//3d grid
+	ChunkShPtr***	_grid;//3d grid
 
 	bool			_chunksReadyForMeshes = false;
 	Obj3dBP*		_fullMeshBP = nullptr;//all chunks merged

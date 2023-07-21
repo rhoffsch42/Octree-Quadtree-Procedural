@@ -1,5 +1,3 @@
-#include <compiler_settings.h>
-
 #if 1
 #include <iostream>
 #include <chrono>
@@ -42,6 +40,7 @@ private:
 	unsigned int	_size;
 };
 
+#define SSH_SIZE 5
 void th_1(std::shared_ptr<SharedObj> p) {
 	using namespace std::chrono_literals;
 	{
@@ -51,45 +50,70 @@ void th_1(std::shared_ptr<SharedObj> p) {
 	}
 	std::this_thread::sleep_for(1s);
 }
+void th_2(std::shared_ptr<SharedObj>* grid) {
+	using namespace std::chrono_literals;
+	{
+		static std::mutex io_mutex; // the static is shared between threads, allowing the local declaration of the mutex to control IO
+		std::lock_guard<std::mutex> lk(io_mutex);
+		std::cout << "thread created\n";
+	}
+	std::this_thread::sleep_for(1s);
+	for (size_t i = 0; i < 5; i++) {
+		grid[i] = nullptr;
+	}
+
+}
 void	test_shared_ptr() {
 	{
 		using namespace std::chrono_literals;
-		SharedObj* o1 = new SharedObj();
-		SharedObj* o2 = new SharedObj();
-		std::shared_ptr<SharedObj>	p1_1 = std::make_shared<SharedObj>(*o1);
-		std::cout << p1_1.use_count() << std::endl;
-		std::shared_ptr<SharedObj>	p1_2 = p1_1;
-		std::cout << p1_1.use_count() << std::endl;
-		std::weak_ptr<SharedObj> wp1 = p1_1;
-		std::cout << "wp1 : " << wp1.use_count() << std::endl;
+		if (0) {
+			SharedObj* o1 = new SharedObj();
+			SharedObj* o2 = new SharedObj();
+			std::shared_ptr<SharedObj>	p1_1 = std::make_shared<SharedObj>(*o1);
+			std::cout << p1_1.use_count() << std::endl;
+			std::shared_ptr<SharedObj>	p1_2 = p1_1;
+			std::cout << p1_1.use_count() << std::endl;
+			std::weak_ptr<SharedObj> wp1 = p1_1;
+			std::cout << "wp1 : " << wp1.use_count() << std::endl;
 
-		std::thread t1{ th_1, p1_1 }, t2{ th_1, p1_1 }, t3{ th_1, p1_1 };
-		std::cout << "shared with 3 threds\n";
-		std::cout << "wp1 : " << wp1.use_count() << std::endl;
-		std::this_thread::sleep_for(1s);
-		std::cout << "threads should be off now\n";
-		p1_1.reset();
-		std::cout << "1 resets\n";
-		std::cout << "wp1 : " << wp1.use_count() << std::endl;
+			std::thread t1{ th_1, p1_1 }, t2{ th_1, p1_1 }, t3{ th_1, p1_1 };
+			std::cout << "shared with 3 threds\n";
+			std::cout << "wp1 : " << wp1.use_count() << std::endl;
+			std::this_thread::sleep_for(1s);
+			std::cout << "threads should be off now\n";
+			p1_1.reset();
+			std::cout << "1 resets\n";
+			std::cout << "wp1 : " << wp1.use_count() << std::endl;
 
-		std::shared_ptr<SharedObj>	p2_1 = std::make_shared<SharedObj>(*o2);
-		std::weak_ptr<SharedObj> wp2 = p2_1;
-		std::cout << "wp2 : " << wp2.use_count() << std::endl;
+			std::shared_ptr<SharedObj>	p2_1 = std::make_shared<SharedObj>(*o2);
+			std::weak_ptr<SharedObj> wp2 = p2_1;
+			std::cout << "wp2 : " << wp2.use_count() << std::endl;
 
-		std::cout << "reassigning p2_1 with o1 ptr\n";
-		p2_1 = wp1.lock();// It creates and returns a shared_ptr that can be empty if use_count() = 0. weak_ptr::lock() is equivalent to open_schrodinger_cat_box().
-		std::cout << "wp1 : " << wp1.use_count() << std::endl;
-		std::cout << "wp2 : " << wp2.use_count() << std::endl;
+			std::cout << "reassigning p2_1 with o1 ptr\n";
+			p2_1 = wp1.lock();// It creates and returns a shared_ptr that can be empty if use_count() = 0. weak_ptr::lock() is equivalent to open_schrodinger_cat_box().
+			std::cout << "wp1 : " << wp1.use_count() << std::endl;
+			std::cout << "wp2 : " << wp2.use_count() << std::endl;
 
-		t1.join(); t2.join(); t3.join();
-		std::cout << "end\n";
+			t1.join(); t2.join(); t3.join();
+			std::cout << "end\n";
+		}
+		else if (1) {
+			std::shared_ptr<SharedObj> grid[SSH_SIZE];
+			std::shared_ptr<SharedObj> grabber[SSH_SIZE];
+			for (size_t i = 0; i < 5; i++) {
+				grid[i] = std::make_shared<SharedObj>();
+				grabber[i] = grid[i];
+			}
+			std::thread t1{ th_2, grid };
+			t1.join();
+			std::cout << "thread joined\n";
+		}
 	}
 	std::exit(0);
 }
 #endif // test shared ptr
 
 #if 1
-#include "simplegl.h"
 #include "trees.h"
 #include <typeinfo>
 #include <thread>
@@ -1071,32 +1095,29 @@ void	scene_benchmarks() {
 	D("End while loop\n")
 }
 
-#define M_THREADS_BUILDERS		10
 #define M_PERLIN_GENERATION		1
 #define M_OCTREE_OPTIMISATION	1
-#define M_DISPLAY_BLACK			1
-#define M_DRAW_BOX_GRID			1
-#define M_DRAW_GRID_CHUNK		0
 #define M_DRAW_MINIMAP			0
 #define M_MERGE_CHUNKS			0
 
+#define M_DRAW_DEBUG			1
+#define M_DRAW_GRID_BOX			1
+#define M_DRAW_GRID_CHUNK		0
+#define M_DISPLAY_BLACK			0
+
 void	printSettings(OctreeManager& m) {
+
 	INFO("cpu threads amount: " << m.cpuThreadAmount << "\n");
-	#if M_MERGE_CHUNKS
-	INFO("M_MERGE_CHUNKS : true\n");
-	#else
-	INFO("M_MERGE_CHUNKS : false\n");
-	#endif
-	#if M_DRAW_MINIMAP
-	INFO("M_DRAW_MINIMAP : true\n");
-	#else
-	INFO("M_DRAW_MINIMAP : false\n");
-	#endif
-	#if M_DRAW_GRID_CHUNK
-	INFO("M_DRAW_GRID_CHUNK : true\n");
-	#else
-	INFO("M_DRAW_GRID_CHUNK : false\n");
-	#endif
+
+	INFO(D_VALUE_NAME(M_PERLIN_GENERATION));
+	INFO(D_VALUE_NAME(M_OCTREE_OPTIMISATION));
+	INFO(D_VALUE_NAME(M_DRAW_MINIMAP));
+	INFO(D_VALUE_NAME(M_MERGE_CHUNKS));
+
+	INFO(D_VALUE_NAME(M_DRAW_DEBUG));
+	INFO(D_VALUE_NAME(M_DRAW_GRID_BOX));
+	INFO(D_VALUE_NAME(M_DRAW_GRID_CHUNK));
+	INFO(D_VALUE_NAME(M_DISPLAY_BLACK));
 }
 
 static void		keyCallback_ocTree(GLFWwindow* window, int key, int scancode, int action, int mods) {
@@ -1157,7 +1178,7 @@ unsigned int	grabObjects(ChunkGenerator& generator, ChunkGrid& grid, OctreeManag
 	D(__PRETTY_FUNCTION__ << "\n");
 	INFO(grid.getGridChecks() << "\n");
 
-	#if M_DRAW_MINIMAP == 1
+	#if M_DRAW_MINIMAP
 		//assemble minimap (currently inverted on the Y axis)
 		float	zmax = generator.gridSize.z * generator.chunkSize.z;//for gl convertion
 	for (unsigned int k = 0; k < generator.gridSize.z; k++) {
@@ -1196,7 +1217,7 @@ unsigned int	grabObjects(ChunkGenerator& generator, ChunkGrid& grid, OctreeManag
 	unsigned int	cubgrid = 0;
 
 	float	scale_coef = 0.99f;
-	float	scale_coe2 = 0.95f;
+	float	scale_coef2 = 0.95f;
 	//scale_coef = 1;
 	std::stringstream polygon_debug;
 	polygon_debug << "chunks polygons: ";
@@ -1209,38 +1230,23 @@ unsigned int	grabObjects(ChunkGenerator& generator, ChunkGrid& grid, OctreeManag
 	startRendered = Math::Vector3();
 	endRendered = geometry.gridSize; //Math::Vector3(generator.gridSize);
 #endif
-	D(" > rendered " << startRendered << " -> " << endRendered << "\n")
+	D(" > rendered " << startRendered << " -> " << endRendered << "\n");
 
-	if (M_DRAW_BOX_GRID) {
-		Math::Vector3 pos = geometry.gridWorldIndex; // grid.getWorldIndex();
-		Math::Vector3 scale = geometry.gridSize;
-		pos.scale(geometry.chunkSize);
-		scale.scale(geometry.chunkSize);
-		Obj3d* cubeGrid = new Obj3d(cubebp, obj3d_prog);
-		cubeGrid->setColor(255, 0, 0);
-		cubeGrid->local.setPos(pos);
-		cubeGrid->local.setScale(scale);
-		cubeGrid->setPolygonMode(GL_LINE);
-		cubeGrid->displayTexture = false;
-		manager.renderlistGrid.push_back(cubeGrid);
-		cubgrid++;
-	}
 	unsigned int sizeArray = 0;
 	/*
-		0 = no tesselation, taking smallest voxels (size = 1)
+		0 = no LOD, taking smallest voxels (size = 1)
 		5 = log2(32), max level, ie the size of a chunk
 	*/
-	unsigned int tesselation_lvl = -1;
-	if (1) {// actual grabbing
-		grid.glth_loadChunksToGPU();
-		for (unsigned int tessLvl = 0; tessLvl < TESSELATION_LVLS; tessLvl++) {
-			//INFO("Tesselation lvl[" << tessLvl << "] Pushing Chunks...\n");
-			grid.pushRenderedChunks(&manager.renderlistChunk, tessLvl);
-			sizeArray = grid.pushRenderedChunks(manager.renderArrayChunk, tessLvl, sizeArray);
+	if (1) {// actual grabbing + Obj3d creation
+		grid.glth_loadAllChunksToGPU();
+		for (unsigned int lod = 0; lod < LODS_AMOUNT; lod++) {
+			//INFO("LOD[" << lod << "] Pushing Chunks...\n");
+			grid.pushRenderedChunks(&manager.renderlistChunk, lod);
+			sizeArray = grid.pushRenderedChunks(manager.renderArrayChunk, lod, sizeArray);
 		}
 		if (manager.renderlistChunk.size() != sizeArray) {
-			D("Warning: difference between list and array size for rendered chunks : " << manager.renderlistChunk.size() << " != " << sizeArray << "\n")
-				//std::exit(1);
+			D("Warning: difference between list and array size for rendered chunks : " << manager.renderlistChunk.size() << " != " << sizeArray << "\n");
+			//std::exit(1);
 		}
 
 		//for (auto x = 0; x < sizeArray; x++) {
@@ -1294,106 +1300,125 @@ unsigned int	grabObjects(ChunkGenerator& generator, ChunkGrid& grid, OctreeManag
 		}
 
 	}
-	if (1) {//Grid and other visual debug
-		ChunkPtr*** chunkArray = grid.getGrid();
-		for (unsigned int k = startRendered.z; k < endRendered.z; k++) {
-			for (unsigned int j = startRendered.y; j < endRendered.y; j++) {
-				for (unsigned int i = startRendered.x; i < endRendered.x; i++) {
-					Chunk* chunkPtr = chunkArray[k][j][i];
-					if (chunkPtr) {//at this point, the chunk might not be generated yet
-						//if (chunkPtr->mesh[0])
-							//chunkPtr->mesh[0]->setPolygonMode(manager.polygon_mode);
 
-						if (M_DRAW_GRID_CHUNK) {
-							Obj3d* cubeGrid = new Obj3d(cubebp, obj3d_prog);
-							cubeGrid->setColor(255, 0, 0);
-							cubeGrid->local.setPos(chunkPtr->pos);
-							//cubeGrid->local.setScale(chunkPtr->size * scale_coe2);
-							cubeGrid->setPolygonMode(GL_LINE);
-							cubeGrid->displayTexture = false;
-							manager.renderlistGrid.push_back(cubeGrid);
-							cubgrid++;
-						}
-						if (0) {//coloring origin of each octree/chunk
-							Math::Vector3	siz(1, 1, 1);
-#ifdef OCTREE_OLD
-							Octree_old* root = chunkPtr->root->getRoot(chunkPtr->root->pos, siz);
-							if (root) {
-								if (root->size.len() != siz.len())
-									root->pixel = Pixel(254, 0, 0);
-								else
-									root->pixel = Pixel(0, 255, 0);
-							}
-#else
-							Octree<Voxel>* node = chunkPtr->root->getNode(chunkPtr->root->pos, siz);
-							if (node) {
-								if (node->size.len() != siz.len())
-									node->element._value = 254;
-								else
-									node->element._value = 253;
-							}
-#endif
-						}
-#if 0// oldcode, browsing to build 1 obj3d per cube (not chunk)
-						chunkPtr->root->browse([&manager, &cubebp, &obj3d_prog, scale_coef, scale_coe2, chunkPtr, tex, &hiddenBlocks](Octree_old* node) {
-							if (!node->isLeaf())
-							return;
-						if (M_DISPLAY_BLACK || (node->pixel.r != 0 && node->pixel.g != 0 && node->pixel.b != 0)) {// pixel 0?
-							Math::Vector3	worldPos = chunkPtr->pos + node->pos;
-							Math::Vector3	center = worldPos + (node->size / 2);
-							if ((node->pixel.r < VOXEL_EMPTY.r \
-								|| node->pixel.g < VOXEL_EMPTY.g \
-								|| node->pixel.b < VOXEL_EMPTY.b) \
-								&& node->neighbors < NEIGHBOR_ALL)// should be < NEIGHBOR_ALL or (node->n & NEIGHBOR_ALL) != 0
-							{
-								Obj3d* cube = new Obj3d(cubebp, obj3d_prog);
-								cube->setColor(node->pixel.r, node->pixel.g, node->pixel.b);
-								cube->local.setPos(worldPos);
-								cube->local.setScale(node->size.x * scale_coef, node->size.y * scale_coef, node->size.z * scale_coef);
-								cube->setPolygonMode(manager.polygon_mode);
-								cube->displayTexture = true;
-								cube->displayTexture = false;
-								cube->setTexture(tex);
+	#if M_DRAW_DEBUG
+	#if M_DRAW_GRID_BOX
+	{
+		Math::Vector3 pos = geometry.gridWorldIndex; // grid.getWorldIndex();
+		Math::Vector3 scale = geometry.gridSize;
+		pos.scale(geometry.chunkSize);
+		scale.scale(geometry.chunkSize);
+		Obj3d* cubeGrid = new Obj3d(cubebp, obj3d_prog);
+		cubeGrid->setColor(255, 0, 0);
+		cubeGrid->local.setPos(pos);
+		cubeGrid->local.setScale(scale);
+		cubeGrid->setPolygonMode(GL_LINE);
+		cubeGrid->displayTexture = false;
+		manager.renderlistGrid.push_back(cubeGrid);
+		cubgrid++;
+	}
+	#endif // M_DRAW_GRID_BOX
+	ChunkShPtr*** chunkArray = grid.getGrid();
+	for (unsigned int k = startRendered.z; k < endRendered.z; k++) {
+		for (unsigned int j = startRendered.y; j < endRendered.y; j++) {
+			for (unsigned int i = startRendered.x; i < endRendered.x; i++) {
+				if (chunkArray[k][j][i]) {//at this point, the chunk might not be generated yet
+					Chunk* chunk = chunkArray[k][j][i].get();
 
-								//if (node->neighbors == 1)// faire une texture pour chaque numero
-								//	cube->setColor(0, 127, 127);
-
-								//we can see if there is false positive on fully obstructed voxel, some are partially obstructed
-								if (node->neighbors == NEIGHBOR_ALL) {//should not be drawn
-									cube->setColor(100, 200, 100);
-									cube->setPolygonMode(manager.polygon_mode);
-									cube->setPolygonMode(GL_FILL);
-									hiddenBlocks++;
-									manager.renderlist.push_back(cube);
-								}
-								else {
-									// push only the faces next to an EMPTY_VOXEL in an all-in buffer
-									manager.renderlist.push_back(cube);
-									if ((node->neighbors & NEIGHBOR_FRONT) != NEIGHBOR_FRONT) { manager.renderlistVoxels[CUBE_FRONT_FACE].push_back(cube); }
-									if ((node->neighbors & NEIGHBOR_RIGHT) != NEIGHBOR_RIGHT) { manager.renderlistVoxels[CUBE_RIGHT_FACE].push_back(cube); }
-									if ((node->neighbors & NEIGHBOR_LEFT) != NEIGHBOR_LEFT) { manager.renderlistVoxels[CUBE_LEFT_FACE].push_back(cube); }
-									if ((node->neighbors & NEIGHBOR_BOTTOM) != NEIGHBOR_BOTTOM) { manager.renderlistVoxels[CUBE_BOTTOM_FACE].push_back(cube); }
-									if ((node->neighbors & NEIGHBOR_TOP) != NEIGHBOR_TOP) { manager.renderlistVoxels[CUBE_TOP_FACE].push_back(cube); }
-									if ((node->neighbors & NEIGHBOR_BACK) != NEIGHBOR_BACK) { manager.renderlistVoxels[CUBE_BACK_FACE].push_back(cube); }
-								}
-								if (M_DISPLAY_BLACK) {
-									Obj3d* cube2 = new Obj3d(cubebp, obj3d_prog);
-									cube2->setColor(0, 0, 0);
-									cube2->local.setPos(worldPos);
-									cube2->local.setScale(node->size.x * scale_coe2, node->size.y * scale_coe2, node->size.z * scale_coe2);
-									cube2->setPolygonMode(GL_LINE);
-									cube2->displayTexture = false;
-									manager.renderlistOctree.push_back(cube2);
-								}
-							}
-						}
-							});
-#endif
+					#if M_DRAW_GRID_CHUNK
+					{
+						Obj3d* cubeGrid = new Obj3d(cubebp, obj3d_prog);
+						cubeGrid->setColor(255, 0, 0);
+						cubeGrid->local.setPos(chunk->pos);
+						cubeGrid->local.setScale(chunk->size * 1); // scale_coef
+						cubeGrid->setPolygonMode(GL_LINE);
+						cubeGrid->displayTexture = false;
+						manager.renderlistGrid.push_back(cubeGrid);
+						cubgrid++;
 					}
+					#endif // M_DRAW_GRID_CHUNK
+
+					if (0) {//coloring origin of each octree/chunk
+						Math::Vector3	siz(1, 1, 1);
+						#ifdef OCTREE_OLD
+						Octree_old* root = chunk->root->getRoot(chunk->root->pos, siz);
+						if (root) {
+							if (root->size.len() != siz.len())
+								root->pixel = Pixel(254, 0, 0);
+							else
+								root->pixel = Pixel(0, 255, 0);
+						}
+						#else // OCTREE_OLD
+						Octree<Voxel>* node = chunk->root->getNode(chunk->root->pos, siz);
+						if (node) {
+							if (node->size.len() != siz.len())
+								node->element._value = 254;
+							else
+								node->element._value = 253;
+						}
+						#endif // OCTREE_OLD
+					}
+
+					#if 0// oldcode, browsing to build 1 obj3d per cube (not chunk)
+					chunk->root->browse([&manager, &cubebp, &obj3d_prog, scale_coef, scale_coef2, chunk, tex, &hiddenBlocks](Octree_old* node) {
+						if (!node->isLeaf())
+						return;
+					if (M_DISPLAY_BLACK || (node->pixel.r != 0 && node->pixel.g != 0 && node->pixel.b != 0)) {// pixel 0?
+						Math::Vector3	worldPos = chunk->pos + node->pos;
+						Math::Vector3	center = worldPos + (node->size / 2);
+						if ((node->pixel.r < VOXEL_EMPTY.r \
+							|| node->pixel.g < VOXEL_EMPTY.g \
+							|| node->pixel.b < VOXEL_EMPTY.b) \
+							&& node->neighbors < NEIGHBOR_ALL)// should be < NEIGHBOR_ALL or (node->n & NEIGHBOR_ALL) != 0
+						{
+							Obj3d* cube = new Obj3d(cubebp, obj3d_prog);
+							cube->setColor(node->pixel.r, node->pixel.g, node->pixel.b);
+							cube->local.setPos(worldPos);
+							cube->local.setScale(node->size.x * scale_coef, node->size.y * scale_coef, node->size.z * scale_coef);
+							cube->setPolygonMode(manager.polygon_mode);
+							cube->displayTexture = true;
+							cube->displayTexture = false;
+							cube->setTexture(tex);
+
+							//if (node->neighbors == 1)// faire une texture pour chaque numero
+							//	cube->setColor(0, 127, 127);
+
+							//we can see if there is false positive on fully obstructed voxel, some are partially obstructed
+							if (node->neighbors == NEIGHBOR_ALL) {//should not be drawn
+								cube->setColor(100, 200, 100);
+								cube->setPolygonMode(manager.polygon_mode);
+								cube->setPolygonMode(GL_FILL);
+								hiddenBlocks++;
+								manager.renderlist.push_back(cube);
+							}
+							else {
+								// push only the faces next to an EMPTY_VOXEL in an all-in buffer
+								manager.renderlist.push_back(cube);
+								if ((node->neighbors & NEIGHBOR_FRONT) != NEIGHBOR_FRONT) { manager.renderlistVoxels[CUBE_FRONT_FACE].push_back(cube); }
+								if ((node->neighbors & NEIGHBOR_RIGHT) != NEIGHBOR_RIGHT) { manager.renderlistVoxels[CUBE_RIGHT_FACE].push_back(cube); }
+								if ((node->neighbors & NEIGHBOR_LEFT) != NEIGHBOR_LEFT) { manager.renderlistVoxels[CUBE_LEFT_FACE].push_back(cube); }
+								if ((node->neighbors & NEIGHBOR_BOTTOM) != NEIGHBOR_BOTTOM) { manager.renderlistVoxels[CUBE_BOTTOM_FACE].push_back(cube); }
+								if ((node->neighbors & NEIGHBOR_TOP) != NEIGHBOR_TOP) { manager.renderlistVoxels[CUBE_TOP_FACE].push_back(cube); }
+								if ((node->neighbors & NEIGHBOR_BACK) != NEIGHBOR_BACK) { manager.renderlistVoxels[CUBE_BACK_FACE].push_back(cube); }
+							}
+							if (M_DISPLAY_BLACK) {
+								Obj3d* cube2 = new Obj3d(cubebp, obj3d_prog);
+								cube2->setColor(0, 0, 0);
+								cube2->local.setPos(worldPos);
+								cube2->local.setScale(node->size.x * scale_coef2, node->size.y * scale_coef2, node->size.z * scale_coef2);
+								cube2->setPolygonMode(GL_LINE);
+								cube2->displayTexture = false;
+								manager.renderlistOctree.push_back(cube2);
+							}
+						}
+					}
+						});
+					#endif
 				}
 			}
 		}
 	}
+	#endif // M_DRAW_DEBUG
 
 	if (manager.storageMode == STORAGE_LIST) {
 		//INFO("Counting total_polygons from renderlistChunk\n");
@@ -1419,7 +1444,7 @@ unsigned int	grabObjects(ChunkGenerator& generator, ChunkGrid& grid, OctreeManag
 
 	//INFO("polygon debug:\n" << polygon_debug.str() << "\n");
 	//INFO("total polygons:\t" << total_polygons << "\n");
-	//INFO("tesselation level:\t" << tesselation_lvl << "\n");
+	//INFO("LOD:\t" << LOD << "\n");
 	//INFO("hiddenBlocks:\t" << hiddenBlocks << "\n");
 	//for (auto i : manager.renderlistVoxels)
 	//	INFO("renderlistVoxels[]: " << i.size() << "\n");
@@ -1434,19 +1459,19 @@ unsigned int	grabObjects(ChunkGenerator& generator, ChunkGrid& grid, OctreeManag
 }
 
 unsigned int 	rebuildWithThreshold(ChunkGenerator& generator, ChunkGrid& grid, OctreeManager& manager, Obj3dBP& cubebp, Obj3dPG& obj3d_prog, Texture* tex) {
-	int tessLevel = 0;
+	int lod = 0;
 	/*
-		0 = no tesselation, taking smallest voxels (size = 1)
+		0 = no LOD, taking smallest voxels (size = 1)
 		5 = log2(32), max level, ie the size of a chunk
 	*/
 	Math::Vector3	gridSize = grid.getSize();
-	ChunkPtr*** chunkArray = grid.getGrid();
+	ChunkShPtr*** chunkArray = grid.getGrid();
 	for (auto k = 0; k < gridSize.z; k++) {
 		for (auto j = 0; j < gridSize.y; j++) {
 			for (auto i = 0; i < gridSize.x; i++) {
 				Octree<Voxel>* root = chunkArray[k][j][i]->root;
-				chunkArray[k][j][i]->buildVertexArraysFromOctree(root, Math::Vector3(0, 0, 0), tessLevel, &manager.threshold);
-				chunkArray[k][j][i]->glth_buildMesh();
+				chunkArray[k][j][i]->buildVertexArray(Math::Vector3(0, 0, 0), lod, manager.threshold);
+				chunkArray[k][j][i]->glth_buildAllMeshes();
 			}
 		}
 	}
@@ -1477,13 +1502,25 @@ static void		keyCallback_debugGrid(GLFWwindow* window, int key, int scancode, in
 }
 
 /*
+*	current grid generation loop:
+*		- [helper0] checks for player chunk change and shift grid if needed
+*		- [helper0] builds jobs for missing hmaps and chunks
+*		- [threads] execute jobs: build chunks by generating the octree with perlinsettings
+*		- [helper0] delivers jobs: (shared_ptr<Chunk> are lost here, in ChunkGrid::replaceChunk())
+						- build vertex array depending on LOD and octree_threshold, plug vertex in the corresponding vertex_array[lod]
+						- plugs hmap/chunk in the grid
+*		- [gl_main] build new meshes:
+						- for all LODs if vertex_array[lod] is not empty
+						- grabs all rendered chunks, selecting available meshes in all vertex_array[]
+* 
 *	todo:
-*		- in ChunkGrid::updateGrid() : _deleteUnusedDataLocal(&chunksToDelete, &hmapsToDelete);
-*			this must be sent to the trashes in the generator, and let thread do it
-				-> it has gl stuff in it, why it is currently done outside of the gl thread ?
+*		- finish Job vertexArray, refacto Job::execute() and Job::deliver() and ctors(all needed args) 
+*		- in ChunkGrid::updateGrid() : _deleteChunksAndHeightmaps(&chunksToDelete, &hmapsToDelete);
+			! it has gl stuff in it, why it is currently done outside of the gl thread ?
+*				-> this must be sent to some trashes to let the glth do it
 *	bugs :
 *		- quand le renderedGrid.size = grid.size, race entre le renderer et le grid.updater
-*		- la tesselation des chunks n'est pas mise à jour
+*		- le LOD des chunks n'est pas mis à jour
 *
 */
 void	scene_octree() {
@@ -1492,9 +1529,8 @@ void	scene_octree() {
 	float	win_width = 1600;
 	OctreeManager	m;
 	printSettings(m);
-
 	std::this_thread::sleep_for(1s);
-	//m.glfw = new Glfw(WINX, WINY);
+
 	m.glfw = new Glfw(win_width, win_height);
 	glfwSetWindowPos(m.glfw->_window, 100, 50);
 	glfwSetWindowUserPointer(m.glfw->_window, static_cast<void*>(&m));
@@ -1613,10 +1649,13 @@ void	scene_octree() {
 	INFO("Rebdered grid size : " << m.renderedGridSize.toString() << "\n");
 	INFO("Total hmaps : " << m.gridSize.x * m.gridSize.z << "\n");
 	INFO("Total chunks : " << m.gridSize.x * m.gridSize.y * m.gridSize.z << "\n");
-	ChunkGenerator	generator(*m.ps);
 	ChunkGrid		grid(m.chunk_size, m.gridSize, m.renderedGridSize);
+	ChunkGenerator	generator(*m.ps, &grid);
 	m.generator = &generator;
 	m.grid = &grid;
+
+	std::unique_lock<std::mutex> chunks_lock(grid.chunks_mutex, std::defer_lock);
+	generator.initAllBuilders(m.cpuThreadAmount - 1, &cam, &grid);
 
 	#ifndef INIT_RENDER_ARRAY
 	unsigned int x = grid.getRenderedSize().x;
@@ -1624,13 +1663,13 @@ void	scene_octree() {
 	unsigned int z = grid.getRenderedSize().z;
 	unsigned int len = x * y;
 	if (x != 0 && len / x != y) {
-		D("grid size too big, causing overflow\n")
-			Misc::breakExit(99);
+		D("grid size too big, causing overflow\n");
+		Misc::breakExit(99);
 	}
 	len = x * y * z;
 	if ((z != 0 && len / z != x * y) || len == 4294967295) {
-		D("grid size too big, causing overflow\n")
-			Misc::breakExit(99);
+		D("grid size too big, causing overflow\n");
+		Misc::breakExit(99);
 	}
 	len++;
 	INFO("m.renderArrayChunk size for rendered chunks : " << len << "\n");
@@ -1639,7 +1678,6 @@ void	scene_octree() {
 	m.renderArrayChunk_maxsize = len;
 	#endif // INIT_RENDER_ARRAY
 	#endif // GENERATOR
-	std::unique_lock<std::mutex> chunks_lock(grid.chunks_mutex, std::defer_lock);
 
 	Fps	fps(135);
 	INFO("Maximum fps : " << fps.getMaxFps() << "\n");
@@ -1653,7 +1691,6 @@ void	scene_octree() {
 	#endif
 	#ifdef USE_THREADS
 
-	generator.initAllBuilders(m.cpuThreadAmount - 1, &cam, &grid);
 	glfwWindowHint(GLFW_VISIBLE, GLFW_TRUE);
 	glfwFocusWindow(m.glfw->_window);
 	std::this_thread::sleep_for(1s);
@@ -1694,7 +1731,7 @@ void	scene_octree() {
 					INFO("grabbing meshes...\n");
 					polygons = grabObjects(generator, grid, m, cubebp, *renderer, tex_lena);
 					start = glfwGetTime() - start;
-					INFO("grabbed " << m.renderlistChunk.size() << " in " << start << " seconds\n");
+					INFO("grabbed " << m.renderlistChunk.size() << " in " << start*1000 << " ms\n");
 					chunks_lock.unlock();
 					// the generator can do what he wants with the grid, the renderer has what he needs for the current frame
 				}
@@ -1766,7 +1803,6 @@ void	scene_octree() {
 			}
 #endif
 			glfwSwapBuffers(m.glfw->_window);
-			generator.try_deleteUnusedData();
 
 			if (m.thresholdUpdated) {
 				polygons = rebuildWithThreshold(generator, grid, m, cubebp, *renderer, tex_lena);//should be a job ?
@@ -1938,7 +1974,7 @@ void	benchmark_octree() {
 	Math::Vector3	size(32, 32, 32);
 	HeightMap* hmap = new HeightMap(*m.ps, index, size);
 	Chunk* test = new Chunk(index, size, *m.ps, hmap);
-	//test->glth_buildMesh();
+	//test->glth_buildAllMeshes();
 	if (test->meshBP[0]) {
 		D("polys: " << test->meshBP[0]->getPolygonAmount() << "\n")
 		test->meshBP[0]->freeData(BP_FREE_ALL);

@@ -35,7 +35,7 @@ HeightMap::~HeightMap() {
 		delete this->panel;
 
 	//should be deleted only here, it is used by Chunk::
-	for (int k = 0; k < this->_sizeZ; k++) {
+	for (unsigned int k = 0; k < this->_sizeZ; k++) {
 		delete[] this->map[k];
 	}
 	delete[] this->map;

@@ -1,25 +1,6 @@
 #pragma once
 
-#include "simplegl.h"
-#include "program.hpp"
-#include "object.hpp"
-#include "obj3dPG.hpp"
-#include "obj3d_ipg.hpp"
-#include "obj3dBP.hpp"
-#include "obj3d.hpp"
-#include "misc.hpp"
-#include "cam.hpp"
-#include "texture.hpp"
-#include "skyboxPG.hpp"
-#include "skybox.hpp"
-#include "glfw.hpp"
-#include "transformBH.hpp"
-#include "fps.hpp"
-#include "gamemanager.hpp"
-#include "framebuffer.hpp"
-#include "uipanel.hpp"
-#include "text_pg.hpp"
-
+#include "simplegl_includes.h"
 
 #include "quadtree.hpp"
 #include "octree.hpp"
@@ -54,3 +35,4 @@
 
 #define FLAG_IS(X, Y)           (((X) & (Y)) == (X))
 #define FLAG_HAS(X, Y)          (((X) & (Y)) != 0)
+#define D_VALUE_NAME(x) x << "\t" << #x << "\n"

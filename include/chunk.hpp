@@ -12,10 +12,10 @@
 //#define OCTREE_OLD
 #define OCTREE_THRESHOLD 0
 /*
-	0 = no tesselation, taking smallest voxels (size = 1)
+	0 = no LOD, taking smallest voxels (size = 1)
 	5 = log2(32), max level, ie the size of a chunk
 */
-#define TESSELATION_LVLS 6
+#define LODS_AMOUNT 6
 
 #define	PRINT_INDEX		0b10000000
 #define	PRINT_POS		0b01000000
@@ -26,6 +26,9 @@
 #define PRINT_VERTEX	0b00000010
 #define PRINT_INDICES	0b00000001
 #define	PRINT_ALL		0b11111111
+
+class Chunk;
+typedef std::shared_ptr<Chunk>	ChunkShPtr;
 
 class Chunk //could inherit from Object
 {
@@ -47,24 +50,24 @@ public:
 #endif
 
 	//opengl
-	Obj3dBP*	meshBP[TESSELATION_LVLS];//1,2,4,8,16,32 : sizes of smallest voxel 
-	Obj3d*		mesh[TESSELATION_LVLS];//same
+	Obj3dBP*	meshBP[LODS_AMOUNT];//1,2,4,8,16,32 : sizes of smallest voxel 
+	Obj3d*		mesh[LODS_AMOUNT];//same
 
-	void	glth_buildMesh(); //with _vertexArray
-	int		buildVertexArraysFromOctree(Octree<Voxel>* root, Math::Vector3 pos_offset = Math::Vector3(0, 0, 0), const uint8_t desiredTessLevel = 0, const double* threshold = nullptr);
-	void	clearMeshesData();
+	void	glth_buildAllMeshes(); //with _vertexArray
+	int		buildVertexArray(Math::Vector3 pos_offset = Math::Vector3(0, 0, 0), const uint8_t desiredLod = 0, const double threshold = 0);
+	void	glth_clearMeshesData();
 	void	clearOctreeData();
 	//bool operator<(const Chunk& rhs) const//tmp
 	//{
 	//	return std::tie(this->index.x, this->index.y, this->index.z) < std::tie(rhs.index.x, rhs.index.y, rhs.index.z);
 	//}
 private:
-// you should check for error: 0 means Chunk::cubebp is null, 1 means no error
+	// you should check for error: 0 means Chunk::cubebp is null, 1 means no error
 #ifdef OCTREE_OLD
-	int buildVertexArrayFromOctree(Octree_old *root, Math::Vector3 pos_offset = Math::Vector3(0, 0, 0));
+	int buildVertexArrayFromOctree(Octree_old* root, Math::Vector3 pos_offset = Math::Vector3(0, 0, 0));
 #else
-	int buildVertexArrayFromOctree_homogeneous(Octree<Voxel> *root, Math::Vector3 pos_offset = Math::Vector3(0, 0, 0));
+	int buildVertexArrayFromOctree_homogeneous(Octree<Voxel>* root, Math::Vector3 pos_offset = Math::Vector3(0, 0, 0));
 #endif
-	std::vector<SimpleVertex> _vertexArray[TESSELATION_LVLS];
-	std::vector<unsigned int> _indices[TESSELATION_LVLS];//for TINY_VERTEX
+	std::vector<SimpleVertex> _vertexArray[LODS_AMOUNT];
+	std::vector<unsigned int> _indices[LODS_AMOUNT];
 };

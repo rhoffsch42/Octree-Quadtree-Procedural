@@ -144,7 +144,7 @@ public:
 		func(this);//return a bool to stop the browse? is it possible?
 		if (condition(this)) {
 			if (this->size.x == 0 || this->size.y == 0 || this->size.z == 0) {
-				std::cout << "error with tree data\n";
+				std::cout << this << ": error with tree data\n";
 				std::exit(1);
 			}
 		}

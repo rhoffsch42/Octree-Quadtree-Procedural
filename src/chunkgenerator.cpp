@@ -3,15 +3,16 @@
 #include "compiler_settings.h"
 #include <algorithm>
 #include <chrono>
+#include <sstream>
 using namespace std::chrono_literals;
 
 #ifdef TREES_DEBUG
  #define TREES_CHUNK_GENERATOR_DEBUG
 #endif
 #ifdef TREES_CHUNK_GENERATOR_DEBUG 
- #define D(x) std::cout << "[ChunkGenerator] " << x ;
- #define D_(x) x ;
- #define D_SPACER "-- chunkgenerator.cpp -------------------------------------------------\n"
+ #define D(x) std::cout << "[ChunkGenerator] " << x
+ #define D_(x) x
+ #define D_SPACER "-- chunkgenerator.cpp -------------------------------------------------\n" 
  #define D_SPACER_END "----------------------------------------------------------------\n"
 #else 
  #define D(x)
@@ -20,8 +21,9 @@ using namespace std::chrono_literals;
  #define D_SPACER_END ""
 #endif
 
-ChunkGenerator::ChunkGenerator(const PerlinSettings& perlin_settings) : settings(perlin_settings) {
-	D(__PRETTY_FUNCTION__ << "\n")
+
+ChunkGenerator::ChunkGenerator(const PerlinSettings& perlin_settings, ChunkGrid* target) : settings(perlin_settings), _targetGrid(target) {
+	D(__PRETTY_FUNCTION__ << "\n");
 
 	this->_builderAmount = 0;
 	this->_builders = nullptr;
@@ -55,75 +57,138 @@ void	ChunkGenerator::initAllBuilders(uint8_t amount, Cam* cam, ChunkGrid* grid) 
 	this->_builders[this->_builderAmount - 1] = new std::thread(std::bind(&ChunkGenerator::th_updater, this, cam, grid));
 	this->_builders[this->_builderAmount] = nullptr;
 
-	D("Notifying threads to build data...\n")
+	std::this_thread::sleep_for(0.5s);
+	D("Notifying threads to build data...\n");
 	this->cv.notify_all();
 }
 
 // Assuming initBuilders() has been called before. 
 void	ChunkGenerator::joinBuilders() {
-	D("Notifying cv to wake up waiters, need to join " << int(this->_builderAmount) << " builders...\n")
+	D("Notifying cv to wake up waiters, need to join " << int(this->_builderAmount) << " builders...\n");
 	this->terminateThreads = true;
 	this->cv.notify_all();
 	for (size_t i = 0; i < this->_builderAmount; i++) {
 		this->_builders[i]->join();
-		D("joined builder " << i << "\n")
+		D("joined builder " << i << "\n");
 	}
 }
 
 void	ChunkGenerator::th_updater(Cam* cam, ChunkGrid* grid) {
-	Math::Vector3 playerPos;
+	std::thread::id		thread_id = std::this_thread::get_id();
+	std::stringstream	ss;
+	ss << thread_id;
+	std::string			d_prefix = std::string("[helper0 ") + ss.str() + "] ";
+	Math::Vector3		playerPos;
+
 	while (!this->terminateThreads) {//no mutex for reading?
 		this->mutex_cam.lock();
 		playerPos = cam->local.getPos();
 		this->mutex_cam.unlock();
 
 		if (grid->updateGrid(playerPos)) {//player changed chunk
-			D("[helper0] grid updated with player pos, as he changed chunk\n")
+			D(d_prefix << "grid updated with player pos, as he changed chunk\n");
 		} else {
-			//D("[helper0] grid unchanged, player in same grid\n")
+			//D(d_prefix << "grid unchanged, player in same grid\n")
 		}
 		this->cv.notify_all();
 		this->updateJobsDone(*grid);//before updateJobsToDo()
-		//D("[helper0] jobs done updated\n")
+		//D(d_prefix << "jobs done updated\n")
 		this->updateJobsToDo(*grid);
-		//D("[helper0] jobsToDo updated\n")
+		//D(d_prefix << "jobsToDo updated\n")
 
-		D_(std::cout << "*")
+		D_(std::cout << "*");
 		std::this_thread::sleep_for(100ms);
 	}
-	D("[helper0] exiting...\n")
+	D(d_prefix << "exiting...\n");
+}
+
+void	ChunkGenerator::th_builders(GLFWwindow* context) {
+	//D(__PRETTY_FUNCTION__ << "\n");
+	//glfwMakeContextCurrent(context);
+	std::thread::id threadID = std::this_thread::get_id();
+	std::stringstream ss;
+	ss << threadID;
+	std::string	threadIDstr = "[" + ss.str() + "]\t";
+	D("Builder started " << threadIDstr << "\n");
+
+	//build job variables
+
+	// [Checklist] make sure every builders use a different PerlinSettings, or generation will be fucked
+	PerlinSettings		perlinSettings(this->settings);//if they change later, we have to update them, cpy them when finding a job?
+	JobBuildGenerator* job = nullptr;
+	unsigned int		thread_jobsdone = 0;
+	std::unique_lock<std::mutex> job_lock(this->job_mutex);
+
+	while (!this->terminateThreads) {
+		if (!this->jobsToDo.empty()) {
+			// grab job
+			//D(threadIDstr << "grabbing job\n")
+			job = this->jobsToDo.front();
+			this->jobsToDo.pop_front();
+			job->assigned = true;
+
+			job_lock.unlock();
+			job->prepare(&perlinSettings);
+			job->execute();
+			job_lock.lock();
+
+			job->assigned = false;
+			if (job->done) {
+				this->jobsDone.push_back(job);
+				thread_jobsdone++;
+			}
+			else
+				this->jobsToDo.push_back(job);
+
+			//D(threadIDstr << "job done " << job->index << "\n")
+			job = nullptr;
+		}
+		//D_(else { D(threadIDstr << "no job found... \n"); })
+		//else {
+		//	D(threadIDstr << "no job found... \n")
+		//}
+
+		//D(threadIDstr << "waiting \n")
+		this->cv.wait(job_lock, [this] { return (!this->jobsToDo.empty() || this->terminateThreads); });//wait until jobs list in not empty
+		//D(threadIDstr << "waking up from cv.wait() \n")
+	}
+	job_lock.unlock();
+
+	//D(threadIDstr << "yyy Jobs done : " << thread_jobsdone << ". Exiting...\n")
+	//glfwSetWindowShouldClose(context, GLFW_TRUE);
+	//glfwMakeContextCurrent(nullptr);
 }
 
 bool	ChunkGenerator::createHeightmapJob(Math::Vector3 hmapWorldIndex, Math::Vector3 chunkSize) {
 	if (!this->map_jobsHmap[hmapWorldIndex]) {
-		this->jobsToDo.push_back(new JobBuildHeighMap(hmapWorldIndex, chunkSize));
+		this->jobsToDo.push_back(new JobBuildHeightMap(this, this->_targetGrid, hmapWorldIndex, chunkSize));
 		this->map_jobsHmap[hmapWorldIndex] = true;
 
 		#ifdef CHUNK_GEN_DEBUG
-		D("new JobBuildHeighMap: WorldIndex : " << hmapWorldIndex << "\n")
+		D("new JobBuildHeighMap: WorldIndex : " << hmapWorldIndex << "\n");
 		#endif
 		return true;
 	}
 
 	#ifdef CHUNK_GEN_DEBUG
-	D("already created JobBuildHeighMap: WorldIndex : " << hmapWorldIndex << "\n")
+	D("already created JobBuildHeighMap: WorldIndex : " << hmapWorldIndex << "\n");
 	#endif
 	return false;
 }
 
 bool	ChunkGenerator::createChunkJob(const Math::Vector3 chunkWorldIndex, const Math::Vector3 chunkSize, HeightMap* heightmap) {
 	if (!this->map_jobsChunk[chunkWorldIndex] && heightmap->dispose()) {
-		this->jobsToDo.push_back(new JobBuildChunk(chunkWorldIndex, chunkSize, heightmap));
+		this->jobsToDo.push_back(new JobBuildChunk(this, this->_targetGrid, chunkWorldIndex, chunkSize, heightmap));
 		this->map_jobsChunk[chunkWorldIndex] = true;
 
 		#ifdef CHUNK_GEN_DEBUG
-		D("new JobBuildChunk: WorldIndex : " << chunkWorldIndex << " hmap: " << heightmap << "\n")
+		D("new JobBuildChunk: WorldIndex : " << chunkWorldIndex << " hmap: " << heightmap << "\n");
 		#endif
 		return true;
 	}
 
 	#ifdef CHUNK_GEN_DEBUG
-	D("duplicate JobBuildChunk: WorldIndex : " << chunkWorldIndex << " hmap: " << heightmap << "\n")
+	D("duplicate JobBuildChunk: WorldIndex : " << chunkWorldIndex << " hmap: " << heightmap << "\n");
 	#endif
 	return false;
 }
@@ -149,13 +214,13 @@ void	ChunkGenerator::updateJobsToDo(ChunkGrid& grid) {
 	Math::Vector3	gridSize = grid.getSize();
 	Math::Vector3	chunkSize = grid.getChunkSize();
 	HMapPtr**		hmaps = grid.getHeightMaps();
-	ChunkPtr***		chunks = grid.getGrid();
+	ChunkShPtr***	chunks = grid.getGrid();
 
 	Math::Vector3		index;
 	unsigned int		newChunkJobs = 0;
 	unsigned int		newHmapJobs = 0;
 
-	D("updateChunkJobsToDo...\n")
+	D("updateChunkJobsToDo...\n");
 	for (int z = 0; z < gridSize.z; z++) {
 		for (int x = 0; x < gridSize.x; x++) {
 
@@ -187,9 +252,9 @@ void	ChunkGenerator::updateJobsToDo(ChunkGrid& grid) {
 	}
 
 	chunks_lock.unlock();
-	D("[helper0 " << threadID << "]\tnew jobs: " << newChunkJobs << " chunks, " << newHmapJobs << " hmaps, total jobs: " << this->jobsToDo.size() << "\n")
+	D("[helper0 " << threadID << "]\tnew jobs: " << newChunkJobs << " chunks, " << newHmapJobs << " hmaps, total jobs: " << this->jobsToDo.size() << "\n");
 	if (this->jobsToDo.size()) {
-		D("[helper0 " << threadID << "]\tnotifying all...\n")
+		D("[helper0 " << threadID << "]\tnotifying all...\n");
 		this->cv.notify_all();
 	}
 	job_lock.unlock();// should be done automaticaly with unique_lock
@@ -202,20 +267,21 @@ void	ChunkGenerator::updateJobsDone(ChunkGrid& grid) {
 		//D(<< "No jobs to deliver...\n")
 		return;
 	}
-	JobBuildGenerator* job = nullptr;
+	JobBuildGenerator*	job = nullptr;
+	size_t				size = this->jobsDone.size();
 
-	D("updateChunkJobsDone...\n")
-	while (this->jobsDone.size()) {
+	D("updateChunkJobsDone (" << size << ")...\n");
+	while (size) {
 		job = this->jobsDone.front();
 		this->jobsDone.pop_front();
 
 		if (!job->done) {
-			std::cerr << "job not done but is in the jobsDone list: " << job << job->index << "\n";
-			std::cerr << "exiting...\n";
+			std::cerr << "job not done but is in the jobsDone list: " << job << job->getWorldIndex() << ". Exiting...\n";
 			Misc::breakExit(-14);
 		}
-		job->deliver(*this, grid);
+		job->deliver();
 		delete job;//no custom destructor: nothing to delete manually for now
+		size = this->jobsDone.size();
 	}
 	if (!this->jobsDone.empty()) {
 		std::cerr << "jobsDone not empty, wth? : " << this->jobsDone.size() << "\nexiting...\n";
@@ -235,7 +301,7 @@ void	ChunkGenerator::executeAllJobs(PerlinSettings& perlinSettings, std::string&
 		job->assigned = true;
 
 		job_lock.unlock();
-		job->execute(perlinSettings);
+		job->execute();
 		job_lock.lock();
 
 		job->assigned = false;
@@ -247,95 +313,7 @@ void	ChunkGenerator::executeAllJobs(PerlinSettings& perlinSettings, std::string&
 		//D(<< threadIDstr << "job done " << job->index << "\n")
 		job = nullptr;
 	}
-	D(threadIDstr << "nomore job found... \n")
-}
-
-void	ChunkGenerator::th_builders(GLFWwindow* context) {
-	D(__PRETTY_FUNCTION__ << "\n")
-	//glfwMakeContextCurrent(context);
-	std::thread::id threadID = std::this_thread::get_id();
-	std::stringstream ss;
-	ss << threadID;
-	std::string	threadIDstr = "[" + ss.str() + "]\t";
-	D(threadIDstr << " started\n")
-
-	//build job variables
-	PerlinSettings		perlinSettings(this->settings);//if they change later, we have to update them, cpy them when finding a job?
-	JobBuildGenerator* job = nullptr;
-	unsigned int		thread_jobsdone = 0;
-	std::unique_lock<std::mutex> job_lock(this->job_mutex);
-
-	while (!this->terminateThreads) {
-		if (!this->jobsToDo.empty()) {
-			// grab job
-			//D(threadIDstr << "grabbing job\n")
-			job = this->jobsToDo.front();
-			this->jobsToDo.pop_front();
-			job->assigned = true;
-
-			job_lock.unlock();
-			job->execute(perlinSettings);
-			job_lock.lock();
-
-			job->assigned = false;
-			if (job->done) {
-				this->jobsDone.push_back(job);
-				thread_jobsdone++;
-			}
-			else
-				this->jobsToDo.push_back(job);
-
-			//D(threadIDstr << "job done " << job->index << "\n")
-			job = nullptr;
-		}
-		//else {
-		//	D(threadIDstr << "no job found... \n")
-		//}
-
-		//D(threadIDstr << "waiting \n")
-		this->cv.wait(job_lock, [this] { return (!this->jobsToDo.empty() || this->terminateThreads); });//wait until jobs list in not empty
-		//D(threadIDstr << "waking up from cv.wait() \n")
-	}
-	job_lock.unlock();
-
-	//D(threadIDstr << "yyy Jobs done : " << thread_jobsdone << ". Exiting...\n")
-	//glfwSetWindowShouldClose(context, GLFW_TRUE);
-	//glfwMakeContextCurrent(nullptr);
-}
-
-bool	ChunkGenerator::try_deleteUnusedData() {
-	if (this->trash_mutex.try_lock()) {
-		this->_deleteUnusedData();
-		this->trash_mutex.unlock();
-		return true;
-	}
-	return false;
-}
-
-void	ChunkGenerator::_deleteUnusedData() {
-	//todo : use unique_ptr in the vectors
-	size_t size = this->trashHeightMaps.size();
-	if (size) {
-		for (auto it = this->trashHeightMaps.begin(); it != this->trashHeightMaps.end(); /*it++;*/) { //avoid it invalidation, inc manually when needed
-			if ((*it)->getdisposedCount() == 0) {
-				delete (*it);
-				it = this->trashHeightMaps.erase(it);
-			}
-			else {
-				it++;
-			}
-		}
-		D(" X deleted hmaps: " << (size - this->trashHeightMaps.size()) << "\n")
-	}
-	size = this->trashChunks.size();
-	if (size) {
-		for (auto& ptr : this->trashChunks) {
-			delete ptr;
-			ptr = nullptr;
-		}
-		D(" X deleted chunks: " << (size - this->trashChunks.size()) << "\n")
-			this->trashChunks.erase(std::remove(this->trashChunks.begin(), this->trashChunks.end(), nullptr), this->trashChunks.end());
-	}
+	D(threadIDstr << "nomore job found... \n");
 }
 
 uint8_t			ChunkGenerator::getBuildersAmount() const { return this->_builderAmount; }

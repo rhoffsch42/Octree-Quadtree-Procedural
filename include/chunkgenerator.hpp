@@ -3,7 +3,7 @@
 #include "math.hpp"
 #include "cam.hpp"
 #include "chunk.hpp"
-#include "heightmap.hpp"
+#include "heightmap.hpp" // also for PerlinSettings
 #include "job.hpp"
 class JobBuildGenerator;
 
@@ -58,10 +58,14 @@ class ChunkGrid;
 class ChunkGenerator
 {
 public:
-	//grid_size_displayed will be clamped between 1 -> grid_size
-	ChunkGenerator(const PerlinSettings& perlin_settings);
+	/*
+		grid_size_displayed will be clamped between 1->grid_size
+		target: the grid that the generator is working for
+	*/
+	ChunkGenerator(const PerlinSettings& perlin_settings, ChunkGrid* target);
 	~ChunkGenerator();
 	void			th_updater(Cam* cam, ChunkGrid* grid);
+	void			th_builders(GLFWwindow* context);
 	//cam is the player
 	void			initAllBuilders(uint8_t amount, Cam* cam, ChunkGrid* grid);
 	void			joinBuilders();
@@ -73,9 +77,6 @@ public:
 	void			updateJobsToDo(ChunkGrid& grid);
 	void			updateJobsDone(ChunkGrid& grid);
 	void			executeAllJobs(PerlinSettings& perlinSettings, std::string& threadIDstr);
-	void			th_builders(GLFWwindow* context);
-
-	bool			try_deleteUnusedData();
 
 	uint8_t			getBuildersAmount() const;
 	std::thread**	getBuilders() const;
@@ -87,24 +88,19 @@ public:
 	std::mutex		trash_mutex;
 	std::mutex		terminateBuilders;//old code
 	std::mutex		mutex_cam;// cam mutex
-	// lock/unlock helper0 (player pos thread)
-	// lock_guard main() -> render loop before calling cam.events()
-	// //lock_guard ChunkGenerator::updateGrid() -> ChunkGenerator::updatePlayerPos() 
 
 	bool			terminateThreads = false;
 	uint8_t			threadsReadyToBuildChunks;
 
-	std::map<Math::Vector3, bool>	map_jobsHmap;//store directly the jobs ptr?
+	std::map<Math::Vector3, bool>	map_jobsHmap;//store directly the jobs ptr instead of bool?
 	std::map<Math::Vector3, bool>	map_jobsChunk;
 	std::list<JobBuildGenerator*>	jobsToDo;
 	std::list<JobBuildGenerator*>	jobsDone;
-	std::vector<HeightMap*>			trashHeightMaps;
-	std::vector<Chunk*>				trashChunks;
 private:
+	ChunkGrid*		_targetGrid;
 	uint8_t			_builderAmount;
 	std::thread**	_builders;
 	ChunkGenerator();
-	void			_deleteUnusedData();
 };
 
 //class GridManager
