@@ -36,7 +36,8 @@ public:
 	static Obj3dBP *cubeBlueprint;
 	static Obj3dPG *renderer;
 
-	Chunk(const Math::Vector3 &chunk_index, const Math::Vector3 &chunk_size, PerlinSettings &perlinSettings, HeightMap *map = nullptr); //if a hmap is specified, its sizes must fit, undefined behavior if sizes are too small
+	// If a hmap is specified, its sizes must fit, undefined behavior if sizes are too small
+	Chunk(const Math::Vector3 &chunk_index, const Math::Vector3 &chunk_size, PerlinSettings &perlinSettings, HeightMap *map = nullptr);
 	~Chunk();
 	std::string toString(uint8_t flags = PRINT_ALL) const;
 
@@ -68,6 +69,7 @@ private:
 #else
 	int buildVertexArrayFromOctree_homogeneous(Octree<Voxel>* root, Math::Vector3 pos_offset = Math::Vector3(0, 0, 0));
 #endif
-	std::vector<SimpleVertex> _vertexArray[LODS_AMOUNT];
-	std::vector<unsigned int> _indices[LODS_AMOUNT];
+	bool						_generatedLod[LODS_AMOUNT];//if the lod has been generated or not. if not: a job will be created when needed (care duplicate).
+	std::vector<SimpleVertex>	_vertexArray[LODS_AMOUNT];
+	std::vector<unsigned int>	_indices[LODS_AMOUNT];
 };

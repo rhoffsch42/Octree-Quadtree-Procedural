@@ -33,6 +33,7 @@ Chunk::Chunk(const Math::Vector3& chunk_index, const Math::Vector3& chunk_size, 
 	for (int i = 0; i < LODS_AMOUNT; i++) {
 		this->meshBP[i] = nullptr;
 		this->mesh[i] = nullptr;
+		this->_generatedLod[i] = false;
 	}
 
 	uint8_t*** data;

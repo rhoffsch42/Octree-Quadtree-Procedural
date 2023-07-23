@@ -183,7 +183,7 @@ void	blitToWindow(FrameBuffer* readFramebuffer, GLenum attachmentPoint, UIPanel*
 		Misc::breakExit(2);
 	}
 	if (0) {
-		D("copy " << w << "x" << h << "\tresized\t" << panel->_width << "x" << panel->_height << "\tat pos\t" << panel->_posX << ":" << panel->_posY << "\n")
+		D("copy " << w << "x" << h << "\tresized\t" << panel->_width << "x" << panel->_height << "\tat pos\t" << panel->_posX << ":" << panel->_posY << "\n");
 		// << " -> " << (panel->posX + panel->width) << "x" << (panel->posY + panel->height) << "\n";
 	}
 	glBlitFramebuffer(0, 0, w, h, \
@@ -195,39 +195,39 @@ void	blitToWindow(FrameBuffer* readFramebuffer, GLenum attachmentPoint, UIPanel*
 void	check_paddings() {
 	//	D(sizeof(BITMAPINFOHEADER) << " = " << sizeof(BMPINFOHEADER) << "\n")
 #ifdef _WIN322
-	D(sizeof(BITMAPFILEHEADER) << " = " << sizeof(BMPFILEHEADER) << "\n")
-	D("bfType\t" << offsetof(BMPINFOHEADERBITMAPFILEHEADER, bfType) << "\n")
-	D("bfSize\t" << offsetof(BITMAPFILEHEADER, bfSize) << "\n")
-	D("bfReserved1\t" << offsetof(BITMAPFILEHEADER, bfReserved1) << "\n")
-	D("bfReserved2\t" << offsetof(BITMAPFILEHEADER, bfReserved2) << "\n")
-	D("bfOffBits\t" << offsetof(BITMAPFILEHEADER, bfOffBits) << "\n")
+	D(sizeof(BITMAPFILEHEADER) << " = " << sizeof(BMPFILEHEADER) << "\n");
+	D("bfType\t" << offsetof(BMPINFOHEADERBITMAPFILEHEADER, bfType) << "\n");
+	D("bfSize\t" << offsetof(BITMAPFILEHEADER, bfSize) << "\n");
+	D("bfReserved1\t" << offsetof(BITMAPFILEHEADER, bfReserved1) << "\n");
+	D("bfReserved2\t" << offsetof(BITMAPFILEHEADER, bfReserved2) << "\n");
+	D("bfOffBits\t" << offsetof(BITMAPFILEHEADER, bfOffBits) << "\n");
 #endif//_WIN32
-	D("unsigned short\t" << sizeof(unsigned short) << "\n")
-	D("unsigned long \t" << sizeof(unsigned long) << "\n")
-	D("long          \t" << sizeof(long) << "\n")
-	D("long long     \t" << sizeof(long long) << "\n")
-	D("int           \t" << sizeof(int) << "\n")
+	D("unsigned short\t" << sizeof(unsigned short) << "\n");
+	D("unsigned long \t" << sizeof(unsigned long) << "\n");
+	D("long          \t" << sizeof(long) << "\n");
+	D("long long     \t" << sizeof(long long) << "\n");
+	D("int           \t" << sizeof(int) << "\n");
 	if ((sizeof(BMPFILEHEADER) != 14) || (sizeof(BMPINFOHEADER) != 40)) {
-		D("Padding in structure, exiting...\n" << "\n")
-		D("BMPFILEHEADER\t" << sizeof(BMPFILEHEADER) << "\n")
-		D("bfType     \t" << offsetof(BMPFILEHEADER, bfType) << "\n")
-		D("bfSize     \t" << offsetof(BMPFILEHEADER, bfSize) << "\n")
-		D("bfReserved1\t" << offsetof(BMPFILEHEADER, bfReserved1) << "\n")
-		D("bfReserved2\t" << offsetof(BMPFILEHEADER, bfReserved2) << "\n")
-		D("bfOffBits\t" << offsetof(BMPFILEHEADER, bfOffBits) << "\n")
-		D("-----\n")
-		D("BMPINFOHEADER\t" << sizeof(BMPINFOHEADER) << "\n")
-		D("biSize     \t" << offsetof(BMPINFOHEADER, biSize) << "\n")
-		D("biWidth    \t" << offsetof(BMPINFOHEADER, biWidth) << "\n")
-		D("biHeight\t" << offsetof(BMPINFOHEADER, biHeight) << "\n")
-		D("biPlanes\t" << offsetof(BMPINFOHEADER, biPlanes) << "\n")
-		D("biBitCount\t" << offsetof(BMPINFOHEADER, biBitCount) << "\n")
-		D("biCompression\t" << offsetof(BMPINFOHEADER, biCompression) << "\n")
-		D("biSizeImage\t" << offsetof(BMPINFOHEADER, biSizeImage) << "\n")
-		D("biXPelsPerMeter\t" << offsetof(BMPINFOHEADER, biXPelsPerMeter) << "\n")
-		D("biYPelsPerMeter\t" << offsetof(BMPINFOHEADER, biYPelsPerMeter) << "\n")
-		D("biClrUsed\t" << offsetof(BMPINFOHEADER, biClrUsed) << "\n")
-		D("biClrImportant\t" << offsetof(BMPINFOHEADER, biClrImportant) << "\n")
+		D("Padding in structure, exiting...\n" << "\n");
+		D("BMPFILEHEADER\t" << sizeof(BMPFILEHEADER) << "\n");
+		D("bfType     \t" << offsetof(BMPFILEHEADER, bfType) << "\n");
+		D("bfSize     \t" << offsetof(BMPFILEHEADER, bfSize) << "\n");
+		D("bfReserved1\t" << offsetof(BMPFILEHEADER, bfReserved1) << "\n");
+		D("bfReserved2\t" << offsetof(BMPFILEHEADER, bfReserved2) << "\n");
+		D("bfOffBits\t" << offsetof(BMPFILEHEADER, bfOffBits) << "\n");
+		D("-----\n");
+		D("BMPINFOHEADER\t" << sizeof(BMPINFOHEADER) << "\n");
+		D("biSize     \t" << offsetof(BMPINFOHEADER, biSize) << "\n");
+		D("biWidth    \t" << offsetof(BMPINFOHEADER, biWidth) << "\n");
+		D("biHeight\t" << offsetof(BMPINFOHEADER, biHeight) << "\n");
+		D("biPlanes\t" << offsetof(BMPINFOHEADER, biPlanes) << "\n");
+		D("biBitCount\t" << offsetof(BMPINFOHEADER, biBitCount) << "\n");
+		D("biCompression\t" << offsetof(BMPINFOHEADER, biCompression) << "\n");
+		D("biSizeImage\t" << offsetof(BMPINFOHEADER, biSizeImage) << "\n");
+		D("biXPelsPerMeter\t" << offsetof(BMPINFOHEADER, biXPelsPerMeter) << "\n");
+		D("biYPelsPerMeter\t" << offsetof(BMPINFOHEADER, biYPelsPerMeter) << "\n");
+		D("biClrUsed\t" << offsetof(BMPINFOHEADER, biClrUsed) << "\n");
+		D("biClrImportant\t" << offsetof(BMPINFOHEADER, biClrImportant) << "\n");
 		Misc::breakExit(ERROR_PADDING);
 	}
 }
@@ -933,21 +933,22 @@ void	scene_benchmarks() {
 	input[0] = '1';	input[1] = 0;
 	std::cin >> input;
 	OctreeManager	m;
-	m.glfw = new Glfw(WINX, WINY);
+	m.glfw = new Glfw(1600, 900);
+	glfwSetWindowPos(m.glfw->_window, 100, 50);
 
 	//Blueprint global settings
-	Obj3dBP::defaultSize = 1;
-	Obj3dBP::rescale = true;
-	Obj3dBP::center = false;
-	Obj3dBP::defaultDataMode = BP_INDICES;
+	Obj3dBP::config.modelSize = 1;
+	Obj3dBP::config.rescale = true;
+	Obj3dBP::config.center = false;
+	Obj3dBP::config.dataMode = BP_INDICES;
 	if (input[0] % 2 == 1)
-		Obj3dBP::defaultDataMode = BP_LINEAR;
+		Obj3dBP::config.dataMode = BP_LINEAR;
 	Obj3dBP		cubebp(SIMPLEGL_FOLDER + "obj3d/cube.obj");
 	Obj3dBP		lambobp(SIMPLEGL_FOLDER + "obj3d/lambo/Lamborginhi_Aventador_OBJ/Lamborghini_Aventador_no_collider.obj");
 
-	Texture* lenatex = new Texture(SIMPLEGL_FOLDER + "images/lena.bmp");
-	Texture* lambotex = new Texture(SIMPLEGL_FOLDER + "obj3d/lambo/Lamborginhi_Aventador_OBJ/Lamborginhi_Aventador_diffuse.bmp");
-	Texture* tex_skybox = new Texture(SIMPLEGL_FOLDER + "images/skybox4.bmp");
+	Texture*	lenatex = new Texture(SIMPLEGL_FOLDER + "images/lena.bmp");
+	Texture*	lambotex = new Texture(SIMPLEGL_FOLDER + "obj3d/lambo/Lamborginhi_Aventador_OBJ/Lamborginhi_Aventador_diffuse.bmp");
+	Texture*	tex_skybox = new Texture(SIMPLEGL_FOLDER + "images/skybox4.bmp");
 
 	Obj3dPG		rendererObj3d(SIMPLEGL_FOLDER + OBJ3D_VS_FILE, SIMPLEGL_FOLDER + OBJ3D_FS_FILE);
 	Obj3dIPG	rendererObj3dInstanced(SIMPLEGL_FOLDER + OBJ3D_INSTANCED_VS_FILE, SIMPLEGL_FOLDER + OBJ3D_FS_FILE);
@@ -980,23 +981,10 @@ void	scene_benchmarks() {
 		if (i % 3 == 0)
 			tex_data[i] = 255;
 	}
-	lenatex->updateData(tex_data, w, h);
+	//lenatex->updateData(tex_data, w, h);
 
 
-	if (1) {//cubes
-		for (size_t i = 0; i < 10; i++) {
-			for (size_t j = 0; j < 10; j++) {
-				Obj3d* cube = new Obj3d(cubebp, *renderer);
-				cube->local.setPos(-10 + float(i) * -1.1, j * 1.1, 0);
-				cube->local.setScale(1, 1, 1);
-				cube->setColor(2.5 * i, 0, 0);
-				cube->displayTexture = true;
-				cube->setTexture(lenatex);
-				cube->setPolygonMode(GL_FILL);
-				m.renderlist.push_back(cube);
-			}
-		}
-	}
+
 	if (1) {//lambos
 		for (size_t k = 0; k < 1; k++) {
 			for (size_t j = 0; j < 50; j++) {
@@ -1010,6 +998,20 @@ void	scene_benchmarks() {
 					lambo->setPolygonMode(GL_FILL);
 					m.renderlist.push_back(lambo);
 				}
+			}
+		}
+	}
+	if (0) {//cubes
+		for (size_t i = 0; i < 10; i++) {
+			for (size_t j = 0; j < 10; j++) {
+				Obj3d* cube = new Obj3d(cubebp, *renderer);
+				cube->local.setPos(-10 + float(i) * -1.1, j * 1.1, 0);
+				cube->local.setScale(1, 1, 1);
+				cube->setColor(2.5 * i, 0, 0);
+				cube->displayTexture = true;
+				cube->setTexture(lenatex);
+				cube->setPolygonMode(GL_FILL);
+				m.renderlist.push_back(cube);
 			}
 		}
 	}
@@ -1514,6 +1516,7 @@ static void		keyCallback_debugGrid(GLFWwindow* window, int key, int scancode, in
 						- grabs all rendered chunks, selecting available meshes in all vertex_array[]
 * 
 *	todo:
+*		- check every ctor by copy, they can access private members, useless to use accessors
 *		- finish Job vertexArray, refacto Job::execute() and Job::deliver() and ctors(all needed args) 
 *		- in ChunkGrid::updateGrid() : _deleteChunksAndHeightmaps(&chunksToDelete, &hmapsToDelete);
 			! it has gl stuff in it, why it is currently done outside of the gl thread ?
@@ -1522,6 +1525,7 @@ static void		keyCallback_debugGrid(GLFWwindow* window, int key, int scancode, in
 *		- quand le renderedGrid.size = grid.size, race entre le renderer et le grid.updater
 *		- le LOD des chunks n'est pas mis à jour
 *
+*	[Checklist] all gl calls have to be done on the gl context (here main thread)
 */
 void	scene_octree() {
 	#ifndef INIT_GLFW
@@ -1584,13 +1588,16 @@ void	scene_octree() {
 #endif //MAIN_PG
 
 	//Blueprint global settings
-	Obj3dBP::defaultSize = 1;
-	Obj3dBP::defaultDataMode = BP_LINEAR;
-	Obj3dBP::rescale = true;
-	Obj3dBP::center = false;
+	Obj3dBP::config.modelSize = 1;
+	Obj3dBP::config.dataMode = BP_LINEAR;
+	Obj3dBP::config.rescale = true;
+	Obj3dBP::config.center = false;
 	Obj3dBP		cubebp(SIMPLEGL_FOLDER + "obj3d/cube.obj");
 	Chunk::cubeBlueprint = &cubebp;
-	Obj3dBP::defaultDataMode = BP_INDICES;
+	Obj3dBP::config.dataMode = BP_INDICES;
+
+	INFO(cubebp.lodManager.toString());
+	std::exit(0);
 
 	Cam		cam(m.glfw->getWidth(), m.glfw->getHeight());
 	cam.speed = m.playerSpeed;
@@ -1961,13 +1968,13 @@ void	scene_checkMemory() {
 void	benchmark_octree() {
 	Glfw glfw;
 	//Blueprint global settings
-	Obj3dBP::defaultSize = 1;
-	Obj3dBP::defaultDataMode = BP_LINEAR;
-	Obj3dBP::rescale = true;
-	Obj3dBP::center = false;
+	Obj3dBP::config.modelSize = 1;
+	Obj3dBP::config.dataMode = BP_LINEAR;
+	Obj3dBP::config.rescale = true;
+	Obj3dBP::config.center = false;
 	Obj3dBP		cubebp(SIMPLEGL_FOLDER + "obj3d/cube.obj");
 	Chunk::cubeBlueprint = &cubebp;
-	Obj3dBP::defaultDataMode = BP_INDICES;
+	Obj3dBP::config.dataMode = BP_INDICES;
 
 	OctreeManager	m;
 	Math::Vector3	index(7, 2, 0);

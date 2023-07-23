@@ -138,6 +138,12 @@
     <ClCompile Include="src\utils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="SimpleGL\src\model_loader.cpp">
+      <Filter>SimpleGL\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SimpleGL\src\lod_manager.cpp">
+      <Filter>SimpleGL\Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="SimpleGL\include\behavior.hpp">
@@ -254,8 +260,14 @@
     <ClInclude Include="include\utils.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="SimpleGL\include\model_loader.hpp">
+      <Filter>SimpleGL\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SimpleGL\include\lod_manager.hpp">
+      <Filter>SimpleGL\Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="SimpleGL\include\simplegl_includes.h">
-      <Filter>Header Files</Filter>
+      <Filter>SimpleGL\Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -16,10 +16,6 @@
  #define D_SPACER_END ""
 #endif
 
-#ifndef FFFFFFCPP
-
-//class PerlinSettings;
-//class ChunkGenerator;
 
 //Job
 Job::Job() {}
@@ -48,13 +44,6 @@ bool	JobBuildHeightMap::execute() {
 }
 bool	JobBuildHeightMap::deliver() const {
 	//D(__PRETTY_FUNCTION__ << "\n");
-	//if (!this->_grid) {
-	//	D("JobBuildHeightMap::deliver() Error : grid is null.\n");
-	//	Misc::breakExit(-14);
-	//	return false;
-	//} else {
-	//	D("Grid: " << this->_grid << "\n");
-	//}
 	Math::Vector3	gridIndex = this->_grid->worldToGrid(this->_worldIndex);
 	gridIndex.y = 0;//same hmap for all Y
 	if (this->_worldIndex != this->_hmap->getIndex() || this->_worldIndex.y != 0) {// important: index.y must be 0, it is used in a map<Math::Vector3, ...>
@@ -79,30 +68,12 @@ bool	JobBuildHeightMap::deliver() const {
 }
 
 //JobBuildChunk
-JobBuildChunk::JobBuildChunk(ChunkGenerator* generator, ChunkGrid* grid, Math::Vector3 worldIndex, Math::Vector3 chunk_size, HeightMap* hmap)
-	: JobBuildGenerator(generator, grid, worldIndex, chunk_size), _hmap(hmap) {}
-bool	JobBuildChunk::execute() {
-	if (!this->_hmap) {// should not be possible
-		D("JobBuildChunk error: HeightMap nullptr, for index: " << this->_worldIndex << "\n");
-		//Misc::breakExit(-14);
-		this->done = false;//should already be false, better be sure
-		return this->done;
-	}
-	this->_chunk = new Chunk(this->_worldIndex, this->_chunkSize, *this->_settings, this->_hmap);
-	this->_hmap->unDispose();
-	//this->_chunk->glth_buildAllMeshes();
-	this->done = true;
-	#ifdef CHUNK_GEN_DEBUG
-	//D("job executed : new chunk : " << this->_chunk << " " << this->_worldIndex << "\n");
-	#endif
-	return this->done;
-}
 //tmp
-static void	_Job_buildVertexArray(const JobBuildChunk* job, const ChunkGrid* grid) {
-	Math::Vector3	gridIndex = grid->worldToGrid(job->getWorldIndex());
+void	JobBuildChunk::_buildVertexArray() {
+	Math::Vector3	gridIndex = this->_grid->worldToGrid(this->getWorldIndex());
 	//build the vertex array (should be done directly in JobBuildChunk::execute())
 	//(should be updated when the chunk distance crosses a step distance...)
-	Math::Vector3 playerGridIndex = grid->worldToGrid(grid->getPlayerChunkWorldIndex());
+	Math::Vector3 playerGridIndex = this->_grid->worldToGrid(this->_grid->getPlayerChunkWorldIndex());
 
 	/*
 		Then we would take the desired level if possible: max(desired, available)
@@ -124,8 +95,29 @@ static void	_Job_buildVertexArray(const JobBuildChunk* job, const ChunkGrid* gri
 
 	threshold = 0;//override
 	//lod = 0;//override
-	job->_chunk->buildVertexArray(Math::Vector3(0, 0, 0), lod, threshold);
+	this->_chunk->buildVertexArray(Math::Vector3(0, 0, 0), lod, threshold);
 	//this->chunk->clearOctreeData();
+}
+
+JobBuildChunk::JobBuildChunk(ChunkGenerator* generator, ChunkGrid* grid, Math::Vector3 worldIndex, Math::Vector3 chunk_size, HeightMap* hmap)
+	: JobBuildGenerator(generator, grid, worldIndex, chunk_size), _hmap(hmap) {}
+bool	JobBuildChunk::execute() {
+	if (!this->_hmap) {// should not be possible
+		D("JobBuildChunk error: HeightMap nullptr, for index: " << this->_worldIndex << "\n");
+		//Misc::breakExit(-14);
+		this->done = false;//should already be false, better be sure
+		return this->done;
+	}
+	this->_chunk = new Chunk(this->_worldIndex, this->_chunkSize, *this->_settings, this->_hmap);
+	this->_hmap->unDispose();
+	this->_buildVertexArray();
+
+	//this->_chunk->glth_buildAllMeshes();
+	this->done = true;
+	#ifdef CHUNK_GEN_DEBUG
+	//D("job executed : new chunk : " << this->_chunk << " " << this->_worldIndex << "\n");
+	#endif
+	return this->done;
 }
 bool	JobBuildChunk::deliver() const {
 	//D(__PRETTY_FUNCTION__ << "\n");
@@ -145,12 +137,6 @@ bool	JobBuildChunk::deliver() const {
 		this->_generator->map_jobsChunk[this->_worldIndex] = false;
 		return true;// this is normal, the chunk is only outdated for the current grid
 	}
-
-	/*
-	* _Job_buildVertexArray() shoud be done in execute()
-	* pb: it doesnt have the grid position to compute the player distance and LOD
-	*/
-	_Job_buildVertexArray(this, this->_grid);
 
 	this->_grid->replaceChunk(this->_chunk, gridIndex);
 	this->_generator->map_jobsChunk[this->_worldIndex] = false;
@@ -180,5 +166,3 @@ bool	JobBuildChunkVertexArray::execute() {
 	}
 	return true;
 }
-
-#endif

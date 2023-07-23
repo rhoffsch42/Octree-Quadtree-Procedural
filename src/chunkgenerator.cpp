@@ -39,7 +39,10 @@ ChunkGenerator::~ChunkGenerator() {
 	this->joinBuilders();
 }
 
-// `amount - 1` builders and 1 updater
+/*
+	[Checklist] thread problems ? check with 1 builder only
+	`amount - 1` builders and 1 updater
+*/
 void	ChunkGenerator::initAllBuilders(uint8_t amount, Cam* cam, ChunkGrid* grid) {
 	this->_builderAmount = amount;
 	this->_builders = new std::thread* [this->_builderAmount + 1];

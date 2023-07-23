@@ -55,8 +55,10 @@ public:
 	virtual bool	execute();
 	virtual bool	deliver() const;
 
+private:
 	HeightMap*	_hmap = nullptr;
 	Chunk*		_chunk = nullptr;
+	void			_buildVertexArray();
 };
 
 
