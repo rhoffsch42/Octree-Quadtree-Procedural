@@ -538,7 +538,7 @@ public:
 	Obj3d* player;
 	int	playerChunkX;
 	int	playerChunkY;
-	std::list<Object*>	renderlist;
+	std::list<Object*>	renderVec;
 	Cam* cam;
 	int				range_chunk_display;
 	int				range_chunk_memory;
@@ -891,14 +891,12 @@ public:
 	siv::PerlinNoise*	perlin;
 	PerlinSettings*		ps;
 
-	std::list<Object*>	renderlist;
-	std::list<Object*>	renderlistOctree;
-	std::list<Object*>	renderlistGrid;
-	std::list<Object*>	renderlistVoxels[6];//6faces
-	std::list<Object*>	renderlistChunk;
-	Object**			renderArrayChunk = nullptr;
-	unsigned int		renderArrayChunk_maxsize;
-	std::list<Object*>	renderlistSkybox;
+	std::vector<Object*>	renderVec;
+	std::vector<Object*>	renderVecOctree;
+	std::vector<Object*>	renderVecGrid;
+	std::vector<Object*>	renderVecVoxels[6];//6faces
+	std::vector<Object*>	renderVecChunk;
+	std::vector<Object*>	renderVecSkybox;
 
 	UIPanel***			minimapPanels;
 	UIImage*			playerMinimap;
@@ -944,7 +942,16 @@ void	scene_benchmarks() {
 	if (input[0] % 2 == 1)
 		Obj3dBP::config.dataMode = BP_LINEAR;
 	Obj3dBP		cubebp(SIMPLEGL_FOLDER + "obj3d/cube.obj");
-	Obj3dBP		lambobp(SIMPLEGL_FOLDER + "obj3d/lambo/Lamborginhi_Aventador_OBJ/Lamborghini_Aventador_no_collider.obj");
+	Obj3dBP		lambobp0(SIMPLEGL_FOLDER + "obj3d/lambo/Lamborginhi_Aventador_OBJ/Lamborghini_Aventador_no_collider_lod_0.obj");
+	Obj3dBP		lambobp1(SIMPLEGL_FOLDER + "obj3d/lambo/Lamborginhi_Aventador_OBJ/Lamborghini_Aventador_no_collider_lod_1.obj");
+	Obj3dBP		lambobp2(SIMPLEGL_FOLDER + "obj3d/lambo/Lamborginhi_Aventador_OBJ/Lamborghini_Aventador_no_collider_lod_2.obj");
+	Obj3dBP		lambobp3(SIMPLEGL_FOLDER + "obj3d/lambo/Lamborginhi_Aventador_OBJ/Lamborghini_Aventador_no_collider_lod_3.obj");
+
+	lambobp0.lodManager.addLod(&lambobp1, 8);
+	lambobp0.lodManager.addLod(&lambobp2, 20);
+	lambobp0.lodManager.addLod(&lambobp3, 60);
+	std::cout << lambobp0.lodManager.toString() << "\n";
+	//std::exit(0);
 
 	Texture*	lenatex = new Texture(SIMPLEGL_FOLDER + "images/lena.bmp");
 	Texture*	lambotex = new Texture(SIMPLEGL_FOLDER + "obj3d/lambo/Lamborginhi_Aventador_OBJ/Lamborginhi_Aventador_diffuse.bmp");
@@ -955,11 +962,11 @@ void	scene_benchmarks() {
 	SkyboxPG	rendererSkybox(SIMPLEGL_FOLDER + CUBEMAP_VS_FILE, SIMPLEGL_FOLDER + CUBEMAP_FS_FILE);
 
 	Skybox		skybox(*tex_skybox, rendererSkybox);
-	m.renderlistSkybox.push_back(&skybox);
+	m.renderVecSkybox.push_back(&skybox);
 
 	Cam		cam(m.glfw->getWidth(), m.glfw->getHeight());
 	cam.local.setPos(-5, -5, -5);
-	cam.speed = 5;
+	cam.speed = 25;
 	cam.printProperties();
 	cam.lockedMovement = false;
 	cam.lockedOrientation = false;
@@ -983,20 +990,19 @@ void	scene_benchmarks() {
 	}
 	//lenatex->updateData(tex_data, w, h);
 
-
-
+	Math::Vector3	lamboGrid(50, 1, 50);
 	if (1) {//lambos
-		for (size_t k = 0; k < 1; k++) {
-			for (size_t j = 0; j < 50; j++) {
-				for (size_t i = 0; i < 50; i++) {
-					Obj3d* lambo = new Obj3d(lambobp, *renderer);
-					lambo->local.setPos(i * 3, j * 1.5, k);
+		for (size_t k = 0; k < lamboGrid.z; k++) {
+			for (size_t j = 0; j < lamboGrid.y; j++) {
+				for (size_t i = 0; i < lamboGrid.x; i++) {
+					Obj3d* lambo = new Obj3d(lambobp0, *renderer);
+					lambo->local.setPos(i*3, j*1.5, k*7);
 					lambo->local.enlarge(5, 5, 5);
 					lambo->setColor(222, 0, 222);
 					lambo->setTexture(lambotex);
 					lambo->displayTexture = true;
 					lambo->setPolygonMode(GL_FILL);
-					m.renderlist.push_back(lambo);
+					m.renderVec.push_back(lambo);
 				}
 			}
 		}
@@ -1011,18 +1017,16 @@ void	scene_benchmarks() {
 				cube->displayTexture = true;
 				cube->setTexture(lenatex);
 				cube->setPolygonMode(GL_FILL);
-				m.renderlist.push_back(cube);
+				m.renderVec.push_back(cube);
 			}
 		}
 	}
 
-	Fps	fps(135);
-	Fps* defaultFps = &fps;
 
-	Obj3d* frontobj = static_cast<Obj3d*>(m.renderlist.front());
+	Obj3d* frontobj = static_cast<Obj3d*>(m.renderVec.front());
 	Obj3dBP* frontbp = frontobj->getBlueprint();
-#ifndef SHADER_INIT
-	for (auto o : m.renderlist)
+	#ifndef SHADER_INIT
+	for (auto o : m.renderVec)
 		o->update();
 	glUseProgram(renderer->_program);
 	glUniform1i(renderer->_dismod, 0);// 1 = display plain_color, 0 = vertex_color
@@ -1033,28 +1037,32 @@ void	scene_benchmarks() {
 	glBindTexture(GL_TEXTURE_2D, lambotex->getId());
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	int	vertices_amount = frontbp->getPolygonAmount() * 3;
-#endif
-#define BUFFER_OFFSET(i) ((char *)NULL + (i))
+	#endif
+	#define BUFFER_OFFSET(i) ((char *)NULL + (i))
 	glfwSwapInterval(0);//0 = disable vsynx
 	glDisable(GL_CULL_FACE);
-	D("renderlist: " << m.renderlist.size() << "\n")
-	D("Begin while loop\n")
+
+	Fps	fps(1000);
+	std::cout << "Fps tick: " << fps.getTick() << std::endl;
+	D("renderVec: " << m.renderVec.size() << "\n");
+	D("Begin while loop\n");
 	while (!glfwWindowShouldClose(m.glfw->_window)) {
-		if (defaultFps->wait_for_next_frame()) {
-			m.glfw->setTitle(std::to_string(defaultFps->getFps()) + " fps");
+		if (fps.wait_for_next_frame()) {
+			m.glfw->setTitle(std::to_string(fps.getFps()) + " fps "
+				+ std::to_string((m.renderVec.front()->local.getPos() - cam.local.getPos()).len())
+			);
 
 			glfwPollEvents();
 			m.glfw->updateMouse();//to do before cam's events
-			m.cam->events(*m.glfw, float(defaultFps->getTick()));
+			m.cam->events(*m.glfw, float(fps.getTick()));
 
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-			if (input[0] >= '3') {//instanced
-				renderer->renderObjects(m.renderlist, cam, PG_FORCE_DRAW);
-			}
-			else if (1) {
-				renderer->renderObjects(m.renderlist, cam, PG_FORCE_DRAW);
-			}
-			else {//optimized mass renderer (non instanced) non moving objects, same BP
+			#if 1
+			// PG_FORCE_DRAW | PG_FRUSTUM_CULLING
+			//renderer->renderAllObjects(m.renderVec, cam);												// fps: 2:53/35		WITHOUT LOD
+			renderer->renderAllObjects(m.renderVec, cam, PG_FRUSTUM_CULLING);							// fps: 2:550/35	WITHOUT LOD
+			#else //optimized mass renderer (non instanced) non moving objects, same BP
+			{
 				Math::Matrix4	VPmatrix(cam.getProjectionMatrix());
 				Math::Matrix4	Vmatrix = cam.getViewMatrix();
 				VPmatrix.mult(Vmatrix);
@@ -1068,7 +1076,7 @@ void	scene_benchmarks() {
 				else { glUniform1f(renderer->_tex_coef, 0.0f); }
 				glBindVertexArray(frontbp->getVao());
 
-				for (Object* object : m.renderlist) {
+				for (Object* object : m.renderVec) {
 					Math::Matrix4	MVPmatrix(VPmatrix);
 					MVPmatrix.mult(object->getWorldMatrix());
 					MVPmatrix.setOrder(COLUMN_MAJOR);
@@ -1085,8 +1093,9 @@ void	scene_benchmarks() {
 				glBindVertexArray(0);
 				glBindTexture(GL_TEXTURE_2D, 0);
 			}
+			#endif
 
-			rendererSkybox.renderObjects(m.renderlistSkybox, cam, PG_FORCE_DRAW);//this will unbind obj3d pg vao and texture
+			rendererSkybox.renderAllObjects(m.renderVecSkybox, cam, PG_FORCE_DRAW);//this will unbind obj3d pg vao and texture
 			glfwSwapBuffers(m.glfw->_window);
 
 			if (GLFW_PRESS == glfwGetKey(m.glfw->_window, GLFW_KEY_ESCAPE))
@@ -1094,7 +1103,7 @@ void	scene_benchmarks() {
 		}
 	}
 
-	D("End while loop\n")
+	D("End while loop\n");
 }
 
 #define M_PERLIN_GENERATION		1
@@ -1146,8 +1155,8 @@ static void		keyCallback_ocTree(GLFWwindow* window, int key, int scancode, int a
 			} else if (key == GLFW_KEY_ENTER) {
 				manager->polygon_mode++;
 				manager->polygon_mode = GL_POINT + (manager->polygon_mode % 3);
-				for (std::list<Object*>::iterator it = manager->renderlistChunk.begin(); it != manager->renderlistChunk.end(); ++it) {
-					((Obj3d*)(*it))->setPolygonMode(manager->polygon_mode);
+				for (auto o : manager->renderVecChunk) {
+					((Obj3d*)(o))->setPolygonMode(manager->polygon_mode);
 				}
 			} else if (key == GLFW_KEY_X) {
 				manager->cam->local.translate(move, 0, 0);
@@ -1198,21 +1207,21 @@ unsigned int	grabObjects(ChunkGenerator& generator, ChunkGrid& grid, OctreeManag
 	//blitToWindow(nullptr, GL_COLOR_ATTACHMENT0, &uiBaseImage);
 	#endif
 
-	//todo use smart pointers (not for renderlistVoxels)
-	for (auto i : manager.renderlist)
+	//todo use smart pointers (not for renderVecVoxels)
+	for (auto i : manager.renderVec)
 		delete i;
-	for (auto i : manager.renderlistOctree)
+	for (auto i : manager.renderVecOctree)
 		delete i;
-	for (auto i : manager.renderlistGrid)
+	for (auto i : manager.renderVecGrid)
 		delete i;
-	//dont delete obj in renderlistVoxels as they're all present and already deleted in renderlist
+	//dont delete obj in renderVecVoxels as they're all present and already deleted in renderVec
 
-	manager.renderlist.clear();
-	manager.renderlistOctree.clear();
-	manager.renderlistGrid.clear();
+	manager.renderVec.clear();
+	manager.renderVecOctree.clear();
+	manager.renderVecGrid.clear();
 	for (size_t i = 0; i < 6; i++)
-		manager.renderlistVoxels[i].clear();
-	manager.renderlistChunk.clear();
+		manager.renderVecVoxels[i].clear();
+	manager.renderVecChunk.clear();
 
 	unsigned int	hiddenBlocks = 0;
 	unsigned int	total_polygons = 0;
@@ -1243,30 +1252,29 @@ unsigned int	grabObjects(ChunkGenerator& generator, ChunkGrid& grid, OctreeManag
 		grid.glth_loadAllChunksToGPU();
 		for (unsigned int lod = 0; lod < LODS_AMOUNT; lod++) {
 			//INFO("LOD[" << lod << "] Pushing Chunks...\n");
-			grid.pushRenderedChunks(&manager.renderlistChunk, lod);
-			sizeArray = grid.pushRenderedChunks(manager.renderArrayChunk, lod, sizeArray);
+			grid.pushRenderedChunks(&manager.renderVecChunk, lod);
 		}
-		if (manager.renderlistChunk.size() != sizeArray) {
-			D("Warning: difference between list and array size for rendered chunks : " << manager.renderlistChunk.size() << " != " << sizeArray << "\n");
+		if (manager.renderVecChunk.size() != sizeArray) {
+			D("Warning: difference between list and array size for rendered chunks : " << manager.renderVecChunk.size() << " != " << sizeArray << "\n");
 			//std::exit(1);
 		}
 
 		//for (auto x = 0; x < sizeArray; x++) {
-		//	Obj3d* o = dynamic_cast<Obj3d*>(manager.renderArrayChunk[x]);
+		//	Obj3d* o = dynamic_cast<Obj3d*>(manager.renderVecChunk[x]);
 		//	o->setPolygonMode(GL_LINE);
 		//}
 
 		//merge BPs
-		if (M_MERGE_CHUNKS) {//merge BPs for a single draw call with the renderArrayChunk
+		if (M_MERGE_CHUNKS) {//merge BPs for a single draw call with the renderVecChunk
 			if (sizeArray) {
 				INFO("Merging all chunks...\n");
 				std::vector<SimpleVertex> vertices;
 				std::vector<unsigned int> indices;
 				for (unsigned int x = 0; x < sizeArray; x++) {
-					Obj3d* o = dynamic_cast<Obj3d*>(manager.renderArrayChunk[x]);
+					Obj3d* o = dynamic_cast<Obj3d*>(manager.renderVecChunk[x]);
 					if (!o) {
-						D("sizeArray " << sizeArray << " | renderArrayChunk_maxsize " << manager.renderArrayChunk_maxsize << " | x " << x << "\n");
-						D("dynamic cast failed on object: " << manager.renderArrayChunk[x] << "\n");
+						D("sizeArray " << sizeArray << " | renderVecChunk_maxsize " << manager.renderVecChunk_maxsize << " | x " << x << "\n");
+						D("dynamic cast failed on object: " << manager.renderVecChunk[x] << "\n");
 						Misc::breakExit(456);
 					}
 					Math::Vector3 pos = o->local.getPos();
@@ -1294,8 +1302,8 @@ unsigned int	grabObjects(ChunkGenerator& generator, ChunkGrid& grid, OctreeManag
 				D(std::cout << "BP ready\n");
 				fullMesh = new Obj3d(*fullMeshBP, obj3d_prog);
 				D(std::cout << "Obj3d ready.\n");
-				manager.renderlistChunk.clear();
-				manager.renderlistChunk.push_back(fullMesh);
+				manager.renderVecChunk.clear();
+				manager.renderVecChunk.push_back(fullMesh);
 				D(std::cout << "Done, " << sizeArray << " chunks merged.\n");
 				#endif
 			}
@@ -1316,7 +1324,7 @@ unsigned int	grabObjects(ChunkGenerator& generator, ChunkGrid& grid, OctreeManag
 		cubeGrid->local.setScale(scale);
 		cubeGrid->setPolygonMode(GL_LINE);
 		cubeGrid->displayTexture = false;
-		manager.renderlistGrid.push_back(cubeGrid);
+		manager.renderVecGrid.push_back(cubeGrid);
 		cubgrid++;
 	}
 	#endif // M_DRAW_GRID_BOX
@@ -1335,7 +1343,7 @@ unsigned int	grabObjects(ChunkGenerator& generator, ChunkGrid& grid, OctreeManag
 						cubeGrid->local.setScale(chunk->size * 1); // scale_coef
 						cubeGrid->setPolygonMode(GL_LINE);
 						cubeGrid->displayTexture = false;
-						manager.renderlistGrid.push_back(cubeGrid);
+						manager.renderVecGrid.push_back(cubeGrid);
 						cubgrid++;
 					}
 					#endif // M_DRAW_GRID_CHUNK
@@ -1391,17 +1399,17 @@ unsigned int	grabObjects(ChunkGenerator& generator, ChunkGrid& grid, OctreeManag
 								cube->setPolygonMode(manager.polygon_mode);
 								cube->setPolygonMode(GL_FILL);
 								hiddenBlocks++;
-								manager.renderlist.push_back(cube);
+								manager.renderVec.push_back(cube);
 							}
 							else {
 								// push only the faces next to an EMPTY_VOXEL in an all-in buffer
-								manager.renderlist.push_back(cube);
-								if ((node->neighbors & NEIGHBOR_FRONT) != NEIGHBOR_FRONT) { manager.renderlistVoxels[CUBE_FRONT_FACE].push_back(cube); }
-								if ((node->neighbors & NEIGHBOR_RIGHT) != NEIGHBOR_RIGHT) { manager.renderlistVoxels[CUBE_RIGHT_FACE].push_back(cube); }
-								if ((node->neighbors & NEIGHBOR_LEFT) != NEIGHBOR_LEFT) { manager.renderlistVoxels[CUBE_LEFT_FACE].push_back(cube); }
-								if ((node->neighbors & NEIGHBOR_BOTTOM) != NEIGHBOR_BOTTOM) { manager.renderlistVoxels[CUBE_BOTTOM_FACE].push_back(cube); }
-								if ((node->neighbors & NEIGHBOR_TOP) != NEIGHBOR_TOP) { manager.renderlistVoxels[CUBE_TOP_FACE].push_back(cube); }
-								if ((node->neighbors & NEIGHBOR_BACK) != NEIGHBOR_BACK) { manager.renderlistVoxels[CUBE_BACK_FACE].push_back(cube); }
+								manager.renderVec.push_back(cube);
+								if ((node->neighbors & NEIGHBOR_FRONT) != NEIGHBOR_FRONT) { manager.renderVecVoxels[CUBE_FRONT_FACE].push_back(cube); }
+								if ((node->neighbors & NEIGHBOR_RIGHT) != NEIGHBOR_RIGHT) { manager.renderVecVoxels[CUBE_RIGHT_FACE].push_back(cube); }
+								if ((node->neighbors & NEIGHBOR_LEFT) != NEIGHBOR_LEFT) { manager.renderVecVoxels[CUBE_LEFT_FACE].push_back(cube); }
+								if ((node->neighbors & NEIGHBOR_BOTTOM) != NEIGHBOR_BOTTOM) { manager.renderVecVoxels[CUBE_BOTTOM_FACE].push_back(cube); }
+								if ((node->neighbors & NEIGHBOR_TOP) != NEIGHBOR_TOP) { manager.renderVecVoxels[CUBE_TOP_FACE].push_back(cube); }
+								if ((node->neighbors & NEIGHBOR_BACK) != NEIGHBOR_BACK) { manager.renderVecVoxels[CUBE_BACK_FACE].push_back(cube); }
 							}
 							if (M_DISPLAY_BLACK) {
 								Obj3d* cube2 = new Obj3d(cubebp, obj3d_prog);
@@ -1410,7 +1418,7 @@ unsigned int	grabObjects(ChunkGenerator& generator, ChunkGrid& grid, OctreeManag
 								cube2->local.setScale(node->size.x * scale_coef2, node->size.y * scale_coef2, node->size.z * scale_coef2);
 								cube2->setPolygonMode(GL_LINE);
 								cube2->displayTexture = false;
-								manager.renderlistOctree.push_back(cube2);
+								manager.renderVecOctree.push_back(cube2);
 							}
 						}
 					}
@@ -1422,22 +1430,14 @@ unsigned int	grabObjects(ChunkGenerator& generator, ChunkGrid& grid, OctreeManag
 	}
 	#endif // M_DRAW_DEBUG
 
-	if (manager.storageMode == STORAGE_LIST) {
-		//INFO("Counting total_polygons from renderlistChunk\n");
-		for (Object* o : manager.renderlistChunk) {
-			Obj3d* obj = dynamic_cast<Obj3d*>(o);
-			if (!obj) { D("grabObjects() : dynamic cast failed on object: " << o << "\n"); Misc::breakExit(456); }
-			total_polygons += obj->getBlueprint()->getPolygonAmount();
-		}
+	//INFO("Counting total_polygons from renderVecChunk\n");
+	for (Object* o : manager.renderVecChunk) {
+		Obj3d* obj = dynamic_cast<Obj3d*>(o);
+		if (!obj) { D("grabObjects() : dynamic cast failed on object: " << o << "\n"); Misc::breakExit(456); }
+		total_polygons += obj->getBlueprint()->getPolygonAmount();
 	}
-	else {
-		//INFO("Counting total_polygons from renderArrayChunk\n");
-		for (unsigned int x = 0; x < sizeArray; x++) {
-			Obj3d* obj = dynamic_cast<Obj3d*>(manager.renderArrayChunk[x]);
-			if (!obj) { D("grabObjects() : dynamic cast failed on object: " << manager.renderArrayChunk[x] << "\n"); Misc::breakExit(456); }
-			total_polygons += obj->getBlueprint()->getPolygonAmount();
-		}
-	}
+
+
 
 	if (grid.playerChangedChunk)
 		grid.playerChangedChunk = false;
@@ -1448,12 +1448,11 @@ unsigned int	grabObjects(ChunkGenerator& generator, ChunkGrid& grid, OctreeManag
 	//INFO("total polygons:\t" << total_polygons << "\n");
 	//INFO("LOD:\t" << LOD << "\n");
 	//INFO("hiddenBlocks:\t" << hiddenBlocks << "\n");
-	//for (auto i : manager.renderlistVoxels)
-	//	INFO("renderlistVoxels[]: " << i.size() << "\n");
-	//INFO("renderlistOctree: " << manager.renderlistOctree.size() << "\n");
-	//INFO("renderlistChunk: " << manager.renderlistChunk.size() << "\n");
-	//INFO("renderArrayChunk: " << sizeArray << "\n");
-	//INFO("renderlistGrid: " << manager.renderlistGrid.size() << "\n");
+	//for (auto i : manager.renderVecVoxels)
+	//	INFO("renderVecVoxels[]: " << i.size() << "\n");
+	//INFO("renderVecOctree: " << manager.renderVecOctree.size() << "\n");
+	//INFO("renderVecChunk: " << manager.renderVecChunk.size() << "\n");
+	//INFO("renderVecGrid: " << manager.renderVecGrid.size() << "\n");
 	//INFO("cubes grid : " << cubgrid << "\n");
 	//D(D_SPACER_END);
 
@@ -1517,6 +1516,7 @@ static void		keyCallback_debugGrid(GLFWwindow* window, int key, int scancode, in
 * 
 *	todo:
 *		- check every ctor by copy, they can access private members, useless to use accessors
+*		- inconsistencys with the use of ref or ptr on some pipeline
 *		- finish Job vertexArray, refacto Job::execute() and Job::deliver() and ctors(all needed args) 
 *		- in ChunkGrid::updateGrid() : _deleteChunksAndHeightmaps(&chunksToDelete, &hmapsToDelete);
 			! it has gl stuff in it, why it is currently done outside of the gl thread ?
@@ -1581,7 +1581,7 @@ void	scene_octree() {
 	Obj3dIPG		rendererObj3dInstanced(SIMPLEGL_FOLDER + OBJ3D_INSTANCED_VS_FILE, SIMPLEGL_FOLDER + OBJ3D_FS_FILE);
 	SkyboxPG		rendererSkybox(SIMPLEGL_FOLDER + CUBEMAP_VS_FILE, SIMPLEGL_FOLDER + CUBEMAP_FS_FILE);
 	Skybox			skybox(*tex_skybox, rendererSkybox);
-	m.renderlistSkybox.push_back(&skybox);
+	m.renderVecSkybox.push_back(&skybox);
 	Obj3dPG* renderer = &rendererObj3d;
 	//renderer = &rendererObj3dInstanced;
 	Chunk::renderer = &rendererObj3d;
@@ -1605,8 +1605,8 @@ void	scene_octree() {
 	cam.lockedMovement = false;
 	cam.lockedOrientation = false;
 	//m.glfw->setMouseAngle(-1);//?
-	D("MouseAngle: " << m.glfw->getMouseAngle() << "\n")
-		m.cam = &cam;
+	D("MouseAngle: " << m.glfw->getMouseAngle() << "\n");
+	m.cam = &cam;
 	#endif //INIT_GLFW
 
 	#ifndef BASE_OBJ3D
@@ -1616,19 +1616,8 @@ void	scene_octree() {
 	cubeo.setColor(255, 0, 0);
 	cubeo.displayTexture = false;
 	cubeo.setPolygonMode(GL_LINE);
-	//m.renderlist.push_back(&cubeo);
+	//m.renderVec.push_back(&cubeo);
 
-	//Obj3d		player1(cubebp, *rendererObj3d.program);
-	//player1.local.setPos(0, 35, 0);
-	//player1.local.setScale(1, 2, 1);
-	//player1.local.enlarge(5, 5, 5);
-	//player1.setColor(255, 0, 0);
-	//player1.displayTexture = false;
-	//player1.setPolygonMode(GL_FILL);
-	//m.player = &player1;
-
-	//std::list<Obj3d*>	playerList;
-	//playerList.push_back(&player1);
 	#endif
 
 	cam.local.setPos(28, 50, 65);//buried close to the surface
@@ -1664,30 +1653,9 @@ void	scene_octree() {
 	std::unique_lock<std::mutex> chunks_lock(grid.chunks_mutex, std::defer_lock);
 	generator.initAllBuilders(m.cpuThreadAmount - 1, &cam, &grid);
 
-	#ifndef INIT_RENDER_ARRAY
-	unsigned int x = grid.getRenderedSize().x;
-	unsigned int y = grid.getRenderedSize().y;
-	unsigned int z = grid.getRenderedSize().z;
-	unsigned int len = x * y;
-	if (x != 0 && len / x != y) {
-		D("grid size too big, causing overflow\n");
-		Misc::breakExit(99);
-	}
-	len = x * y * z;
-	if ((z != 0 && len / z != x * y) || len == 4294967295) {
-		D("grid size too big, causing overflow\n");
-		Misc::breakExit(99);
-	}
-	len++;
-	INFO("m.renderArrayChunk size for rendered chunks : " << len << "\n");
-	m.renderArrayChunk = new Object * [len];
-	m.renderArrayChunk[0] = nullptr;
-	m.renderArrayChunk_maxsize = len;
-	#endif // INIT_RENDER_ARRAY
 	#endif // GENERATOR
 
-	Fps	fps(135);
-	INFO("Maximum fps : " << fps.getMaxFps() << "\n");
+
 	//#define MINIMAP // need to build a framebuffer with the entire map, update it each time the player changes chunk
 
 	#define USE_THREADS
@@ -1707,6 +1675,9 @@ void	scene_octree() {
 	D("cam: " << cam.local.getPos().toString() << "\n")
 	INFO("Begin while loop, renderer: " << typeid(renderer).name() << "\n");
 	//std::cout.setstate(std::ios_base::failbit);
+
+	Fps	fps(135);
+	INFO("Maximum fps : " << fps.getMaxFps() << "\n");
 
 	while (!glfwWindowShouldClose(m.glfw->_window)) {
 		if (fps.wait_for_next_frame()) {
@@ -1738,7 +1709,7 @@ void	scene_octree() {
 					INFO("grabbing meshes...\n");
 					polygons = grabObjects(generator, grid, m, cubebp, *renderer, tex_lena);
 					start = glfwGetTime() - start;
-					INFO("grabbed " << m.renderlistChunk.size() << " in " << start*1000 << " ms\n");
+					INFO("grabbed " << m.renderVecChunk.size() << " in " << start*1000 << " ms\n");
 					chunks_lock.unlock();
 					// the generator can do what he wants with the grid, the renderer has what he needs for the current frame
 				}
@@ -1747,35 +1718,32 @@ void	scene_octree() {
 			}
 
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-			//D("renderlist\n")
+			//D("renderVec\n")
 			if (0) { // opti faces, not converted to mesh
 				float speed = cam.speed;//save
 				for (size_t i = 0; i < 6; i++) {
 					cam.speed = i;//use this as a flag for the renderer, tmp
-					renderer->renderObjects(m.renderlistVoxels[i], cam, PG_FORCE_DRAW);
+					renderer->renderAllObjects(m.renderVecVoxels[i], cam, PG_FORCE_DRAW);
 				}
 				cam.speed = speed;//restore
 			}
 			else if (0) {//whole cube
-				renderer->renderObjects(m.renderlist, cam, PG_FORCE_DRAW);
+				renderer->renderAllObjects(m.renderVec, cam, PG_FORCE_DRAW);
 			}
 			else if (1) { // converted to mesh
 				grid.chunks_mutex.lock();
-				if (m.storageMode == STORAGE_LIST) {
-					Chunk::renderer->renderObjects(m.renderlistChunk, cam, PG_FORCE_DRAW);//PG_FRUSTUM_CULLING
-					//Chunk::renderer->renderObjectsMultiDraw(m.renderlistChunk, cam, PG_FORCE_DRAW);//PG_FRUSTUM_CULLING
-				} else
-					Chunk::renderer->renderObjects(m.renderArrayChunk, cam, PG_FORCE_DRAW);//PG_FRUSTUM_CULLING
+				Chunk::renderer->renderAllObjects(m.renderVecChunk, cam, PG_FORCE_DRAW);//PG_FRUSTUM_CULLING
+				//Chunk::renderer->renderAllObjectsMultiDraw(m.renderVecChunk, cam, PG_FORCE_DRAW);//PG_FRUSTUM_CULLING
 				grid.chunks_mutex.unlock();
 			}
 			//D("octreeRender\n")
-			//renderer->renderObjects(m.renderlistOctree, cam, PG_FORCE_DRAW);
+			//renderer->renderAllObjects(m.renderVecOctree, cam, PG_FORCE_DRAW);
 #if (M_DRAW_BOX_GRID || M_DRAW_GRID_CHUNK)
 			glDisable(GL_CULL_FACE);
-			renderer->renderObjects(m.renderlistGrid, cam, PG_FORCE_DRAW);
+			renderer->renderAllObjects(m.renderVecGrid, cam, PG_FORCE_DRAW);
 			glEnable(GL_CULL_FACE);
 #endif
-			//rendererSkybox.renderObjects(m.renderlistSkybox, cam, PG_FORCE_DRAW);
+			//rendererSkybox.renderAllObjects(m.renderVecSkybox, cam, PG_FORCE_DRAW);
 
 			//rendererText_arial.render(text1, Math::Matrix4());
 			//rendererText_arial.render(text2, Math::Matrix4());
@@ -1864,30 +1832,30 @@ void	scene_octree() {
 
 			//GLuint	mode = m.polygon_mode;
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-			//D("renderlist\n")
+			//D("renderVec\n")
 			if (0) { // opti faces, not converted to mesh
 				float speed = cam.speed;//save
 				for (size_t i = 0; i < 6; i++) {
 					cam.speed = i;//use this as a flag for the renderer, tmp
-					renderer->renderObjects(m.renderlistVoxels[i], cam, PG_FORCE_DRAW);
+					renderer->renderAllObjects(m.renderVecVoxels[i], cam, PG_FORCE_DRAW);
 				}
 				cam.speed = speed;//restore
 			}
 			else if (0) {//whole cube
-				renderer->renderObjects(m.renderlist, cam, PG_FORCE_DRAW);
+				renderer->renderAllObjects(m.renderVec, cam, PG_FORCE_DRAW);
 			}
 			else { // converted to mesh
-				Chunk::renderer->renderObjects(m.renderlistChunk, cam, PG_FORCE_DRAW);//PG_FRUSTUM_CULLING
+				Chunk::renderer->renderAllObjects(m.renderVecChunk, cam, PG_FORCE_DRAW);//PG_FRUSTUM_CULLING
 			}
 			//D("octree render\n")
-			//renderer->renderObjects(m.renderlistOctree, cam, PG_FORCE_DRAW);
+			//renderer->renderAllObjects(m.renderVecOctree, cam, PG_FORCE_DRAW);
 			//D("rendered grid\n")
 			#if true
 			glDisable(GL_CULL_FACE);
-			renderer->renderObjects(m.renderlistGrid, cam, PG_FORCE_DRAW);
+			renderer->renderAllObjects(m.renderVecGrid, cam, PG_FORCE_DRAW);
 			glEnable(GL_CULL_FACE);
 			#endif
-			//rendererSkybox.renderObjects(m.renderlistSkybox, cam, PG_FORCE_DRAW);
+			//rendererSkybox.renderAllObjects(m.renderVecSkybox, cam, PG_FORCE_DRAW);
 
 			glfwSwapBuffers(m.glfw->_window);
 			//generator.try_deleteUnusedData();

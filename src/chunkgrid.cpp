@@ -284,15 +284,15 @@ void			ChunkGrid::glth_loadAllChunksToGPU() {
 		}
 	}
 }
-void			ChunkGrid::pushRenderedChunks(std::list<Object*>* dst, unsigned int lod) const {
+void			ChunkGrid::pushRenderedChunks(std::vector<Object*>* dst, unsigned int lod) const {
 	/*
 	same as in glth_loadAllChunksToGPU() but more complicated
-	we would need to select the chunks to remove (change the render list with a map?),
+	we would need to select the chunks to remove (change the render vector with a map?),
 	and push only the new chunks
 	*/
-	//D("Pushing rendered chunks to a list<Object*> ...\n");
+	//D("Pushing rendered chunks to a vector<Object*> ...\n");
 	//if (dst->size()) {
-	//	D("Warning: Pushing rendered chunks to a list<Object*> that is not empty\n");
+	//	D("Warning: Pushing rendered chunks to a vector<Object*> that is not empty\n");
 	//}
 	Chunk* c = nullptr;
 	Math::Vector3	renderedGridEndIndex = this->_renderedGridIndex + this->_renderedGridSize;
@@ -307,31 +307,6 @@ void			ChunkGrid::pushRenderedChunks(std::list<Object*>* dst, unsigned int lod) 
 			}
 		}
 	}
-}
-unsigned int	ChunkGrid::pushRenderedChunks(Object** dst, unsigned int lod, unsigned int starting_index) const {
-	/*
-		same problem as in glth_loadChunks() but more complicated
-		we would need to select the chunks to remove (change the render list with a map?),
-		and push only the new chunks
-	*/
-	//D("Pushing rendered chunks to a Object* array ...\n")
-	Chunk* c = nullptr;
-	Math::Vector3	renderedGridEndIndex = this->_renderedGridIndex + this->_renderedGridSize;
-	for (unsigned int k = this->_renderedGridIndex.z; k < renderedGridEndIndex.z; k++) {
-		for (unsigned int j = this->_renderedGridIndex.y; j < renderedGridEndIndex.y; j++) {
-			for (unsigned int i = this->_renderedGridIndex.x; i < renderedGridEndIndex.x; i++) {
-				c = this->_grid[k][j][i].get();
-				if (c && c->mesh[lod]) {//mesh can be null if the chunk is empty (see glth_buildAllMeshes())
-					dst[starting_index] = c->mesh[lod];
-					//D("array : pushing chunck [" << k << "][" << j << "][" << i << "] " << c << " lod " << lod << "\n")
-					starting_index++;
-				}
-			}
-		}
-	}
-	dst[starting_index] = nullptr;
-	//D("pushRenderedChunks() ret starting_index " << starting_index << "\n")
-	return starting_index;
 }
 
 void			ChunkGrid::replaceHeightMap(HeightMap* new_hmap, Math::Vector3 index) {

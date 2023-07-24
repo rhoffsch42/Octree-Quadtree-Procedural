@@ -4,6 +4,8 @@
 #include "heightmap.hpp"
 #include "chunkgenerator.hpp"
 
+#include <vector>
+
 typedef HeightMap*				HMapPtr;
 
 typedef struct s_grid_gemoetry
@@ -25,10 +27,9 @@ public:
 	bool			updateGrid(Math::Vector3 player_pos);
 	// Build the chunks meshes and load them to the GPU. Must be executed in the OpenGL thread
 	void			glth_loadAllChunksToGPU();
-	//push chunks with the asked LOD, inside the list dst.
-	void			pushRenderedChunks(std::list<Object*>* dst, unsigned int lod = 0) const;
+	//push chunks with the asked LOD, inside the vector dst.
+	void			pushRenderedChunks(std::vector<Object*>* dst, unsigned int lod = 0) const;
 	//push chunks with the asked LOD, inside the array dst. Then returns the next index (last chunk added + 1)
-	unsigned int	pushRenderedChunks(Object** dst, unsigned int lod = 0, unsigned int starting_index = 0) const;
 	void			replaceHeightMap(HeightMap* new_hmap, Math::Vector3 index);
 	void			replaceChunk(Chunk* new_chunk, Math::Vector3 index);
 
