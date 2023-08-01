@@ -245,9 +245,6 @@
     <ClInclude Include="SimpleGL\include\text_pg.hpp">
       <Filter>SimpleGL\Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="SimpleGL\include\ft2build.h">
-      <Filter>SimpleGL\Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="include\job.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>

@@ -30,9 +30,9 @@ Chunk::Chunk(const Math::Vector3& chunk_index, const Math::Vector3& chunk_size, 
 	this->pos.z *= chunk_size.z;
 	this->size = chunk_size;
 
+	this->meshBP = nullptr;
+	this->mesh = nullptr;
 	for (int i = 0; i < LODS_AMOUNT; i++) {
-		this->meshBP[i] = nullptr;
-		this->mesh[i] = nullptr;
 		this->_generatedLod[i] = false;
 	}
 
@@ -147,10 +147,8 @@ Chunk::~Chunk() {
 	}
 
 	if (this->root) { delete this->root; }
-	for (int i = 0; i < LODS_AMOUNT; i++) {
-		if (this->meshBP[i]) { delete this->meshBP[i]; }
-		if (this->mesh[i]) { delete this->mesh[i]; }
-	}
+	if (this->meshBP) { delete this->meshBP; }
+	if (this->mesh) { delete this->mesh; }
 	//D("Chunk destroyed " << this->index.toString() << "\n");
 }
 
@@ -160,6 +158,33 @@ Chunk::~Chunk() {
 	If there are vertices, it uses them to build a mesh, then it deletes the vertices.
 */
 void	Chunk::glth_buildAllMeshes() {
+#define NEW_BUILDALLMESH
+#ifdef NEW_BUILDALLMESH
+	//D("Chunk::glth_buildAllMeshes() for chunk " << this->index << "\n");
+	for (int i = 0; i < LODS_AMOUNT; i++) {
+		if (!this->_vertexArray[i].empty()) {
+			//D("Building LOD_" << i << "\tvertexArray size: " << this->_vertexArray[i].size() << "\n");
+			if (i == 0 || this->_vertexArray[i].size() > LOD_MIN_VERTEX_ARRAY_SIZE) {
+				Obj3dBP* bp = new Obj3dBP(this->_vertexArray[i], this->_indices[i], BP_DONT_NORMALIZE);
+				if (i == 0) {
+					this->meshBP = bp;
+					this->mesh = new Obj3d(*this->meshBP, *Chunk::renderer);
+					this->mesh->local.setPos(this->pos);
+				}
+				else {
+					//this->meshBP->lodManager.addLod(bp, this->size.x * (i+1));// 32 * (i+1);
+					this->meshBP->lodManager.addLod(bp, this->size.x * std::pow(2, i + 1));// 32 * { 1, 2, 4, 8, 16, 32 };
+				}
+				bp->freeData(BP_FREE_ALL);
+			}
+			//else { D("Skipped LODS " << i << "+ for chunk " << this->index << "\n"); }
+			this->_vertexArray[i].clear();
+			this->_indices[i].clear();
+		}
+	}
+	//if (this->meshBP && this->meshBP->lodManager.getLodCount() > 1)
+		//D(this->meshBP->lodManager.toString() << "\n");
+#else
 	for (int i = 0; i < LODS_AMOUNT; i++) {
 		//std::cout << "Chunk::_vertexArray size: " << this->_vertexArray.size() << "\n";
 		if (!this->_vertexArray[i].empty()) {//if there are some voxels in the chunk
@@ -185,6 +210,7 @@ void	Chunk::glth_buildAllMeshes() {
 			this->_indices[i].clear();
 		}
 	}
+#endif
 }
 
 #ifdef OCTREE_OLD
@@ -256,7 +282,7 @@ int	Chunk::buildVertexArray(Math::Vector3 pos_offset, const uint8_t desiredLod, 
 	this->_vertexArray[desiredLod].clear();
 	this->_indices[desiredLod].clear();
 
-	//#define EVERY_LODS
+//#define EVERY_LODS
 #define	LODS_WITH_THRESHOLD
 /*
 	0 = best lod, taking smallest voxels (size = 1)
@@ -329,11 +355,11 @@ void	Chunk::glth_clearMeshesData() {
 	for (auto i = 0; i < LODS_AMOUNT; i++) {
 		this->_vertexArray[i].clear();
 		this->_indices[i].clear();
-		delete this->meshBP[i];
-		delete this->mesh[i];
-		this->meshBP[i] = nullptr;
-		this->mesh[i] = nullptr;
 	}
+	delete this->meshBP;
+	delete this->mesh;
+	this->meshBP = nullptr;
+	this->mesh = nullptr;
 }
 
 void	Chunk::clearOctreeData() {
@@ -468,18 +494,9 @@ std::string		Chunk::toString(uint8_t flags) const {
 	if (FLAG_HAS(flags, PRINT_ROOT))
 		ss << "root: " << this->root << " ";
 	if (FLAG_HAS(flags, PRINT_MESHBP))
-		ss << "meshBP: " << this->meshBP[0] << " ";
+		ss << "meshBP: " << this->meshBP << " LODs: " << this->meshBP->lodManager.getLodCount();
 	if (FLAG_HAS(flags, PRINT_MESH))
-		ss << "mesh: " << this->mesh[0] << " ";
-
-	if (FLAG_HAS(flags, PRINT_MESH)) {
-		ss << "[";
-		for (int i = 0; i < LODS_AMOUNT; i++) {
-			ss << (this->mesh[i] ? "*" : ".");
-		}
-		ss << "] ";
-	}
-
+		ss << "mesh: " << this->mesh << " ";
 	if (FLAG_HAS(flags, PRINT_VERTEX))
 		ss << "vertexArray size: " << this->_vertexArray->size() << " ";
 	if (FLAG_HAS(flags, PRINT_INDICES))

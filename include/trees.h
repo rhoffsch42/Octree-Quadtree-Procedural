@@ -20,6 +20,8 @@
 #include <mutex>
 #include <functional>
 
+#define FOR(X, END) for(size_t X = 0; X < END; X++)
+
 #ifdef _WIN32
 #include <direct.h>
 #else

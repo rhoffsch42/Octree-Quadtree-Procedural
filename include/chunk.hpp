@@ -16,6 +16,7 @@
 	5 = log2(32), max level, ie the size of a chunk
 */
 #define LODS_AMOUNT 6
+#define LOD_MIN_VERTEX_ARRAY_SIZE	1000
 
 #define	PRINT_INDEX		0b10000000
 #define	PRINT_POS		0b01000000
@@ -51,8 +52,8 @@ public:
 #endif
 
 	//opengl
-	Obj3dBP*	meshBP[LODS_AMOUNT];//1,2,4,8,16,32 : sizes of smallest voxel 
-	Obj3d*		mesh[LODS_AMOUNT];//same
+	Obj3dBP*	meshBP;
+	Obj3d*		mesh;
 
 	void	glth_buildAllMeshes(); //with _vertexArray
 	int		buildVertexArray(Math::Vector3 pos_offset = Math::Vector3(0, 0, 0), const uint8_t desiredLod = 0, const double threshold = 0);

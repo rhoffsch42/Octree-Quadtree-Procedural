@@ -284,7 +284,7 @@ void			ChunkGrid::glth_loadAllChunksToGPU() {
 		}
 	}
 }
-void			ChunkGrid::pushRenderedChunks(std::vector<Object*>* dst, unsigned int lod) const {
+void			ChunkGrid::pushRenderedChunks(std::vector<Object*>* dst) const {
 	/*
 	same as in glth_loadAllChunksToGPU() but more complicated
 	we would need to select the chunks to remove (change the render vector with a map?),
@@ -300,9 +300,9 @@ void			ChunkGrid::pushRenderedChunks(std::vector<Object*>* dst, unsigned int lod
 		for (unsigned int j = this->_renderedGridIndex.y; j < renderedGridEndIndex.y; j++) {
 			for (unsigned int i = this->_renderedGridIndex.x; i < renderedGridEndIndex.x; i++) {
 				c = this->_grid[k][j][i].get();
-				if (c && c->mesh[lod]) {//mesh can be null if the chunk is empty (see glth_buildAllMeshes())
-					dst->push_back(c->mesh[lod]);
-					//D("list : pushing chunck [" << k << "][" << j << "][" << i << "] " << c << " lod " << lod << "\n")
+				if (c && c->mesh) {//mesh can be null if the chunk is empty (see glth_buildAllMeshes())
+					dst->push_back(c->mesh);
+					//D("list : pushing chunck [" << k << "][" << j << "][" << i << "] " << c << "\n")
 				}
 			}
 		}

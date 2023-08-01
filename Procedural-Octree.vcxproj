@@ -180,7 +180,6 @@
     <ClInclude Include="SimpleGL\include\compiler_settings.h" />
     <ClInclude Include="SimpleGL\include\fps.hpp" />
     <ClInclude Include="SimpleGL\include\framebuffer.hpp" />
-    <ClInclude Include="SimpleGL\include\ft2build.h" />
     <ClInclude Include="SimpleGL\include\gamemanager.hpp" />
     <ClInclude Include="SimpleGL\include\glfw.hpp" />
     <ClInclude Include="SimpleGL\include\lod_manager.hpp" />

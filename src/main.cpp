@@ -1243,21 +1243,20 @@ unsigned int	grabObjects(ChunkGenerator& generator, ChunkGrid& grid, OctreeManag
 #endif
 	D(" > rendered " << startRendered << " -> " << endRendered << "\n");
 
-	unsigned int sizeArray = 0;
 	/*
 		0 = no LOD, taking smallest voxels (size = 1)
 		5 = log2(32), max level, ie the size of a chunk
 	*/
 	if (1) {// actual grabbing + Obj3d creation
 		grid.glth_loadAllChunksToGPU();
-		for (unsigned int lod = 0; lod < LODS_AMOUNT; lod++) {
-			//INFO("LOD[" << lod << "] Pushing Chunks...\n");
-			grid.pushRenderedChunks(&manager.renderVecChunk, lod);
-		}
-		if (manager.renderVecChunk.size() != sizeArray) {
-			D("Warning: difference between list and array size for rendered chunks : " << manager.renderVecChunk.size() << " != " << sizeArray << "\n");
-			//std::exit(1);
-		}
+		
+		// old lod
+		//for (unsigned int lod = 0; lod < LODS_AMOUNT; lod++) {
+		//	//INFO("LOD[" << lod << "] Pushing Chunks...\n");
+		//	grid.pushRenderedChunks(&manager.renderVecChunk, lod);
+		//}
+		// new lod
+		grid.pushRenderedChunks(&manager.renderVecChunk);
 
 		//for (auto x = 0; x < sizeArray; x++) {
 		//	Obj3d* o = dynamic_cast<Obj3d*>(manager.renderVecChunk[x]);
@@ -1266,47 +1265,43 @@ unsigned int	grabObjects(ChunkGenerator& generator, ChunkGrid& grid, OctreeManag
 
 		//merge BPs
 		if (M_MERGE_CHUNKS) {//merge BPs for a single draw call with the renderVecChunk
-			if (sizeArray) {
-				INFO("Merging all chunks...\n");
-				std::vector<SimpleVertex> vertices;
-				std::vector<unsigned int> indices;
-				for (unsigned int x = 0; x < sizeArray; x++) {
-					Obj3d* o = dynamic_cast<Obj3d*>(manager.renderVecChunk[x]);
-					if (!o) {
-						D("sizeArray " << sizeArray << " | renderVecChunk_maxsize " << manager.renderVecChunk_maxsize << " | x " << x << "\n");
-						D("dynamic cast failed on object: " << manager.renderVecChunk[x] << "\n");
-						Misc::breakExit(456);
-					}
-					Math::Vector3 pos = o->local.getPos();
-					Obj3dBP* bp = o->getBlueprint();
-					std::vector<SimpleVertex> verts = bp->getVertices();
-					//offset the vertices with the obj3d pos
-					std::for_each(verts.begin(), verts.end(), [pos](SimpleVertex& vertex) { vertex.position += pos; });
-					vertices.insert(vertices.end(), verts.begin(), verts.end());
-					if (x % 50 == 0) { D_(std::cout << x << " ") }
+			INFO("Merging all chunks...\n");
+			std::vector<SimpleVertex> vertices;
+			std::vector<unsigned int> indices;
+			for (auto obj : manager.renderVecChunk) {
+				Obj3d* o = dynamic_cast<Obj3d*>(obj);
+				if (!o) {
+					D("dynamic cast failed on object: " << obj << "\n");
+					Misc::breakExit(456);
 				}
-				D_(std::cout << "\n");
-
-
-				#ifndef RECREATE_FULLMESH
-				// recreating full mesh without updating it in the ChunkGrid:: ?? todo: it should crash when entering a new chunk, check that and fix if needed
-				Obj3dBP* fullMeshBP = grid.getFullMeshBP();
-				Obj3d* fullMesh = grid.getFullMesh();
-				D(std::cout << "Deleting old fullMesh...\n");
-				if (fullMeshBP)
-					delete fullMeshBP;
-				if (fullMesh)
-					delete fullMesh;
-				D(std::cout << "Building new fullMesh...\n");
-				fullMeshBP = new Obj3dBP(vertices, indices, BP_DONT_NORMALIZE);
-				D(std::cout << "BP ready\n");
-				fullMesh = new Obj3d(*fullMeshBP, obj3d_prog);
-				D(std::cout << "Obj3d ready.\n");
-				manager.renderVecChunk.clear();
-				manager.renderVecChunk.push_back(fullMesh);
-				D(std::cout << "Done, " << sizeArray << " chunks merged.\n");
-				#endif
+				Math::Vector3 pos = o->local.getPos();
+				Obj3dBP* bp = o->getBlueprint();
+				std::vector<SimpleVertex> verts = bp->getVertices();
+				//offset the vertices with the obj3d pos
+				std::for_each(verts.begin(), verts.end(), [pos](SimpleVertex& vertex) { vertex.position += pos; });
+				vertices.insert(vertices.end(), verts.begin(), verts.end());
 			}
+			D_(std::cout << "\n");
+
+
+			#ifndef RECREATE_FULLMESH
+			// recreating full mesh without updating it in the ChunkGrid:: ?? todo: it should crash when entering a new chunk, check that and fix if needed
+			Obj3dBP* fullMeshBP = grid.getFullMeshBP();
+			Obj3d* fullMesh = grid.getFullMesh();
+			D(std::cout << "Deleting old fullMesh...\n");
+			if (fullMeshBP)
+				delete fullMeshBP;
+			if (fullMesh)
+				delete fullMesh;
+			D(std::cout << "Building new fullMesh...\n");
+			fullMeshBP = new Obj3dBP(vertices, indices, BP_DONT_NORMALIZE);
+			D(std::cout << "BP ready\n");
+			fullMesh = new Obj3d(*fullMeshBP, obj3d_prog);
+			D(std::cout << "Obj3d ready.\n");
+			D(std::cout << "Done, " << manager.renderVecChunk.size() << " chunks merged.\n");
+			manager.renderVecChunk.clear();
+			manager.renderVecChunk.push_back(fullMesh);
+			#endif
 		}
 
 	}
@@ -1517,13 +1512,12 @@ static void		keyCallback_debugGrid(GLFWwindow* window, int key, int scancode, in
 *	todo:
 *		- check every ctor by copy, they can access private members, useless to use accessors
 *		- inconsistencys with the use of ref or ptr on some pipeline
-*		- finish Job vertexArray, refacto Job::execute() and Job::deliver() and ctors(all needed args) 
 *		- in ChunkGrid::updateGrid() : _deleteChunksAndHeightmaps(&chunksToDelete, &hmapsToDelete);
 			! it has gl stuff in it, why it is currently done outside of the gl thread ?
 *				-> this must be sent to some trashes to let the glth do it
+*		- generate the vertexArray[lod] and its BP only when needed (when close enough from the cam/player)
 *	bugs :
 *		- quand le renderedGrid.size = grid.size, race entre le renderer et le grid.updater
-*		- le LOD des chunks n'est pas mis à jour
 *
 *	[Checklist] all gl calls have to be done on the gl context (here main thread)
 */
@@ -1597,7 +1591,7 @@ void	scene_octree() {
 	Obj3dBP::config.dataMode = BP_INDICES;
 
 	INFO(cubebp.lodManager.toString());
-	std::exit(0);
+	//std::exit(0);
 
 	Cam		cam(m.glfw->getWidth(), m.glfw->getHeight());
 	cam.speed = m.playerSpeed;
@@ -1692,8 +1686,8 @@ void	scene_octree() {
 				std::to_string(fps.getFps()) + " fps | "
 				+ std::to_string(int(polygons/1'000'000)) + "m"
 				+ ( decimals.c_str()+decimals.find('.')+1 )
-				+ " polys | threshold "
-				+ std::to_string(m.threshold)
+				+ " polys (lod_0) | threshold "
+				+ std::to_string((int)m.threshold)
 			);
 
 			glfwPollEvents();
@@ -1950,11 +1944,11 @@ void	benchmark_octree() {
 	HeightMap* hmap = new HeightMap(*m.ps, index, size);
 	Chunk* test = new Chunk(index, size, *m.ps, hmap);
 	//test->glth_buildAllMeshes();
-	if (test->meshBP[0]) {
-		D("polys: " << test->meshBP[0]->getPolygonAmount() << "\n")
-		test->meshBP[0]->freeData(BP_FREE_ALL);
-		delete test->meshBP[0];
-		test->meshBP[0] = nullptr;
+	if (test->meshBP) {
+		D("polys: " << test->meshBP->getPolygonAmount() << "\n")
+		test->meshBP->freeData(BP_FREE_ALL);
+		delete test->meshBP;
+		test->meshBP = nullptr;
 	}
 	//Misc::breakExit(0);
 	double start = glfwGetTime();

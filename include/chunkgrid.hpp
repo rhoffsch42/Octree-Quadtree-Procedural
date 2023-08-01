@@ -28,7 +28,7 @@ public:
 	// Build the chunks meshes and load them to the GPU. Must be executed in the OpenGL thread
 	void			glth_loadAllChunksToGPU();
 	//push chunks with the asked LOD, inside the vector dst.
-	void			pushRenderedChunks(std::vector<Object*>* dst, unsigned int lod = 0) const;
+	void			pushRenderedChunks(std::vector<Object*>* dst) const;
 	//push chunks with the asked LOD, inside the array dst. Then returns the next index (last chunk added + 1)
 	void			replaceHeightMap(HeightMap* new_hmap, Math::Vector3 index);
 	void			replaceChunk(Chunk* new_chunk, Math::Vector3 index);

@@ -71,32 +71,19 @@ bool	JobBuildHeightMap::deliver() const {
 //tmp
 void	JobBuildChunk::_buildVertexArray() {
 	Math::Vector3	gridIndex = this->_grid->worldToGrid(this->getWorldIndex());
-	//build the vertex array (should be done directly in JobBuildChunk::execute())
-	//(should be updated when the chunk distance crosses a step distance...)
 	Math::Vector3 playerGridIndex = this->_grid->worldToGrid(this->_grid->getPlayerChunkWorldIndex());
 
-	/*
-		Then we would take the desired level if possible: max(desired, available)
-		pb: how to know what is the max lod currently generated?
-			-> we need to modify the chunk job: generate data at a desired lod, if it's not already done.
-			-> need: bool Chunk::LODsGenerated[LODS_AMOUNT]; or uint8_t minLODsGenerated; to not conflict with empty chunk (full AIR)
-	*/
+	//lod/threshold depending on distance from the player
+	//double maxChunkDist = 30;
+	//double step = maxChunkDist / LODS_AMOUNT;
+	//double chunkDistFromPlayer = (gridIndex - playerGridIndex).len();
+	//double threshold = (chunkDistFromPlayer / maxChunkDist) * 100;
+	double threshold = 0;//override
 
-	//lod depending on distance from the player
-	double maxChunkDist = 30;
-	double step = maxChunkDist / LODS_AMOUNT;
-	double chunkDistFromPlayer = (gridIndex - playerGridIndex).len();
-	double threshold = (chunkDistFromPlayer / maxChunkDist) * 100;
-	int lod = 0;
-	if (chunkDistFromPlayer > 1) {
-		chunkDistFromPlayer -= 3;//most precise lod for at least 3 chunk dist
-		lod = std::clamp(int(chunkDistFromPlayer / step), 0, LODS_AMOUNT - 1);
+	for (size_t lod = 0; lod < LODS_AMOUNT; lod++) {
+		this->_chunk->buildVertexArray(Math::Vector3(0, 0, 0), lod, threshold);
 	}
-
-	threshold = 0;//override
-	//lod = 0;//override
-	this->_chunk->buildVertexArray(Math::Vector3(0, 0, 0), lod, threshold);
-	//this->chunk->clearOctreeData();
+	this->_chunk->clearOctreeData();
 }
 
 JobBuildChunk::JobBuildChunk(ChunkGenerator* generator, ChunkGrid* grid, Math::Vector3 worldIndex, Math::Vector3 chunk_size, HeightMap* hmap)
