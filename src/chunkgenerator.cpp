@@ -22,7 +22,7 @@ using namespace std::chrono_literals;
 #endif
 
 
-ChunkGenerator::ChunkGenerator(const PerlinSettings& perlin_settings, ChunkGrid* target) : settings(perlin_settings), _targetGrid(target) {
+ChunkGenerator::ChunkGenerator(const PerlinSettings& perlin_settings) : settings(perlin_settings) {
 	D(__PRETTY_FUNCTION__ << "\n");
 
 	this->_builderAmount = 0;
@@ -31,12 +31,12 @@ ChunkGenerator::ChunkGenerator(const PerlinSettings& perlin_settings, ChunkGrid*
 }
 
 ChunkGenerator::~ChunkGenerator() {
+	this->joinBuilders();
 	if (this->_builderAmount) {
 		for (uint8_t i = 0; i < this->_builderAmount; i++)
 			delete this->_builders[i];
 		delete[] this->_builders;
 	}
-	this->joinBuilders();
 }
 
 /*
@@ -157,14 +157,14 @@ void	ChunkGenerator::th_builders(GLFWwindow* context) {
 	}
 	job_lock.unlock();
 
-	//D(threadIDstr << "yyy Jobs done : " << thread_jobsdone << ". Exiting...\n")
+	D(threadIDstr << "Jobs done : " << thread_jobsdone << ". Exiting...\n");
 	//glfwSetWindowShouldClose(context, GLFW_TRUE);
 	//glfwMakeContextCurrent(nullptr);
 }
 
-bool	ChunkGenerator::createHeightmapJob(Math::Vector3 hmapWorldIndex, Math::Vector3 chunkSize) {
+bool	ChunkGenerator::createHeightmapJob(ChunkGrid& grid, Math::Vector3 hmapWorldIndex, Math::Vector3 chunkSize) {
 	if (!this->map_jobsHmap[hmapWorldIndex]) {
-		this->jobsToDo.push_back(new JobBuildHeightMap(this, this->_targetGrid, hmapWorldIndex, chunkSize));
+		this->jobsToDo.push_back(new JobBuildHeightMap(this, &grid, hmapWorldIndex, chunkSize));
 		this->map_jobsHmap[hmapWorldIndex] = true;
 
 		#ifdef CHUNK_GEN_DEBUG
@@ -179,9 +179,9 @@ bool	ChunkGenerator::createHeightmapJob(Math::Vector3 hmapWorldIndex, Math::Vect
 	return false;
 }
 
-bool	ChunkGenerator::createChunkJob(const Math::Vector3 chunkWorldIndex, const Math::Vector3 chunkSize, HeightMap* heightmap) {
+bool	ChunkGenerator::createChunkJob(ChunkGrid& grid, const Math::Vector3 chunkWorldIndex, const Math::Vector3 chunkSize, HeightMap* heightmap) {
 	if (!this->map_jobsChunk[chunkWorldIndex] && heightmap->dispose()) {
-		this->jobsToDo.push_back(new JobBuildChunk(this, this->_targetGrid, chunkWorldIndex, chunkSize, heightmap));
+		this->jobsToDo.push_back(new JobBuildChunk(this, &grid, chunkWorldIndex, chunkSize, heightmap));
 		this->map_jobsChunk[chunkWorldIndex] = true;
 
 		#ifdef CHUNK_GEN_DEBUG
@@ -230,7 +230,7 @@ void	ChunkGenerator::updateJobsToDo(ChunkGrid& grid) {
 			if (!hmaps[z][x]) {
 				index = grid.gridToWorld(Math::Vector3(x, 0, z));
 				index.y = 0;//important: even if it is ignored for the HeightMap itself, it is used in a map<Math::vector3, ...>
-				if (createHeightmapJob(index, chunkSize))
+				if (createHeightmapJob(grid, index, chunkSize))
 					newHmapJobs++;
 			}
 
@@ -238,7 +238,7 @@ void	ChunkGenerator::updateJobsToDo(ChunkGrid& grid) {
 				//D("[" << z << "][" << x << "]\n")
 				if (!chunks[z][y][x] && hmaps[z][x]) {
 					index = grid.gridToWorld(Math::Vector3(x, y, z));
-					if (createChunkJob(index, chunkSize, hmaps[z][x]))
+					if (createChunkJob(grid, index, chunkSize, hmaps[z][x]))
 						newChunkJobs++;
 				}
 

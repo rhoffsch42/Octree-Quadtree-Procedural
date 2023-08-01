@@ -74,6 +74,21 @@ private:
 };
 #endif
 
+
+/*
+	https://www.youtube.com/watch?v=bGN445_2NSw
+	chunk 32x32x32 :
+		3 x 11bits per pos
+		6 possible normals: 3bits
+
+	buildVertexArrayFromOctree in GPU:
+		1 voxel id containing:
+			textureID,
+				2 texCoo per 1 vertex computed on GPU
+		neighbors_flag: determining if each faces are drawn
+		voxel pos & size: allowing to compute each vertex for drawn faces
+*/
+
 class Voxel {
 public:
 #ifdef USE_TEMPLATE

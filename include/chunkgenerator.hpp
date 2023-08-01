@@ -17,8 +17,7 @@ class JobBuildGenerator;
 
 //#define CHUNK_GEN_DEBUG
 
-//make a class for that
-//typedef uint8_t**	hmap;
+
 typedef UIImage*	minimapTile;
 
 /*
@@ -27,30 +26,6 @@ typedef UIImage*	minimapTile;
 		32x32x32 = 32 768
 */
 
-/*
-	object.users:
-		increment value each time a pointer/ref is create on the object
-		cant delete as long as there is at least 2 users (the first one beeing the pointer trying to delete it)
-	solutions:
-		- use smart pointers
-		- void operator delete( void * ) {} // make a custom bool object.tryDelete(bool forceDelete = false)
-*/
-
-// why there is #include "chunk.hpp" in Obj3dPG.cpp ??
-// generator.gridIter([]) hmapIter([])
-// class tab with iter xyzwabcdef...uv 24 dimensions
-//		or indexes as a vector[], with .size() beeing the # of dimensions
-
-
-
-/*
-	avoir des chunk bien plus grand que 32, genre 256. (le temps de generation peut etre long)
-	ajuster le threshold selon la distance avec le joueur
-		si un des coins du cube de la node est dans le range, alors descendre le threshold
-
-	on genere seulement les chunk voisins (3*3*3 - 1)
-	on diplay seulement les nodes en dessous d'un certain range en adaptant les threshold
-*/
 
 #include "chunkgrid.hpp"
 class ChunkGrid;
@@ -62,7 +37,7 @@ public:
 		grid_size_displayed will be clamped between 1->grid_size
 		target: the grid that the generator is working for
 	*/
-	ChunkGenerator(const PerlinSettings& perlin_settings, ChunkGrid* target);
+	ChunkGenerator(const PerlinSettings& perlin_settings);
 	~ChunkGenerator();
 	void			th_updater(Cam* cam, ChunkGrid* grid);
 	void			th_builders(GLFWwindow* context);
@@ -71,9 +46,9 @@ public:
 	void			joinBuilders();
 
 	// returns true if the job was successfully created
-	bool			createHeightmapJob(Math::Vector3 chunkWorldIndex, Math::Vector3 chunkSize);
+	bool			createHeightmapJob(ChunkGrid& grid, Math::Vector3 chunkWorldIndex, Math::Vector3 chunkSize);
 	// returns true if the job was successfully created
-	bool			createChunkJob(Math::Vector3 chunkWorldIndex, Math::Vector3 chunkSize, HeightMap* heightmap);
+	bool			createChunkJob(ChunkGrid& grid, Math::Vector3 chunkWorldIndex, Math::Vector3 chunkSize, HeightMap* heightmap);
 	void			updateJobsToDo(ChunkGrid& grid);
 	void			updateJobsDone(ChunkGrid& grid);
 	void			executeAllJobs(PerlinSettings& perlinSettings, std::string& threadIDstr);
@@ -97,7 +72,6 @@ public:
 	std::list<JobBuildGenerator*>	jobsToDo;
 	std::list<JobBuildGenerator*>	jobsDone;
 private:
-	ChunkGrid*		_targetGrid;
 	uint8_t			_builderAmount;
 	std::thread**	_builders;
 	ChunkGenerator();

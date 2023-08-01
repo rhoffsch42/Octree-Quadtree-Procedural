@@ -830,9 +830,6 @@ uint8_t* generatePerlinNoise(ProceduralManager& manager, int posX, int posY, int
 	return data;
 }
 
-#define STORAGE_LIST		0
-#define STORAGE_ARRAY		1
-#define MAX_STORAGE_MODE	2
 class OctreeManager : public QuadTreeManager
 {
 public:
@@ -849,8 +846,8 @@ public:
 		this->ps->heightCoef = 0.5;
 
 		//default
-		this->ps->flattering = PERLIN_DEF_FLATTERING;
-		this->ps->island = PERLIN_DEF_ISLAND;
+		this->ps->flattering = PERLIN_DEFAULT_FLATTERING;
+		this->ps->island = PERLIN_DEFAULT_ISLAND;
 
 		this->ps->frequency = std::clamp(this->ps->frequency, 0.1, 64.0);
 		this->ps->octaves = std::clamp((int)this->ps->octaves, 1, 16);
@@ -916,7 +913,6 @@ public:
 
 	double				threshold;
 	bool				thresholdUpdated;
-	uint8_t				storageMode = STORAGE_LIST; // 0 = STORAGE_LIST 1 = STORAGE_ARRAY
 
 	unsigned int		cpuThreadAmount;
 };
@@ -1120,6 +1116,8 @@ void	printSettings(OctreeManager& m) {
 
 	INFO("cpu threads amount: " << m.cpuThreadAmount << "\n");
 
+	//INFO(D_VALUE_NAME(PG_FORCE_LINKBUFFERS));
+
 	INFO(D_VALUE_NAME(M_PERLIN_GENERATION));
 	INFO(D_VALUE_NAME(M_OCTREE_OPTIMISATION));
 	INFO(D_VALUE_NAME(M_DRAW_MINIMAP));
@@ -1129,6 +1127,18 @@ void	printSettings(OctreeManager& m) {
 	INFO(D_VALUE_NAME(M_DRAW_GRID_BOX));
 	INFO(D_VALUE_NAME(M_DRAW_GRID_CHUNK));
 	INFO(D_VALUE_NAME(M_DISPLAY_BLACK));
+
+	INFO(D_VALUE_NAME(LODS_AMOUNT));
+	INFO(D_VALUE_NAME(LOD_MIN_VERTEX_ARRAY_SIZE));
+	INFO(D_VALUE_NAME(OCTREE_THRESHOLD));
+	INFO(D_VALUE_NAME(CHUNK_DEFAULT_SIZE));
+
+	INFO(D_VALUE_NAME(PERLIN_NORMALIZER));
+	INFO(D_VALUE_NAME(PERLIN_DEFAULT_OCTAVES));
+	INFO(D_VALUE_NAME(PERLIN_DEFAULT_FREQUENCY));
+	INFO(D_VALUE_NAME(PERLIN_DEFAULT_FLATTERING));
+	INFO(D_VALUE_NAME(PERLIN_DEFAULT_HEIGHTCOEF));
+	INFO(D_VALUE_NAME(PERLIN_DEFAULT_ISLAND));
 }
 
 static void		keyCallback_ocTree(GLFWwindow* window, int key, int scancode, int action, int mods) {
@@ -1166,10 +1176,7 @@ static void		keyCallback_ocTree(GLFWwindow* window, int key, int scancode, int a
 				manager->cam->local.translate(0, 0, move);
 			} else if (key == GLFW_KEY_LEFT_SHIFT) {
 				manager->shiftPressed = true;
-				manager->cam->speed = manager->playerSpeed * 3;
-			} else if (key == GLFW_KEY_T) {
-				manager->storageMode = (manager->storageMode + 1) % MAX_STORAGE_MODE;
-				INFO("rendering with " << (manager->storageMode == STORAGE_LIST ? "list\n" : "array\n"));
+				manager->cam->speed = manager->playerSpeed * 5;
 			}
 		}
 	}
@@ -1243,19 +1250,8 @@ unsigned int	grabObjects(ChunkGenerator& generator, ChunkGrid& grid, OctreeManag
 #endif
 	D(" > rendered " << startRendered << " -> " << endRendered << "\n");
 
-	/*
-		0 = no LOD, taking smallest voxels (size = 1)
-		5 = log2(32), max level, ie the size of a chunk
-	*/
 	if (1) {// actual grabbing + Obj3d creation
 		grid.glth_loadAllChunksToGPU();
-		
-		// old lod
-		//for (unsigned int lod = 0; lod < LODS_AMOUNT; lod++) {
-		//	//INFO("LOD[" << lod << "] Pushing Chunks...\n");
-		//	grid.pushRenderedChunks(&manager.renderVecChunk, lod);
-		//}
-		// new lod
 		grid.pushRenderedChunks(&manager.renderVecChunk);
 
 		//for (auto x = 0; x < sizeArray; x++) {
@@ -1432,8 +1428,6 @@ unsigned int	grabObjects(ChunkGenerator& generator, ChunkGrid& grid, OctreeManag
 		total_polygons += obj->getBlueprint()->getPolygonAmount();
 	}
 
-
-
 	if (grid.playerChangedChunk)
 		grid.playerChangedChunk = false;
 	if (grid.chunksChanged)
@@ -1542,7 +1536,6 @@ void	scene_octree() {
 	m.glfw->func[GLFW_KEY_Y] = keyCallback_ocTree; // jump cam (+150)
 	m.glfw->func[GLFW_KEY_Z] = keyCallback_ocTree; // jump cam (+150)
 	m.glfw->func[GLFW_KEY_LEFT_SHIFT] = keyCallback_ocTree; // run
-	m.glfw->func[GLFW_KEY_T] = keyCallback_ocTree; // switch objects storage mode (array or list)
 	m.glfw->func[GLFW_KEY_B] = keyCallback_debugGrid; // switch objects storage mode (array or list)
 
 	Texture* tex_skybox = new Texture(SIMPLEGL_FOLDER + "images/skybox4.bmp");
@@ -1622,7 +1615,7 @@ void	scene_octree() {
 	Math::Vector3	playerPos = cam.local.getPos();
 
 	#ifndef GENERATOR
-	int grid_size = 35;
+	int grid_size = 15;
 	if (0) {
 		std::cout << "Enter grid size (min 7, max 35):\n";
 		std::cin >> grid_size;
@@ -1630,9 +1623,9 @@ void	scene_octree() {
 		grid_size = (grid_size > 35) ? 35 : grid_size;
 	}
 	int	g = grid_size;
-	int	d = grid_size - 4;// g * 2 / 3;
-	m.gridSize = Math::Vector3(g, g / 4, g);
-	m.renderedGridSize = Math::Vector3(d, d / 4, d);
+	int	r = grid_size - 4;// g * 2 / 3;
+	m.gridSize = Math::Vector3(g, std::max(5,g/4), g);
+	m.renderedGridSize = Math::Vector3(r, std::max(3,r/4), r);
 	//m.gridSize = Math::Vector3(5, 5, 5);
 	//m.renderedGridSize = Math::Vector3(5, 5, 5);
 	INFO("Grid size : " << m.gridSize.toString() << "\n");
@@ -1640,7 +1633,7 @@ void	scene_octree() {
 	INFO("Total hmaps : " << m.gridSize.x * m.gridSize.z << "\n");
 	INFO("Total chunks : " << m.gridSize.x * m.gridSize.y * m.gridSize.z << "\n");
 	ChunkGrid		grid(m.chunk_size, m.gridSize, m.renderedGridSize);
-	ChunkGenerator	generator(*m.ps, &grid);
+	ChunkGenerator	generator(*m.ps);
 	m.generator = &generator;
 	m.grid = &grid;
 
@@ -1672,6 +1665,8 @@ void	scene_octree() {
 
 	Fps	fps(135);
 	INFO("Maximum fps : " << fps.getMaxFps() << "\n");
+	INFO("Maximum tick : " << fps.getMaxTick() << "\n");
+	INFO("Tick : " << fps.getTick() << "\n");
 
 	while (!glfwWindowShouldClose(m.glfw->_window)) {
 		if (fps.wait_for_next_frame()) {
@@ -1686,7 +1681,7 @@ void	scene_octree() {
 				std::to_string(fps.getFps()) + " fps | "
 				+ std::to_string(int(polygons/1'000'000)) + "m"
 				+ ( decimals.c_str()+decimals.find('.')+1 )
-				+ " polys (lod_0) | threshold "
+				+ " polys (LOD_0) | threshold "
 				+ std::to_string((int)m.threshold)
 			);
 
@@ -1782,8 +1777,9 @@ void	scene_octree() {
 				glfwSetWindowShouldClose(m.glfw->_window, GLFW_TRUE);
 		}
 	}
+	std::cout << "'ESCAPE' exiting...\n";
 	std::cout.clear();
-	glfwMakeContextCurrent(nullptr);
+	//glfwMakeContextCurrent(nullptr);
 	#else  // not USE_THREADS
 	std::thread helper0(std::bind(&ChunkGenerator::th_updater, &generator, &cam));
 

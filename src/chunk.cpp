@@ -158,8 +158,6 @@ Chunk::~Chunk() {
 	If there are vertices, it uses them to build a mesh, then it deletes the vertices.
 */
 void	Chunk::glth_buildAllMeshes() {
-#define NEW_BUILDALLMESH
-#ifdef NEW_BUILDALLMESH
 	//D("Chunk::glth_buildAllMeshes() for chunk " << this->index << "\n");
 	for (int i = 0; i < LODS_AMOUNT; i++) {
 		if (!this->_vertexArray[i].empty()) {
@@ -167,6 +165,14 @@ void	Chunk::glth_buildAllMeshes() {
 			if (i == 0 || this->_vertexArray[i].size() > LOD_MIN_VERTEX_ARRAY_SIZE) {
 				Obj3dBP* bp = new Obj3dBP(this->_vertexArray[i], this->_indices[i], BP_DONT_NORMALIZE);
 				if (i == 0) {
+					if (this->meshBP) {
+						std::cout << "Error: overriding mesh bp: " << this->meshBP << " on chunk: " << this << "\n";
+						Misc::breakExit(31);
+					}
+					if (this->mesh) {
+						std::cout << "Error: overriding mesh: " << this->mesh << " on chunk: " << this << "\n";
+						Misc::breakExit(31);
+					}
 					this->meshBP = bp;
 					this->mesh = new Obj3d(*this->meshBP, *Chunk::renderer);
 					this->mesh->local.setPos(this->pos);
@@ -176,6 +182,7 @@ void	Chunk::glth_buildAllMeshes() {
 					this->meshBP->lodManager.addLod(bp, this->size.x * std::pow(2, i + 1));// 32 * { 1, 2, 4, 8, 16, 32 };
 				}
 				bp->freeData(BP_FREE_ALL);
+				this->mesh->getProgram()->linkBuffers(*bp);//we should not need to use a Obj3d to access the PG. todo: see obj3dPG::renderObject()
 			}
 			//else { D("Skipped LODS " << i << "+ for chunk " << this->index << "\n"); }
 			this->_vertexArray[i].clear();
@@ -184,33 +191,7 @@ void	Chunk::glth_buildAllMeshes() {
 	}
 	//if (this->meshBP && this->meshBP->lodManager.getLodCount() > 1)
 		//D(this->meshBP->lodManager.toString() << "\n");
-#else
-	for (int i = 0; i < LODS_AMOUNT; i++) {
-		//std::cout << "Chunk::_vertexArray size: " << this->_vertexArray.size() << "\n";
-		if (!this->_vertexArray[i].empty()) {//if there are some voxels in the chunk
-			if (this->meshBP[i]) {
-				std::cout << "Error: overriding mesh bp: " << this->meshBP[i] << " on chunk: " << this << "\n";
-				Misc::breakExit(31);
-			}
-			if (this->mesh[i]) {
-				std::cout << "Error: overriding mesh: " << this->mesh[i] << " on chunk: " << this << "\n";
-				Misc::breakExit(31);
-			}
 
-			this->meshBP[i] = new Obj3dBP(this->_vertexArray[i], this->_indices[i], BP_DONT_NORMALIZE);
-			//this->meshBP[i]->freeData(BP_FREE_ALL);
-			this->mesh[i] = new Obj3d(*this->meshBP[i], *Chunk::renderer);
-			this->mesh[i]->local.setPos(this->pos);
-
-			/*
-				Delete vertex array of the mesh so we don't build it again later.
-				To rebuild the mesh (for whatever reason), call buildVertexArray() first (if root hasnt been deleted)
-			*/
-			this->_vertexArray[i].clear();
-			this->_indices[i].clear();
-		}
-	}
-#endif
 }
 
 #ifdef OCTREE_OLD

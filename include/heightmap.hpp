@@ -11,12 +11,12 @@
 #define DISPLAY_BLACK		1
 
 #define PERLIN_NORMALIZER		500
-#define PERLIN_DEF_OCTAVES		8
-#define PERLIN_DEF_FREQUENCY	8
-#define PERLIN_DEF_FLATTERING	1
-#define PERLIN_DEF_HEIGHTCOEF	1
-#define PERLIN_DEF_ISLAND		0
-#define	CHUNK_DEF_SIZE			32
+#define PERLIN_DEFAULT_OCTAVES		8
+#define PERLIN_DEFAULT_FREQUENCY	8
+#define PERLIN_DEFAULT_FLATTERING	1
+#define PERLIN_DEFAULT_HEIGHTCOEF	1
+#define PERLIN_DEFAULT_ISLAND		0
+#define	CHUNK_DEFAULT_SIZE		32
 #define VOXEL_EMPTY				Pixel(255, 255, 255)
 
 #include "compiler_settings.h"
@@ -75,20 +75,19 @@ public:
 	PerlinSettings(siv::PerlinNoise& perlin_ref)
 		: perlin(perlin_ref)
 	{
-		this->octaves = PERLIN_DEF_OCTAVES;
-		this->frequency = PERLIN_DEF_FREQUENCY;
-		this->flattering = PERLIN_DEF_FLATTERING;
-		this->heightCoef = PERLIN_DEF_HEIGHTCOEF;
-		this->island = PERLIN_DEF_ISLAND;
+		this->octaves = PERLIN_DEFAULT_OCTAVES;
+		this->frequency = PERLIN_DEFAULT_FREQUENCY;
+		this->flattering = PERLIN_DEFAULT_FLATTERING;
+		this->heightCoef = PERLIN_DEFAULT_HEIGHTCOEF;
+		this->island = PERLIN_DEFAULT_ISLAND;
 
 		//this->flattering = 2;
 		this->heightCoef = 1.0 / 5.0;
 
-		//this->map = nullptr;
 		this->posX = 0;
 		this->posZ = 0;
-		this->sizeX = CHUNK_DEF_SIZE;
-		this->sizeZ = CHUNK_DEF_SIZE;
+		this->sizeX = CHUNK_DEFAULT_SIZE;
+		this->sizeZ = CHUNK_DEFAULT_SIZE;
 	}
 	PerlinSettings(const PerlinSettings& src) : perlin(src.perlin) {
 		*this = src;
@@ -106,19 +105,7 @@ public:
 		this->sizeZ = src.sizeZ;
 		return *this;
 	}
-	//void	deleteMap() {
-	//	if (this->map) {
-	//		for (int j = 0; j < this->sizeZ; j++) {
-	//			delete[] this->map[j];
-	//		}
-	//		delete[] this->map;
-	//	}
-	//	this->map = nullptr;
-	//}
-	~PerlinSettings() {
-		//std::cout << "_ " << __PRETTY_FUNCTION__ << std::endl;
-		//this->deleteMap();
-	}
+	~PerlinSettings() {}
 
 	siv::PerlinNoise& perlin;
 	unsigned int		octaves;
@@ -126,7 +113,6 @@ public:
 	double				flattering;
 	double				heightCoef;
 	double				island;
-	//uint8_t**			map;
 	int					posX;
 	int					posZ;
 	int					sizeX;
