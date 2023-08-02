@@ -6,18 +6,19 @@
 #include "dispose.hpp"
 
 
-#define PERLIN_GENERATION	1
-#define OCTREE_OPTIMISATION	1
-#define DISPLAY_BLACK		1
+#define HMAP_BUILD_TEXTUREDATA_IN_CTOR	1 // this is usually done in builder threads, while the UIPanel has to be done on the gl thread
+#define PERLIN_GENERATION				1
+#define OCTREE_OPTIMISATION				1
+#define DISPLAY_BLACK					1
 
-#define PERLIN_NORMALIZER		500
+#define PERLIN_NORMALIZER			500
 #define PERLIN_DEFAULT_OCTAVES		8
 #define PERLIN_DEFAULT_FREQUENCY	8
 #define PERLIN_DEFAULT_FLATTERING	1
 #define PERLIN_DEFAULT_HEIGHTCOEF	1
 #define PERLIN_DEFAULT_ISLAND		0
-#define	CHUNK_DEFAULT_SIZE		32
-#define VOXEL_EMPTY				Pixel(255, 255, 255)
+#define	CHUNK_DEFAULT_SIZE			32
+#define VOXEL_EMPTY					Pixel(255, 255, 255) //todo: change this to 0,0,0 and adapt octree
 
 #include "compiler_settings.h"
 class PerlinSettings
@@ -123,6 +124,8 @@ private:
 class HeightMap : public IDisposable//2D
 {
 public:
+	static std::mutex	m;
+	static int count;
 	HeightMap(PerlinSettings& perlin_settings, Math::Vector3 chunk_index, Math::Vector3 chunk_size);
 	HeightMap(PerlinSettings& perlin_settings, int posx, int posz, int sizex, int sizez);
 	~HeightMap();
@@ -136,12 +139,12 @@ public:
 	//}
 
 
-	uint8_t**	map;//used by Chunk::
+	uint8_t**	map = nullptr;//used by Chunk::
 
 	//used to display the map tile on screen
-	uint8_t* textureData;
-	Texture* texture;
-	UIImage* panel;
+	uint8_t* textureData = nullptr;
+	Texture* texture = nullptr;
+	UIImage* panel = nullptr;
 private:
 	Math::Vector3	_index;
 	int				_posX;//not tile

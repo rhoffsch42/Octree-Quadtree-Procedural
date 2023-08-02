@@ -5,39 +5,17 @@
 class SharedObj
 {
 public:
+	static int ID;
 	SharedObj() {
-		std::cout << "Constructor\n";
-		this->_array = nullptr;
-		this->_size = 0;
+		this->_id = SharedObj::ID;
+		SharedObj::ID++;
+		std::cout << "Constructor " << this->_id << "\n";
 	}
 	~SharedObj() {
-		std::cout << "Destructor\n";
-		this->deleteData();
+		std::cout << "Destructor " << this->_id << "\n";
 	}
-	void	buildArray(int n, unsigned int amount = 1) {
-		this->deleteData();
-		this->_array = new int[amount];
-		this->_size = amount;
-		for (unsigned int i = 0; i < this->_size; i++) {
-			this->_array[i] = n;
-		}
-	}
-	void	printData() const {
-		if (this->_array) {
-			for (unsigned int i = 0; i < this->_size; i++) {
-				std::cout << this->_array[i] << " ";
-			} std::cout << std::endl;
-		}
-	}
-	void	deleteData() {
-		if (this->_array) {
-			delete this->_array;
-			this->_array = nullptr;
-		}
-	}
+	int				_id;
 private:
-	int*			_array;
-	unsigned int	_size;
 };
 
 #define SSH_SIZE 5
@@ -50,7 +28,7 @@ void th_1(std::shared_ptr<SharedObj> p) {
 	}
 	std::this_thread::sleep_for(1s);
 }
-void th_2(std::shared_ptr<SharedObj>* grid) {
+void th_2(std::shared_ptr<SharedObj>* o) {
 	using namespace std::chrono_literals;
 	{
 		static std::mutex io_mutex; // the static is shared between threads, allowing the local declaration of the mutex to control IO
@@ -59,17 +37,30 @@ void th_2(std::shared_ptr<SharedObj>* grid) {
 	}
 	std::this_thread::sleep_for(1s);
 	for (size_t i = 0; i < 5; i++) {
-		grid[i] = nullptr;
+		o[i] = nullptr;
 	}
 
 }
+int SharedObj::ID = 1;
 void	test_shared_ptr() {
 	{
 		using namespace std::chrono_literals;
 		if (0) {
+			std::cout << ".\n";
+			std::shared_ptr<SharedObj> ptr(new SharedObj()); // Create a new pointer to manage an object
+			std::cout << ".\n";
+			ptr.reset(new SharedObj());                // Reset to manage a different object
+			std::cout << ".\n";
+			ptr = std::make_shared<SharedObj>();       // Use `make_shared` rather than `new`.
+			std::cout << ".\n";
+			// important: std::make_shared<>() allocates a new object, and will use relevant constructor depending on params
+			return;
+		}
+		if (1) {
 			SharedObj* o1 = new SharedObj();
 			SharedObj* o2 = new SharedObj();
-			std::shared_ptr<SharedObj>	p1_1 = std::make_shared<SharedObj>(*o1);
+			std::shared_ptr<SharedObj>	p1_1(o1);//care it sends a reference to a constructor
+
 			std::cout << p1_1.use_count() << std::endl;
 			std::shared_ptr<SharedObj>	p1_2 = p1_1;
 			std::cout << p1_1.use_count() << std::endl;
@@ -85,7 +76,7 @@ void	test_shared_ptr() {
 			std::cout << "1 resets\n";
 			std::cout << "wp1 : " << wp1.use_count() << std::endl;
 
-			std::shared_ptr<SharedObj>	p2_1 = std::make_shared<SharedObj>(*o2);
+			std::shared_ptr<SharedObj>	p2_1(o2);
 			std::weak_ptr<SharedObj> wp2 = p2_1;
 			std::cout << "wp2 : " << wp2.use_count() << std::endl;
 
@@ -121,7 +112,7 @@ void	test_shared_ptr() {
 using namespace std::chrono_literals;
 
 #ifdef TREES_DEBUG
- //#define TREES_MAIN_DEBUG
+ #define TREES_MAIN_DEBUG
  #define TREES_MAIN_INFO_DEBUG
 #endif
 #ifdef TREES_MAIN_DEBUG 
@@ -179,7 +170,7 @@ void	blitToWindow(FrameBuffer* readFramebuffer, GLenum attachmentPoint, UIPanel*
 		h = panel->getTexture()->getHeight();
 	}
 	else {
-		D("FUCK " << __PRETTY_FUNCTION__ << "\n")
+		D("FUCK " << __PRETTY_FUNCTION__ << "\n");
 		Misc::breakExit(2);
 	}
 	if (0) {
@@ -298,7 +289,7 @@ void	fillData(uint8_t* dst, QuadNode* node, int* leafAmount, int baseWidth, bool
 		}
 		if (node->width * node->height >= DEBUG_LEAF_AREA && DEBUG_LEAF && *leafAmount == 0 && DEBUG_FILL_TOO) {
 			D("Fill new leaf: " << node->width << "x" << node->height << " at " << node->x << ":" << node->y << "\t" \
-				<< (int)node->pixel.r << "  \t" << (int)node->pixel.g << "  \t" << (int)node->pixel.b << "\n")
+				<< (int)node->pixel.r << "  \t" << (int)node->pixel.g << "  \t" << (int)node->pixel.b << "\n");
 		}
 		for (unsigned int j = 0; j < node->height; j++) {
 			for (unsigned int i = 0; i < node->width; i++) {
@@ -371,13 +362,13 @@ public:
 
 static void		keyCallback_quadTree(GLFWwindow* window, int key, int scancode, int action, int mods) {
 	(void)window; (void)key; (void)scancode; (void)action; (void)mods;
-	//D(__PRETTY_FUNCTION__ << "\n")
+	//D(__PRETTY_FUNCTION__ << "\n");
 
 	if (action == GLFW_PRESS) {
-		//D("GLFW_PRESS\n")
+		//D("GLFW_PRESS\n");
 		QuadTreeManager* manager = static_cast<QuadTreeManager*>(glfwGetWindowUserPointer(window));
 		if (!manager) {
-			D("static_cast failed\n")
+			D("static_cast failed\n");
 		}
 		else if (manager->glfw) {
 			if (key == GLFW_KEY_EQUAL || key == GLFW_KEY_KP_ADD) {
@@ -439,7 +430,7 @@ void	scene_4Tree() {
 	Fps	fps60(60);
 	Fps* defaultFps = &fps144;
 
-	D("Begin while loop\n")
+	D("Begin while loop\n");
 	int	leafAmount = 0;
 	while (!glfwWindowShouldClose(manager.glfw->_window)) {
 		if (defaultFps->wait_for_next_frame()) {
@@ -465,8 +456,8 @@ void	scene_4Tree() {
 		}
 	}
 
-	D("End while loop\n")
-	D("deleting textures...\n")
+	D("End while loop\n");
+	D("deleting textures...\n");
 }
 
 class ProceduralManager : public GameManager {
@@ -878,7 +869,7 @@ public:
 
 		this->cpuThreadAmount = std::thread::hardware_concurrency();
 		if (this->cpuThreadAmount < 3) {
-			D("Not enough threads: " << this->cpuThreadAmount << "\n")
+			D("Not enough threads: " << this->cpuThreadAmount << "\n");
 			Misc::breakExit(-44);
 		}
 	}
@@ -972,7 +963,7 @@ void	scene_benchmarks() {
 	Obj3dPG* renderer = &rendererObj3d;
 	if (input[0] >= '3') {
 		renderer = &rendererObj3dInstanced;
-		D("Instanced rendering enabled\n")
+		D("Instanced rendering enabled\n");
 	}
 
 	//texture edit
@@ -1133,6 +1124,7 @@ void	printSettings(OctreeManager& m) {
 	INFO(D_VALUE_NAME(OCTREE_THRESHOLD));
 	INFO(D_VALUE_NAME(CHUNK_DEFAULT_SIZE));
 
+	INFO(D_VALUE_NAME(HMAP_BUILD_TEXTUREDATA_IN_CTOR));
 	INFO(D_VALUE_NAME(PERLIN_NORMALIZER));
 	INFO(D_VALUE_NAME(PERLIN_DEFAULT_OCTAVES));
 	INFO(D_VALUE_NAME(PERLIN_DEFAULT_FREQUENCY));
@@ -1148,11 +1140,11 @@ static void		keyCallback_ocTree(GLFWwindow* window, int key, int scancode, int a
 	float	move = 150;
 	OctreeManager* manager = static_cast<OctreeManager*>(glfwGetWindowUserPointer(window));
 	if (!manager) {
-		D("static_cast failed\n")
+		D("static_cast failed\n");
 		return;
 	}
 	if (action == GLFW_PRESS) {
-		D("GLFW_PRESS:" << key << "\n")
+		D("GLFW_PRESS:" << key << "\n");
 		if (manager->glfw) {
 			if (key == GLFW_KEY_EQUAL) {
 				double inc = std::clamp(manager->threshold * 0.05, 1.0, 5.0);
@@ -1181,10 +1173,10 @@ static void		keyCallback_ocTree(GLFWwindow* window, int key, int scancode, int a
 		}
 	}
 	else if (action == GLFW_RELEASE) {
-		D("GLFW_RELEASE:" << key << "\n")
+		D("GLFW_RELEASE:" << key << "\n");
 		if (manager->glfw) {
 			if (key == GLFW_KEY_LEFT_SHIFT) {
-				D("GLFW_KEY_LEFT_SHIFT\n")
+				D("GLFW_KEY_LEFT_SHIFT\n");
 				manager->shiftPressed = false;
 				manager->cam->speed = manager->playerSpeed;
 			}
@@ -1251,8 +1243,8 @@ unsigned int	grabObjects(ChunkGenerator& generator, ChunkGrid& grid, OctreeManag
 	D(" > rendered " << startRendered << " -> " << endRendered << "\n");
 
 	if (1) {// actual grabbing + Obj3d creation
-		grid.glth_loadAllChunksToGPU();
-		grid.pushRenderedChunks(&manager.renderVecChunk);
+		grid.glth_loadAllChunksToGPU();//tmp_leak_check
+		grid.pushRenderedChunks(&manager.renderVecChunk);//tmp_leak_check
 
 		//for (auto x = 0; x < sizeArray; x++) {
 		//	Obj3d* o = dynamic_cast<Obj3d*>(manager.renderVecChunk[x]);
@@ -1284,17 +1276,17 @@ unsigned int	grabObjects(ChunkGenerator& generator, ChunkGrid& grid, OctreeManag
 			// recreating full mesh without updating it in the ChunkGrid:: ?? todo: it should crash when entering a new chunk, check that and fix if needed
 			Obj3dBP* fullMeshBP = grid.getFullMeshBP();
 			Obj3d* fullMesh = grid.getFullMesh();
-			D(std::cout << "Deleting old fullMesh...\n");
+			D("Deleting old fullMesh...\n");
 			if (fullMeshBP)
 				delete fullMeshBP;
 			if (fullMesh)
 				delete fullMesh;
-			D(std::cout << "Building new fullMesh...\n");
+			D("Building new fullMesh...\n");
 			fullMeshBP = new Obj3dBP(vertices, indices, BP_DONT_NORMALIZE);
-			D(std::cout << "BP ready\n");
+			D("BP ready\n");
 			fullMesh = new Obj3d(*fullMeshBP, obj3d_prog);
-			D(std::cout << "Obj3d ready.\n");
-			D(std::cout << "Done, " << manager.renderVecChunk.size() << " chunks merged.\n");
+			D("Obj3d ready.\n");
+			D("Done, " << manager.renderVecChunk.size() << " chunks merged.\n");
 			manager.renderVecChunk.clear();
 			manager.renderVecChunk.push_back(fullMesh);
 			#endif
@@ -1445,6 +1437,12 @@ unsigned int	grabObjects(ChunkGenerator& generator, ChunkGrid& grid, OctreeManag
 	//INFO("cubes grid : " << cubgrid << "\n");
 	//D(D_SPACER_END);
 
+	HeightMap::m.lock();
+	INFO("HeightMap::count\t" << HeightMap::count << "\n");
+	HeightMap::m.unlock();
+	Chunk::m.lock();
+	INFO("Chunk::count    \t" << Chunk::count << "\n");
+	Chunk::m.unlock();
 	return total_polygons;
 }
 
@@ -1475,19 +1473,19 @@ static void		keyCallback_debugGrid(GLFWwindow* window, int key, int scancode, in
 
 	OctreeManager* m = static_cast<OctreeManager*>(glfwGetWindowUserPointer(window));
 	if (!m) {
-		D("static_cast failed\n")
-			return;
+		D("static_cast failed\n");
+		return;
 	}
 	if (action == GLFW_PRESS) {
-		D("GLFW_PRESS:" << key << "\n")
-			if (m->glfw) {
-				if (key == GLFW_KEY_B) {
-					std::cout << "B pressed : debug\n";
-					std::cout << m->grid->getGridChecks() << "\n";
-					std::cout << "jobs remaining : " << m->generator->jobsToDo.size() << "\n";
-					std::cout << m->grid->toString() << std::endl;
-				}
+		D("GLFW_PRESS:" << key << "\n");
+		if (m->glfw) {
+			if (key == GLFW_KEY_B) {
+				std::cout << "B pressed : debug\n";
+				std::cout << m->grid->getGridChecks() << "\n";
+				std::cout << "jobs remaining : " << m->generator->jobsToDo.size() << "\n";
+				std::cout << m->grid->toString() << std::endl;
 			}
+		}
 	}
 }
 
@@ -1504,12 +1502,14 @@ static void		keyCallback_debugGrid(GLFWwindow* window, int key, int scancode, in
 						- grabs all rendered chunks, selecting available meshes in all vertex_array[]
 * 
 *	todo:
+*		- check memory leaks in chunks generation
 *		- check every ctor by copy, they can access private members, useless to use accessors
 *		- inconsistencys with the use of ref or ptr on some pipeline
 *		- in ChunkGrid::updateGrid() : _deleteChunksAndHeightmaps(&chunksToDelete, &hmapsToDelete);
 			! it has gl stuff in it, why it is currently done outside of the gl thread ?
 *				-> this must be sent to some trashes to let the glth do it
 *		- generate the vertexArray[lod] and its BP only when needed (when close enough from the cam/player)
+*	done:
 *	bugs :
 *		- quand le renderedGrid.size = grid.size, race entre le renderer et le grid.updater
 *
@@ -1614,8 +1614,15 @@ void	scene_octree() {
 	//cam.local.setPos(-13, 76, 107);//crash
 	Math::Vector3	playerPos = cam.local.getPos();
 
+	#define USE_THREADS
+	#ifdef USE_THREADS
+	INFO("USE_THREADS : true\n");
+	#else
+	INFO("USE_THREADS : false\n");
+	#endif
+
 	#ifndef GENERATOR
-	int grid_size = 15;
+	int grid_size = 25;
 	if (0) {
 		std::cout << "Enter grid size (min 7, max 35):\n";
 		std::cin >> grid_size;
@@ -1638,19 +1645,19 @@ void	scene_octree() {
 	m.grid = &grid;
 
 	std::unique_lock<std::mutex> chunks_lock(grid.chunks_mutex, std::defer_lock);
+	#ifdef USE_THREADS
 	generator.initAllBuilders(m.cpuThreadAmount - 1, &cam, &grid);
+	#endif
 
 	#endif // GENERATOR
 
+	Fps	fps(135);
+	INFO("Maximum fps : " << fps.getMaxFps() << "\n");
+	INFO("Maximum tick : " << fps.getMaxTick() << "\n");
+	INFO("Tick : " << fps.getTick() << "\n");
 
 	//#define MINIMAP // need to build a framebuffer with the entire map, update it each time the player changes chunk
 
-	#define USE_THREADS
-	#ifdef USE_THREADS
-	INFO("USE_THREADS : true\n");
-	#else
-	INFO("USE_THREADS : false\n");
-	#endif
 	#ifdef USE_THREADS
 
 	glfwWindowHint(GLFW_VISIBLE, GLFW_TRUE);
@@ -1659,22 +1666,19 @@ void	scene_octree() {
 
 	unsigned int polygons = 0;
 	unsigned int frames = 0;
-	D("cam: " << cam.local.getPos().toString() << "\n")
+	D("cam: " << cam.local.getPos().toString() << "\n");
 	INFO("Begin while loop, renderer: " << typeid(renderer).name() << "\n");
 	//std::cout.setstate(std::ios_base::failbit);
 
-	Fps	fps(135);
-	INFO("Maximum fps : " << fps.getMaxFps() << "\n");
-	INFO("Maximum tick : " << fps.getMaxTick() << "\n");
-	INFO("Tick : " << fps.getTick() << "\n");
+
 
 	while (!glfwWindowShouldClose(m.glfw->_window)) {
 		if (fps.wait_for_next_frame()) {
 			//std::this_thread::sleep_for(1s);
 			frames++;
 			if (frames % 1000 == 0) {
-				D(">>>>>>>>>>>>>>>>>>>> " << frames << " FRAMES <<<<<<<<<<<<<<<<<<<<\n")
-				D("cam: " << cam.local.getPos() << "\n")
+				D(">>>>>>>>>>>>>>>>>>>> " << frames << " FRAMES <<<<<<<<<<<<<<<<<<<<\n");
+				D("cam: " << cam.local.getPos() << "\n");
 			}
 			std::string decimals = std::to_string(polygons / 1'000'000.0);
 			m.glfw->setTitle(
@@ -1721,13 +1725,13 @@ void	scene_octree() {
 			}
 			else if (1) { // converted to mesh
 				grid.chunks_mutex.lock();
-				Chunk::renderer->renderAllObjects(m.renderVecChunk, cam, PG_FORCE_DRAW);//PG_FRUSTUM_CULLING
-				//Chunk::renderer->renderAllObjectsMultiDraw(m.renderVecChunk, cam, PG_FORCE_DRAW);//PG_FRUSTUM_CULLING
+				Chunk::renderer->renderAllObjects(m.renderVecChunk, cam, PG_FORCE_DRAW);//PG_FRUSTUM_CULLING PG_FORCE_DRAW
+				//Chunk::renderer->renderAllObjectsMultiDraw(m.renderVecChunk, cam, PG_FORCE_DRAW);
 				grid.chunks_mutex.unlock();
 			}
 			//D("octreeRender\n")
 			//renderer->renderAllObjects(m.renderVecOctree, cam, PG_FORCE_DRAW);
-#if (M_DRAW_BOX_GRID || M_DRAW_GRID_CHUNK)
+#if (M_DRAW_GRID_BOX || M_DRAW_GRID_CHUNK)
 			glDisable(GL_CULL_FACE);
 			renderer->renderAllObjects(m.renderVecGrid, cam, PG_FORCE_DRAW);
 			glEnable(GL_CULL_FACE);
@@ -1777,11 +1781,12 @@ void	scene_octree() {
 				glfwSetWindowShouldClose(m.glfw->_window, GLFW_TRUE);
 		}
 	}
+
 	std::cout << "'ESCAPE' exiting...\n";
 	std::cout.clear();
 	//glfwMakeContextCurrent(nullptr);
 	#else  // not USE_THREADS
-	std::thread helper0(std::bind(&ChunkGenerator::th_updater, &generator, &cam));
+	std::thread helper0(std::bind(&ChunkGenerator::th_updater, &generator, &cam, &grid));
 
 	INFO("Begin while loop\n");
 	while (!glfwWindowShouldClose(m.glfw->_window)) {
@@ -1795,27 +1800,26 @@ void	scene_octree() {
 				m.cam->events(*m.glfw, float(fps.getTick()));
 			}
 			//no helper thread
-			if (0 && generator.updateGrid(m.cam->local.getPos())) {
-				generator.glth_buildMeshesAndMapTiles();
-				grabObjectFromGenerator(generator, m, cubebp, *renderer, tex_lena);
+			if (0 && grid.updateGrid(m.cam->local.getPos())) {
+				grabObjects(generator, grid, m, cubebp, *renderer, tex_lena);
 			}
 			else if (1) {//with helper thread
 				if (!generator.jobsToDo.empty()) {
 					INFO("===================================== STARTING BUILDING =====================================\n");
-					generator.build(generator.settings, std::string("[main thread]\t"));
+					generator.executeAllJobs(generator.settings, std::string("[main thread]\t"));
 					INFO("===================================== DONE BUILDING =====================================\n");
 				}
-				else if ((generator.playerChangedChunk || generator.chunksChanged) && chunks_lock.try_lock()) {
+				else if ((grid.playerChangedChunk || grid.chunksChanged) && chunks_lock.try_lock()) {
 					//D("[renderer] lock chunks_mutex\n")
 					double start = glfwGetTime();
-					D(&generator << " : grabbing meshes...\n")
-					grabObjectFromGenerator(generator, m, cubebp, *renderer, tex_lena);
+					INFO(&generator << " : grabbing meshes...\n");
+					grabObjects(generator, grid, m, cubebp, *renderer, tex_lena);
 					start = glfwGetTime() - start;
-					D("grabbed in " << start << " seconds\n")
-					if (generator.playerChangedChunk)
-						generator.playerChangedChunk = false;
-					if (generator.chunksChanged)
-						generator.chunksChanged = false;
+					INFO("grabbed " << m.renderVecChunk.size() << " in " << start * 1000 << " ms\n");
+					if (grid.playerChangedChunk)
+						grid.playerChangedChunk = false;
+					if (grid.chunksChanged)
+						grid.chunksChanged = false;
 					chunks_lock.unlock();
 				}
 			}
@@ -1835,7 +1839,8 @@ void	scene_octree() {
 				renderer->renderAllObjects(m.renderVec, cam, PG_FORCE_DRAW);
 			}
 			else { // converted to mesh
-				Chunk::renderer->renderAllObjects(m.renderVecChunk, cam, PG_FORCE_DRAW);//PG_FRUSTUM_CULLING
+				//D("Rendering " << m.renderVecChunk.size() << " Chunks\n");
+				Chunk::renderer->renderAllObjects(m.renderVecChunk, cam, PG_FRUSTUM_CULLING);//PG_FRUSTUM_CULLING PG_FORCE_DRAW
 			}
 			//D("octree render\n")
 			//renderer->renderAllObjects(m.renderVecOctree, cam, PG_FORCE_DRAW);
@@ -1854,72 +1859,95 @@ void	scene_octree() {
 				glfwSetWindowShouldClose(m.glfw->_window, GLFW_TRUE);
 		}
 	}
-	D("End while loop\n")
+	D("End while loop\n");
 	generator.terminateThreads = true;
-	generator.cv.notify_all();
-	glfwMakeContextCurrent(nullptr);
 	helper0.join();
-	D("[Main] joined helper0\n")
-	D("[Main] exiting...\n")
-	D("[Main] exiting...\n")
-
+	D("joined helper0\n");
+	D("exiting...\n");
 	#endif // USE_THREADS
 }
 
 void	maxUniforms() {
-	D("GL_MAX_VERTEX_UNIFORM_COMPONENTS\t" << GL_MAX_VERTEX_UNIFORM_COMPONENTS << "\n")
-	D("GL_MAX_GEOMETRY_UNIFORM_COMPONENTS\t" << GL_MAX_GEOMETRY_UNIFORM_COMPONENTS << "\n")
-	D("GL_MAX_FRAGMENT_UNIFORM_COMPONENTS\t" << GL_MAX_FRAGMENT_UNIFORM_COMPONENTS << "\n")
-	D("GL_MAX_TESS_CONTROL_UNIFORM_COMPONENTS\t" << GL_MAX_TESS_CONTROL_UNIFORM_COMPONENTS << "\n")
-	D("GL_MAX_TESS_EVALUATION_UNIFORM_COMPONENTS\t" << GL_MAX_TESS_EVALUATION_UNIFORM_COMPONENTS << "\n")
-	D("GL_MAX_COMPUTE_UNIFORM_COMPONENTS\t" << GL_MAX_COMPUTE_UNIFORM_COMPONENTS << "\n")
-	D("GL_MAX_UNIFORM_LOCATIONS\t" << GL_MAX_UNIFORM_LOCATIONS << "\n")
+	D("GL_MAX_VERTEX_UNIFORM_COMPONENTS\t" << GL_MAX_VERTEX_UNIFORM_COMPONENTS << "\n");
+	D("GL_MAX_GEOMETRY_UNIFORM_COMPONENTS\t" << GL_MAX_GEOMETRY_UNIFORM_COMPONENTS << "\n");
+	D("GL_MAX_FRAGMENT_UNIFORM_COMPONENTS\t" << GL_MAX_FRAGMENT_UNIFORM_COMPONENTS << "\n");
+	D("GL_MAX_TESS_CONTROL_UNIFORM_COMPONENTS\t" << GL_MAX_TESS_CONTROL_UNIFORM_COMPONENTS << "\n");
+	D("GL_MAX_TESS_EVALUATION_UNIFORM_COMPONENTS\t" << GL_MAX_TESS_EVALUATION_UNIFORM_COMPONENTS << "\n");
+	D("GL_MAX_COMPUTE_UNIFORM_COMPONENTS\t" << GL_MAX_COMPUTE_UNIFORM_COMPONENTS << "\n");
+	D("GL_MAX_UNIFORM_LOCATIONS\t" << GL_MAX_UNIFORM_LOCATIONS << "\n");
 	Misc::breakExit(0);
 }
 
 void	scene_checkMemory() {
 	char input[100];
-	Glfw* glfw = new Glfw(WINX, WINY);
-	std::string	pathPrefix("SimpleGL/");
+	Glfw*		glfw = new Glfw(WINX, WINY);
+	Texture*	tex_bigass = new Texture(SIMPLEGL_FOLDER + "images/skybox4096.bmp");
+	Obj3dPG		renderer(SIMPLEGL_FOLDER + OBJ3D_VS_FILE, SIMPLEGL_FOLDER + OBJ3D_FS_FILE);
+	//Blueprint global settings
+	Obj3dBP::config.modelSize = 1;
+	Obj3dBP::config.dataMode = BP_LINEAR;
+	Obj3dBP::config.rescale = true;
+	Obj3dBP::config.center = false;
+	Obj3dBP		cubebp(SIMPLEGL_FOLDER + "obj3d/cube.obj");
+	Chunk::cubeBlueprint = &cubebp;
+	Obj3dBP::config.dataMode = BP_INDICES;
+	Chunk::renderer = &renderer;
 
-	D("Texture build... ENTER\n")
-	std::cin >> input;
-	Texture* tex_bigass = new Texture(pathPrefix + "images/skybox4096.bmp");
-	D(">> Texture loaded\n")
-	//Textrues
-#if 0
-	D("Texture unload load loop... ENTER\n")
-	std::cin >> input;
+	if (0/*texture*/) {
+		D(">> Texture loaded\n");
+		D("Texture unload load loop... ENTER\n");
+		std::cin >> input;
 
-	for (size_t i = 0; i < 100; i++) {
-		//unload
-		tex_bigass->unloadFromGPU();
-		glfwSwapBuffers(glfw->_window);
-		D(">> Texture unloaded\n")
+		for (size_t i = 0; i < 100; i++) {
+			//unload
+			tex_bigass->unloadFromGPU();
+			glfwSwapBuffers(glfw->_window);
+			D(">> Texture unloaded\n");
 
-		//load
-		tex_bigass->loadToGPU();
-		glfwSwapBuffers(glfw->_window);
-		D(">> Texture loaded\n")
+			//load
+			tex_bigass->loadToGPU();
+			glfwSwapBuffers(glfw->_window);
+			D(">> Texture loaded\n");
+		}
 	}
-#endif
-	//Skybox
-#if 1
-	SkyboxPG	rendererSkybox(pathPrefix + CUBEMAP_VS_FILE, pathPrefix + CUBEMAP_FS_FILE);
+	if (0/*skybox*/) {
+		SkyboxPG	rendererSkybox(SIMPLEGL_FOLDER + CUBEMAP_VS_FILE, SIMPLEGL_FOLDER + CUBEMAP_FS_FILE);
 
-	for (size_t i = 0; i < 100; i++) {
-		Skybox* sky = new Skybox(*tex_bigass, rendererSkybox);
-		delete sky;
+		for (size_t i = 0; i < 100; i++) {
+			Skybox* sky = new Skybox(*tex_bigass, rendererSkybox);
+			delete sky;
+		}
 	}
-#endif
-	//framebuffer
-#if 1
-#endif
-//exit
-	std::cout << "end... ENTER\n";
-	std::cin >> input;
-	Misc::breakExit(0);
+	if (1/*Chunks & heightmap*/) {
+		siv::PerlinNoise	perlin(777);
+		PerlinSettings		ps(perlin);
+		HeightMap*			hmap = nullptr;
+		Chunk*				chunk = nullptr;
+		Math::Vector3		chunk_size(32, 32, 32);
+		Math::Vector3		index(1, 2, 3);
 
+		FOR(i, 0, 10000) {
+			hmap = new HeightMap(ps, index, chunk_size);
+			chunk = new Chunk(index, chunk_size, ps, hmap);
+			FOR(lod, 0, LODS_AMOUNT) { chunk->buildVertexArray(Math::Vector3(), lod, 0); }
+			//chunk->glth_buildAllMeshes();
+			delete hmap;
+			delete chunk;
+			{
+				int j = i + 1;
+				if (j % 100 == 0)
+					std::cout << ".";
+				if (j % 5000 == 0)
+					std::cout << " " << j << "\n";
+			}
+
+
+
+		}
+	}
+
+	std::cout << "end...\n";
+	std::exit(0);
 }
 
 #define SSSIZE 2500
@@ -1941,7 +1969,7 @@ void	benchmark_octree() {
 	Chunk* test = new Chunk(index, size, *m.ps, hmap);
 	//test->glth_buildAllMeshes();
 	if (test->meshBP) {
-		D("polys: " << test->meshBP->getPolygonAmount() << "\n")
+		D("polys: " << test->meshBP->getPolygonAmount() << "\n");
 		test->meshBP->freeData(BP_FREE_ALL);
 		delete test->meshBP;
 		test->meshBP = nullptr;
@@ -1958,7 +1986,7 @@ void	benchmark_octree() {
 		//	D_(std::cout << ".");
 	}
 	start = glfwGetTime() - start;
-	D("\n\n" << double(start) << std::endl)
+	D("\n\n" << double(start) << std::endl);
 	Misc::breakExit(0);
 }
 
@@ -1977,6 +2005,7 @@ int		main(int ac, char **av) {
 	//_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 	//_CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_DEBUG);
 
+	#define _DEBUG
 	_CrtMemState sOld;
 	_CrtMemState sNew;
 	_CrtMemState sDiff;
@@ -1988,10 +2017,10 @@ int		main(int ac, char **av) {
 	//test_mult_mat4(); Misc::breakExit(0);
 	//	test_obj_loader();
 
-	D("____START____ :" << Misc::getCurrentDirectory() << "\n")
+	D("____START____ :\t" << Misc::getCurrentDirectory() << "\n");
 	//test_memory_opengl_obj3dbp();
 	//test_memory_opengl();
-	//test_shared_ptr();
+	//test_shared_ptr(); return 0;
 	//testtype(true);	testtype(false); Misc::breakExit(0);
 	//benchmark_octree();
 	//scene_4Tree();
@@ -2002,9 +2031,9 @@ int		main(int ac, char **av) {
 	//scene_test_thread();
 	// while(1);
 
-	D("____END____ : \n")
+	D("____END____ : \n");
 	_CrtMemCheckpoint(&sNew); //take a snapchot 
-	if (_CrtMemDifference(&sDiff, &sOld, &sNew)) // if there is a difference
+	if (1 || _CrtMemDifference(&sDiff, &sOld, &sNew)) // if there is a difference
 	{
 		OutputDebugStringA("-----------_CrtMemDumpStatistics ---------");
 		_CrtMemDumpStatistics(&sDiff);
@@ -2013,7 +2042,7 @@ int		main(int ac, char **av) {
 		OutputDebugStringA("-----------_CrtDumpMemoryLeaks ---------");
 		_CrtDumpMemoryLeaks();
 	} else {
-		D("no diff for memory check\n")
+		D("no diff for memory check\n");
 	}
 	return (EXIT_SUCCESS);
 }

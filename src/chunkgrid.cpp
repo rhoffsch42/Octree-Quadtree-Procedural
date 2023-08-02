@@ -219,9 +219,6 @@ void			ChunkGrid::_translateGrid(Math::Vector3 gridDiff, std::vector<Chunk*>* ch
 					hmaps.push_back(this->_heightMaps[z][x]);
 					this->_heightMaps[z][x] = nullptr;// if the main RENDER thread reads here, he is fucked
 				}
-				//else { // useless as all hmaps have already been pushed (Y=0 loop was done first)
-				//	hmaps.push_back(nullptr);	// to match the chunks index for the next hmap 
-				//}
 			}
 		}
 	}
@@ -332,7 +329,9 @@ void			ChunkGrid::replaceChunk(Chunk* new_chunk, Math::Vector3 index) {
 		return;
 	}
 	//Chunk* old = this->_grid[z][y][x];
-	this->_grid[z][y][x] = std::make_shared<Chunk>(*new_chunk);
+	this->_grid[z][y][x].reset(new_chunk);
+	//D(this->_grid[z][y][x].get() << "\n");
+	//D(new_chunk.get() << "\n");
 	this->chunksChanged = true;
 	//if (old) {
 	//	D("Deleting Chunk in grid[" << z << "][" << y << "][" << x << "]" << old << ", replaced by " << new_chunk << "\n");

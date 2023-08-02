@@ -34,8 +34,10 @@ typedef std::shared_ptr<Chunk>	ChunkShPtr;
 class Chunk //could inherit from Object
 {
 public:
-	static Obj3dBP *cubeBlueprint;
-	static Obj3dPG *renderer;
+	static int			count;
+	static std::mutex	m;
+	static Obj3dBP*	cubeBlueprint;
+	static Obj3dPG*	renderer;
 
 	// If a hmap is specified, its sizes must fit, undefined behavior if sizes are too small
 	Chunk(const Math::Vector3 &chunk_index, const Math::Vector3 &chunk_size, PerlinSettings &perlinSettings, HeightMap *map = nullptr);

@@ -56,6 +56,7 @@ bool	JobBuildHeightMap::deliver() const {
 	if (gridIndex.x < 0 || gridIndex.z < 0 || gridIndex.x >= gridSize.x || gridIndex.z >= gridSize.z) {
 		D("out of memory hmap " << this->_hmap << " index " << gridIndex << "\n");
 		this->_generator->map_jobsHmap[this->_worldIndex] = false;
+		delete this->_hmap;//this can be done in threads, at this point no Panel has been created
 		return true;// this is normal, the hmap is only outdated for the current grid
 	}
 
@@ -97,7 +98,7 @@ bool	JobBuildChunk::execute() {
 	}
 	this->_chunk = new Chunk(this->_worldIndex, this->_chunkSize, *this->_settings, this->_hmap);
 	this->_hmap->unDispose();
-	this->_buildVertexArray();
+	this->_buildVertexArray();//tmp_leak_check
 
 	//this->_chunk->glth_buildAllMeshes();
 	this->done = true;
@@ -122,6 +123,7 @@ bool	JobBuildChunk::deliver() const {
 	if (x < 0 || y < 0 || z < 0 || x >= gridSize.x || y >= gridSize.y || z >= gridSize.z) {
 		D("out of memory chunk " << this->_chunk << this->_worldIndex << " on grid: " << gridIndex << "\n");
 		this->_generator->map_jobsChunk[this->_worldIndex] = false;
+		delete this->_chunk;//this can be done in threads, at this point no mesh or BP has been created
 		return true;// this is normal, the chunk is only outdated for the current grid
 	}
 

@@ -5,7 +5,7 @@
 #include <set>
 
 #ifdef TREES_DEBUG
-#define TREES_CHUNK_DEBUG
+//#define TREES_CHUNK_DEBUG
 #endif
 #ifdef TREES_CHUNK_DEBUG 
 #define D(x) std::cout << "[Chunk] " << x
@@ -19,10 +19,20 @@
 #define D_SPACER_END ""
 #endif
 
+int Chunk::count = 0;
+std::mutex	Chunk::m;
+static void	_countAdd(int n) {
+	Chunk::m.lock();
+	Chunk::count += n;
+	Chunk::m.unlock();
+}
+
 Obj3dBP* Chunk::cubeBlueprint = nullptr;
 Obj3dPG* Chunk::renderer = nullptr;
 
 Chunk::Chunk(const Math::Vector3& chunk_index, const Math::Vector3& chunk_size, PerlinSettings& perlinSettings, HeightMap* hmap) {
+	_countAdd(1);
+	//D(__PRETTY_FUNCTION__ << "\n");
 	this->index = chunk_index;
 	this->pos = chunk_index;
 	this->pos.x *= chunk_size.x;
@@ -140,6 +150,7 @@ Chunk::Chunk(const Math::Vector3& chunk_index, const Math::Vector3& chunk_size, 
 }
 
 Chunk::~Chunk() {
+	_countAdd(-1);
 	//D(__PRETTY_FUNCTION__ << "\n");
 	std::thread::id thread_id = std::this_thread::get_id();
 	if (Glfw::thread_id != thread_id) {
@@ -147,8 +158,16 @@ Chunk::~Chunk() {
 	}
 
 	if (this->root) { delete this->root; }
-	if (this->meshBP) { delete this->meshBP; }
-	if (this->mesh) { delete this->mesh; }
+	if (this->meshBP) {
+		delete this->meshBP;
+		if (Glfw::thread_id != thread_id)
+			D("Error: Chunk meshBP" << this << " dtor called in the wrong thread. " << "Glfw::thread_id: " << Glfw::thread_id << ", != " << thread_id << "\n");
+	}
+	if (this->mesh) {
+		delete this->mesh;
+		if (Glfw::thread_id != thread_id)
+			D("Error: Chunk mesh" << this << " dtor called in the wrong thread. " << "Glfw::thread_id: " << Glfw::thread_id << ", != " << thread_id << "\n");
+	}
 	//D("Chunk destroyed " << this->index.toString() << "\n");
 }
 
@@ -158,6 +177,10 @@ Chunk::~Chunk() {
 	If there are vertices, it uses them to build a mesh, then it deletes the vertices.
 */
 void	Chunk::glth_buildAllMeshes() {
+	if (!Chunk::renderer) {
+		D("Error: Chunk::renderer not found: " << Chunk::renderer << "\n");
+		Misc::breakExit(521);
+	}
 	//D("Chunk::glth_buildAllMeshes() for chunk " << this->index << "\n");
 	for (int i = 0; i < LODS_AMOUNT; i++) {
 		if (!this->_vertexArray[i].empty()) {
@@ -251,10 +274,13 @@ int	Chunk::buildVertexArray(Math::Vector3 pos_offset, const uint8_t desiredLod, 
 			cons: we need to remap data at every chunck change
 				-> display list? check what it is
 	*/
+	if (!Chunk::cubeBlueprint) {
+		D("Warning: attempting to build vertex arrays, but Chunk::cubeBlueprint is missing: " << Chunk::cubeBlueprint << "\n");
+		Misc::breakExit(234);
+	}
 	if (!this->root) {
-		std::cout << "WARNING: attempting to build vertex arrays from a missing octree, it might have been deleted before.\n";
-		//todo: throw
-		return -1;
+		D("Warning: attempting to build vertex arrays from a missing octree, it might have been deleted before.\n");
+		Misc::breakExit(234);
 	}
 
 	static const std::vector<SimpleVertex>	vertices = Chunk::cubeBlueprint->getVertices();//lambda can access it

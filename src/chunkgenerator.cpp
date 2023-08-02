@@ -304,6 +304,7 @@ void	ChunkGenerator::executeAllJobs(PerlinSettings& perlinSettings, std::string&
 		job->assigned = true;
 
 		job_lock.unlock();
+		job->prepare(&perlinSettings);
 		job->execute();
 		job_lock.lock();
 
