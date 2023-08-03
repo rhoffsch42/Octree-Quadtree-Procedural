@@ -21,6 +21,7 @@
 #include <functional>
 
 #define FOR(X, START, END) for(size_t X = START; X < END; X++)
+#define LF "\n"
 
 #ifdef _WIN32
 #include <direct.h>

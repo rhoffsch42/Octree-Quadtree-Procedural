@@ -121,6 +121,9 @@ public:
 private:
 };
 
+class HeightMap;
+typedef std::shared_ptr<HeightMap>	HeightMapShPtr;
+
 class HeightMap : public IDisposable//2D
 {
 public:

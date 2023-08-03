@@ -5,8 +5,8 @@
  #define TREES_DISPOSE_DEBUG
 #endif
 #ifdef TREES_DISPOSE_DEBUG 
- #define D(x) std::cout << "[Dispose] " << x ;
- #define D_(x) x ;
+ #define D(x) std::cout << "[Dispose] " << x
+ #define D_(x) x
  #define D_SPACER "-- dispose.cpp -------------------------------------------------\n"
  #define D_SPACER_END "----------------------------------------------------------------\n"
 #else 
@@ -20,7 +20,8 @@ IDisposable::IDisposable() {}
 IDisposable::IDisposable(unsigned int max_disposed) : _max(max_disposed) {}
 IDisposable::~IDisposable() {
 	if (this->_disposed != 0) {//can happen when exiting the builder threads while there are jobs and freeing everything... -> exit when all jobs are finished
-		std::cerr << "Destructor called on a object disposed " << this->_disposed << " times.\n";
+		std::thread::id thread_id = std::this_thread::get_id();
+		std::cerr << "[Thread: " << thread_id << "] Destructor called on a object disposed " << this->_disposed << " times.\n";
 		Misc::breakExit(87);
 	}
 }

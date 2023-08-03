@@ -54,6 +54,8 @@ Chunk::Chunk(const Math::Vector3& chunk_index, const Math::Vector3& chunk_size, 
 			data[k][j] = new uint8_t[this->size.x];
 			for (unsigned int i = 0; i < this->size.x; i++) {
 				//std::cout << "pos.y + j = " << (pos.y + j) << "  is > to " << int(map[k][i]) << "\t?" << std::endl;
+				if (!hmap || !hmap->map)
+					std::cout << "dd>>> " << hmap << "\t" << hmap->map << "\n";
 				if (hmap && pos.y + j > int(hmap->map[k][i])) {//procedural: surface with heightmap
 					data[k][j][i] = VOXEL_EMPTY.r;
 				}
@@ -125,10 +127,6 @@ Chunk::Chunk(const Math::Vector3& chunk_index, const Math::Vector3& chunk_size, 
 	this->root = new Octree<Voxel>(voxels, Math::Vector3(0, 0, 0), this->size, OCTREE_THRESHOLD);
 	this->root->verifyNeighbors(Voxel(255));
 
-	//if (this->buildVertexArraysFromOctree(this->root, Math::Vector3(0, 0, 0)) == 0) {
-	//	std::cout << "Error: failed to build vertex array for the chuck " << this << std::endl;
-	//	Misc::breakExit(23);
-	//}
 	//delete tmp pix
 	for (unsigned int k = 0; k < this->size.z; k++) {
 		for (unsigned int j = 0; j < this->size.y; j++) {
@@ -160,19 +158,30 @@ Chunk::~Chunk() {
 	if (this->root) { delete this->root; }
 	if (this->meshBP) {
 		delete this->meshBP;
-		if (Glfw::thread_id != thread_id)
-			D("Error: Chunk meshBP" << this << " dtor called in the wrong thread. " << "Glfw::thread_id: " << Glfw::thread_id << ", != " << thread_id << "\n");
+		if (Glfw::thread_id != thread_id) {
+			D("Error: Chunk meshBP " << this << " dtor called in the wrong thread. " << "Glfw::thread_id: " << Glfw::thread_id << ", != " << thread_id << "\n");
+		}
+		D_(else {
+			D("Good: Chunk meshBP " << this << " dtor called in the right thread. " << "Glfw::thread_id: " << Glfw::thread_id << ", != " << thread_id << "\n");
+		});
 	}
+
 	if (this->mesh) {
 		delete this->mesh;
-		if (Glfw::thread_id != thread_id)
-			D("Error: Chunk mesh" << this << " dtor called in the wrong thread. " << "Glfw::thread_id: " << Glfw::thread_id << ", != " << thread_id << "\n");
+		if (Glfw::thread_id != thread_id) {
+			D("Error: Chunk mesh " << this << " dtor called in the wrong thread. " << "Glfw::thread_id: " << Glfw::thread_id << ", != " << thread_id << "\n");
+		}
+		D_(else {
+			D("Good: Chunk meshBP " << this << " dtor called in the right thread. " << "Glfw::thread_id: " << Glfw::thread_id << ", != " << thread_id << "\n");
+		});
 	}
+
 	//D("Chunk destroyed " << this->index.toString() << "\n");
 }
 
-
 /*
+	Builds the chunk Obj3d as well as all the LODs.
+
 	Before calling this function, empty vertices means empty chunk.
 	If there are vertices, it uses them to build a mesh, then it deletes the vertices.
 */

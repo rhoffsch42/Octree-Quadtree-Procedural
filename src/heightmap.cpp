@@ -51,10 +51,30 @@ void	HeightMap::buildMap(PerlinSettings& perlin_settings) {
 HeightMap::~HeightMap() {
 	_countAdd(-1);
 	//std::cout << __PRETTY_FUNCTION__ << this << "\n";
-	if (this->texture)
+
+	std::thread::id thread_id = std::this_thread::get_id();
+	if (Glfw::thread_id != thread_id) {
+		//D("Error: Heightmap " << this << " dtor called in the wrong thread. " << "Glfw::thread_id: " << Glfw::thread_id << ", != " << thread_id << "\n");
+	}
+
+	if (this->texture) {
 		delete this->texture;
-	if (this->panel)
+		if (Glfw::thread_id != thread_id) {
+			D("Error: Heightmap texture " << this << " dtor called in the wrong thread. " << "Glfw::thread_id: " << Glfw::thread_id << ", != " << thread_id << "\n");
+		}
+		D_(else {
+			D("Good: Heightmap texture " << this << " dtor called in the right thread. " << "Glfw::thread_id: " << Glfw::thread_id << ", != " << thread_id << "\n");
+		});
+	}
+	if (this->panel) {
 		delete this->panel;
+		if (Glfw::thread_id != thread_id) {
+			D("Error: Heightmap panel " << this << " dtor called in the wrong thread. " << "Glfw::thread_id: " << Glfw::thread_id << ", != " << thread_id << "\n");
+		}
+		D_(else {
+			D("Good: Heightmap panel " << this << " dtor called in the right thread. " << "Glfw::thread_id: " << Glfw::thread_id << ", != " << thread_id << "\n");
+		});
+	}
 
 	//should be deleted only here, it is used by Chunk::
 	for (unsigned int z = 0; z < this->_sizeZ; z++) {

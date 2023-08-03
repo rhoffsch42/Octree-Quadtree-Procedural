@@ -83,6 +83,7 @@ void	ChunkGenerator::th_updater(Cam* cam, ChunkGrid* grid) {
 	std::string			d_prefix = std::string("[helper0 ") + ss.str() + "] ";
 	Math::Vector3		playerPos;
 
+	D(d_prefix << "started\n");
 	while (!this->terminateThreads) {//no mutex for reading?
 		this->mutex_cam.lock();
 		playerPos = cam->local.getPos();
@@ -214,10 +215,10 @@ void	ChunkGenerator::updateJobsToDo(ChunkGrid& grid) {
 	std::unique_lock<std::mutex>	chunks_lock(grid.chunks_mutex);
 	std::unique_lock<std::mutex>	job_lock(this->job_mutex);
 
-	Math::Vector3	gridSize = grid.getSize();
-	Math::Vector3	chunkSize = grid.getChunkSize();
-	HMapPtr**		hmaps = grid.getHeightMaps();
-	ChunkShPtr***	chunks = grid.getGrid();
+	Math::Vector3		gridSize = grid.getSize();
+	Math::Vector3		chunkSize = grid.getChunkSize();
+	HeightMapShPtr**	hmaps = grid.getHeightMaps();
+	ChunkShPtr***		chunks = grid.getGrid();
 
 	Math::Vector3		index;
 	unsigned int		newChunkJobs = 0;
@@ -238,7 +239,7 @@ void	ChunkGenerator::updateJobsToDo(ChunkGrid& grid) {
 				//D("[" << z << "][" << x << "]\n")
 				if (!chunks[z][y][x] && hmaps[z][x]) {
 					index = grid.gridToWorld(Math::Vector3(x, y, z));
-					if (createChunkJob(grid, index, chunkSize, hmaps[z][x]))
+					if (createChunkJob(grid, index, chunkSize, hmaps[z][x].get()))
 						newChunkJobs++;
 				}
 

@@ -6,7 +6,8 @@
 
 #include <vector>
 
-typedef HeightMap*				HMapPtr;
+#define GRID_GARBAGE_DELETION_STEP			10
+#define GRID_GARBAGE_DELETION_RECOMMENDED	1000
 
 typedef struct s_grid_gemoetry
 {
@@ -27,40 +28,43 @@ public:
 	bool			updateGrid(Math::Vector3 player_pos);
 	// Build the chunks meshes and load them to the GPU. Must be executed in the OpenGL thread
 	void			glth_loadAllChunksToGPU();
-	//push chunks with the asked LOD, inside the vector dst.
-	void			pushRenderedChunks(std::vector<Object*>* dst) const;
-	//push chunks with the asked LOD, inside the array dst. Then returns the next index (last chunk added + 1)
+	void			pushAllHeightmaps(std::vector<HeightMapShPtr>* dst) const;
+	void			pushAllChunks(std::vector<ChunkShPtr>* dst) const;
+	void			pushRenderedChunks(std::vector<ChunkShPtr>* dst) const;
 	void			replaceHeightMap(HeightMap* new_hmap, Math::Vector3 index);
 	void			replaceChunk(Chunk* new_chunk, Math::Vector3 index);
 
-	HMapPtr**		getHeightMaps() const;
-	ChunkShPtr***	getGrid() const;
-	Obj3dBP*		getFullMeshBP() const;
-	Obj3d*			getFullMesh() const;
-	Math::Vector3	getSize() const;
-	Math::Vector3	getRenderedSize() const;
-	Math::Vector3	getChunkSize() const;
-	Math::Vector3	getWorldIndex() const;
-	Math::Vector3	getRenderedGridIndex() const;
-	Math::Vector3	getPlayerChunkWorldIndex() const;
-	GridGeometry	getGeometry() const;
+	void			glth_try_emptyGarbage();
+	bool			glth_try_deleteUnusedHeightmaps(size_t amount);
+	bool			glth_try_deleteUnusedChunks(size_t amount);
+	size_t			getGarbageSize() const;
+	void			glth_testGarbage(size_t amount);
+
+	HeightMapShPtr**	getHeightMaps() const;
+	ChunkShPtr***		getGrid() const;
+	Math::Vector3		getSize() const;
+	Math::Vector3		getRenderedSize() const;
+	Math::Vector3		getChunkSize() const;
+	Math::Vector3		getWorldIndex() const;
+	Math::Vector3		getRenderedGridIndex() const;
+	Math::Vector3		getPlayerChunkWorldIndex() const;
+	GridGeometry		getGeometry() const;
 
 	Math::Vector3	worldToGrid(const Math::Vector3& index) const;
 	Math::Vector3	gridToWorld(const Math::Vector3& index) const;
 	std::string		toString() const;
 	std::string		getGridChecks() const;
 
+	std::mutex		garbageMutex;
 	std::mutex		chunks_mutex;
 	bool			chunksChanged;
 	bool			gridShifted;
 	bool			playerChangedChunk;
 private:
-	HMapPtr**		_heightMaps;//2d grid
-	ChunkShPtr***	_grid;//3d grid
+	HeightMapShPtr**	_heightMaps;//2d grid
+	ChunkShPtr***		_grid;//3d grid
 
 	bool			_chunksReadyForMeshes = false;
-	Obj3dBP*		_fullMeshBP = nullptr;//all chunks merged
-	Obj3d*			_fullMesh = nullptr;
 
 	// Grid geometry
 	Math::Vector3	_chunkSize;// needed only to determine the playerChunkWorldIndex
@@ -72,9 +76,13 @@ private:
 
 	Math::Vector3	_playerWorldPos;
 
+	// Garbage
+	std::vector<ChunkShPtr>		_garbageChunks;
+	std::vector<HeightMapShPtr>	_garbageHeightmaps;
+
 	ChunkGrid();
 	void			_updatePlayerPosition(const Math::Vector3& pos);
 	//calculate if we need to move the memory grid and if so, generate new chunks
 	Math::Vector3	_calculateGridDiff(Math::Vector3 playerdiff);
-	void			_translateGrid(Math::Vector3 gridDiff, std::vector<Chunk*>* chunksToDelete, std::vector<HeightMap*>* hmapsToDelete);
+	void			_translateGrid(Math::Vector3 gridDiff);
 };

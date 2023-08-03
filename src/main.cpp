@@ -45,6 +45,16 @@ int SharedObj::ID = 1;
 void	test_shared_ptr() {
 	{
 		using namespace std::chrono_literals;
+		if (1) {// a shared_ptr acts like a regular pointer when checking where it points !
+			SharedObj* o1 = new SharedObj();
+			std::shared_ptr<SharedObj>	ptr(o1);
+			if (ptr) { std::cout <<			"ptr       : " << ptr << "\n"; }
+			if (ptr.get()) { std::cout <<	"ptr.get() : " << ptr.get() << "\n"; }
+			ptr.reset(); std::cout << "pre.reset()\n";
+			if (ptr) {	std::cout <<		"ptr       : " << ptr << "\n"; }
+			if (ptr.get()) { std::cout <<	"ptr.get() : " << ptr.get() << "\n"; }
+			std::exit(0);
+		}
 		if (0) {
 			std::cout << ".\n";
 			std::shared_ptr<SharedObj> ptr(new SharedObj()); // Create a new pointer to manage an object
@@ -883,6 +893,7 @@ public:
 	std::vector<Object*>	renderVecOctree;
 	std::vector<Object*>	renderVecGrid;
 	std::vector<Object*>	renderVecVoxels[6];//6faces
+	std::vector<ChunkShPtr>	renderVecChunkShPtr;
 	std::vector<Object*>	renderVecChunk;
 	std::vector<Object*>	renderVecSkybox;
 
@@ -1105,7 +1116,8 @@ void	scene_benchmarks() {
 
 void	printSettings(OctreeManager& m) {
 
-	INFO("cpu threads amount: " << m.cpuThreadAmount << "\n");
+	INFO("cpu threads amount: " << m.cpuThreadAmount << LF);
+	INFO("Glfw::thread_id: " << Glfw::thread_id << LF);
 
 	//INFO(D_VALUE_NAME(PG_FORCE_LINKBUFFERS));
 
@@ -1123,6 +1135,8 @@ void	printSettings(OctreeManager& m) {
 	INFO(D_VALUE_NAME(LOD_MIN_VERTEX_ARRAY_SIZE));
 	INFO(D_VALUE_NAME(OCTREE_THRESHOLD));
 	INFO(D_VALUE_NAME(CHUNK_DEFAULT_SIZE));
+	INFO(D_VALUE_NAME(GRID_GARBAGE_DELETION_STEP));
+	INFO(D_VALUE_NAME(GRID_GARBAGE_DELETION_RECOMMENDED));
 
 	INFO(D_VALUE_NAME(HMAP_BUILD_TEXTUREDATA_IN_CTOR));
 	INFO(D_VALUE_NAME(PERLIN_NORMALIZER));
@@ -1184,6 +1198,32 @@ static void		keyCallback_ocTree(GLFWwindow* window, int key, int scancode, int a
 	}
 }
 
+Obj3dBP* createMergedBP_offsetVerticesWithPos(std::vector<Object*> objects) {
+	std::vector<SimpleVertex> vertices;
+	std::vector<unsigned int> indices;
+	for (auto obj : objects) {
+		Obj3d* o = dynamic_cast<Obj3d*>(obj);
+		if (!o) {
+			D("dynamic cast failed on object: " << obj << "\n");
+			Misc::breakExit(456);
+		}
+		Math::Vector3 pos = o->local.getPos();
+		Obj3dBP* bp = o->getBlueprint();
+		std::vector<SimpleVertex> verts = bp->getVertices();
+		//offset the vertices with the obj3d pos
+		std::for_each(verts.begin(), verts.end(), [pos](SimpleVertex& vertex) { vertex.position += pos; });
+		vertices.insert(vertices.end(), verts.begin(), verts.end());
+	}
+	D_(std::cout << "\n");
+
+	// recreating full mesh without updating it in the ChunkGrid:: ?? todo: it should crash when entering a new chunk, check that and fix if needed
+
+	D("Building new fullMesh...\n");
+	Obj3dBP* fullMeshBP = new Obj3dBP(vertices, indices, BP_DONT_NORMALIZE);
+	D("BP ready\n");
+	return fullMeshBP;
+}
+
 unsigned int	grabObjects(ChunkGenerator& generator, ChunkGrid& grid, OctreeManager& manager, Obj3dBP& cubebp, Obj3dPG& obj3d_prog, Texture* tex) {
 	D(__PRETTY_FUNCTION__ << "\n");
 	INFO(grid.getGridChecks() << "\n");
@@ -1221,6 +1261,7 @@ unsigned int	grabObjects(ChunkGenerator& generator, ChunkGrid& grid, OctreeManag
 	for (size_t i = 0; i < 6; i++)
 		manager.renderVecVoxels[i].clear();
 	manager.renderVecChunk.clear();
+	manager.renderVecChunkShPtr.clear();
 
 	unsigned int	hiddenBlocks = 0;
 	unsigned int	total_polygons = 0;
@@ -1243,8 +1284,27 @@ unsigned int	grabObjects(ChunkGenerator& generator, ChunkGrid& grid, OctreeManag
 	D(" > rendered " << startRendered << " -> " << endRendered << "\n");
 
 	if (1) {// actual grabbing + Obj3d creation
+		INFO(grid.getGridChecks());
 		grid.glth_loadAllChunksToGPU();//tmp_leak_check
-		grid.pushRenderedChunks(&manager.renderVecChunk);//tmp_leak_check
+		grid.pushRenderedChunks(&manager.renderVecChunkShPtr);//tmp_leak_check
+		int emptyptrCount = 0;
+		for (auto& sptr : manager.renderVecChunkShPtr) {
+			if (!sptr.get()) {
+				emptyptrCount++;
+				//INFO("Error: shared_ptr is empty ?!\n"); // meaning not yet generated ?
+				//Misc::breakExit(5422);
+			}
+			else {
+				//std::cout << "<";
+				if (sptr.get()->mesh) {//nullptr means empty chunk (or not yet generated, but this shouldn't ne the case as glth_loadAllChunksToGPU() was called just above)
+					//std::cout << "o";
+					manager.renderVecChunk.push_back(sptr.get()->mesh);
+				}
+			}
+		}
+		std::cout << std::endl;
+		INFO("grid pushed " << manager.renderVecChunkShPtr.size() << " ChunkShPtr\n");
+		INFO("grid pushed " << emptyptrCount << " empty ChunkShPtr\n");
 
 		//for (auto x = 0; x < sizeArray; x++) {
 		//	Obj3d* o = dynamic_cast<Obj3d*>(manager.renderVecChunk[x]);
@@ -1254,42 +1314,14 @@ unsigned int	grabObjects(ChunkGenerator& generator, ChunkGrid& grid, OctreeManag
 		//merge BPs
 		if (M_MERGE_CHUNKS) {//merge BPs for a single draw call with the renderVecChunk
 			INFO("Merging all chunks...\n");
-			std::vector<SimpleVertex> vertices;
-			std::vector<unsigned int> indices;
-			for (auto obj : manager.renderVecChunk) {
-				Obj3d* o = dynamic_cast<Obj3d*>(obj);
-				if (!o) {
-					D("dynamic cast failed on object: " << obj << "\n");
-					Misc::breakExit(456);
-				}
-				Math::Vector3 pos = o->local.getPos();
-				Obj3dBP* bp = o->getBlueprint();
-				std::vector<SimpleVertex> verts = bp->getVertices();
-				//offset the vertices with the obj3d pos
-				std::for_each(verts.begin(), verts.end(), [pos](SimpleVertex& vertex) { vertex.position += pos; });
-				vertices.insert(vertices.end(), verts.begin(), verts.end());
-			}
-			D_(std::cout << "\n");
-
-
-			#ifndef RECREATE_FULLMESH
 			// recreating full mesh without updating it in the ChunkGrid:: ?? todo: it should crash when entering a new chunk, check that and fix if needed
-			Obj3dBP* fullMeshBP = grid.getFullMeshBP();
-			Obj3d* fullMesh = grid.getFullMesh();
-			D("Deleting old fullMesh...\n");
-			if (fullMeshBP)
-				delete fullMeshBP;
-			if (fullMesh)
-				delete fullMesh;
-			D("Building new fullMesh...\n");
-			fullMeshBP = new Obj3dBP(vertices, indices, BP_DONT_NORMALIZE);
-			D("BP ready\n");
-			fullMesh = new Obj3d(*fullMeshBP, obj3d_prog);
-			D("Obj3d ready.\n");
+			D("Building fullMesh...\n");
+			Obj3dBP* fullMeshBP = createMergedBP_offsetVerticesWithPos(manager.renderVecChunk);
+			Obj3d* fullMesh = new Obj3d(*fullMeshBP, obj3d_prog);
 			D("Done, " << manager.renderVecChunk.size() << " chunks merged.\n");
 			manager.renderVecChunk.clear();
 			manager.renderVecChunk.push_back(fullMesh);
-			#endif
+			//todo: this will leak in the next grab when clearing renderVecChunk
 		}
 
 	}
@@ -1437,10 +1469,17 @@ unsigned int	grabObjects(ChunkGenerator& generator, ChunkGrid& grid, OctreeManag
 	//INFO("cubes grid : " << cubgrid << "\n");
 	//D(D_SPACER_END);
 
+	Math::Vector3	gridSize = grid.getSize();
+	int hmap_max = int(gridSize.x) * int(gridSize.z);
+	int chunks_max = hmap_max * int(gridSize.y);
 	HeightMap::m.lock();
+	if (hmap_max < HeightMap::count)
+		INFO("Error: HeightMap::count should not exceed " << hmap_max << ". ");
 	INFO("HeightMap::count\t" << HeightMap::count << "\n");
 	HeightMap::m.unlock();
 	Chunk::m.lock();
+	if (chunks_max < Chunk::count)
+		INFO("Error: Chunk::count should not exceed " << chunks_max << ". ");
 	INFO("Chunk::count    \t" << Chunk::count << "\n");
 	Chunk::m.unlock();
 	return total_polygons;
@@ -1485,6 +1524,10 @@ static void		keyCallback_debugGrid(GLFWwindow* window, int key, int scancode, in
 				std::cout << "jobs remaining : " << m->generator->jobsToDo.size() << "\n";
 				std::cout << m->grid->toString() << std::endl;
 			}
+			else if (key == GLFW_KEY_T) {
+				m->grid->glth_testGarbage(20);
+				std::exit(0);
+			}
 		}
 	}
 }
@@ -1502,16 +1545,15 @@ static void		keyCallback_debugGrid(GLFWwindow* window, int key, int scancode, in
 						- grabs all rendered chunks, selecting available meshes in all vertex_array[]
 * 
 *	todo:
-*		- check memory leaks in chunks generation
+*		- check why there are some chunks in the garbade after the first loop, although the player didnt move.
 *		- check every ctor by copy, they can access private members, useless to use accessors
 *		- inconsistencys with the use of ref or ptr on some pipeline
-*		- in ChunkGrid::updateGrid() : _deleteChunksAndHeightmaps(&chunksToDelete, &hmapsToDelete);
-			! it has gl stuff in it, why it is currently done outside of the gl thread ?
-*				-> this must be sent to some trashes to let the glth do it
 *		- generate the vertexArray[lod] and its BP only when needed (when close enough from the cam/player)
 *	done:
+*		- garbage system : heightmap uses shared ptr, garbages in ChunkGrid::. [Main] try to remove if he has time or if garbage.size > GRID_..._RECOMMENDED
 *	bugs :
-*		- quand le renderedGrid.size = grid.size, race entre le renderer et le grid.updater
+*		- memory leaks in chunks generation (probably)
+*		- when renderedGrid.size = grid.size, race between the renderer and grid.updater
 *
 *	[Checklist] all gl calls have to be done on the gl context (here main thread)
 */
@@ -1537,6 +1579,7 @@ void	scene_octree() {
 	m.glfw->func[GLFW_KEY_Z] = keyCallback_ocTree; // jump cam (+150)
 	m.glfw->func[GLFW_KEY_LEFT_SHIFT] = keyCallback_ocTree; // run
 	m.glfw->func[GLFW_KEY_B] = keyCallback_debugGrid; // switch objects storage mode (array or list)
+	m.glfw->func[GLFW_KEY_T] = keyCallback_debugGrid; // test : currently garbade deletion in the grid
 
 	Texture* tex_skybox = new Texture(SIMPLEGL_FOLDER + "images/skybox4.bmp");
 	Texture* tex_lena = new Texture(SIMPLEGL_FOLDER + "images/lena.bmp");
@@ -1670,15 +1713,18 @@ void	scene_octree() {
 	INFO("Begin while loop, renderer: " << typeid(renderer).name() << "\n");
 	//std::cout.setstate(std::ios_base::failbit);
 
-
-
 	while (!glfwWindowShouldClose(m.glfw->_window)) {
 		if (fps.wait_for_next_frame()) {
 			//std::this_thread::sleep_for(1s);
 			frames++;
 			if (frames % 1000 == 0) {
-				D(">>>>>>>>>>>>>>>>>>>> " << frames << " FRAMES <<<<<<<<<<<<<<<<<<<<\n");
-				D("cam: " << cam.local.getPos() << "\n");
+				INFO("\n>>>>>>>> " << frames << " FRAMES <<<<<<<<\n");
+				INFO("cam: " << cam.local.getPos() << "\n");
+				INFO("Grid HeightMaps max\t" << (m.gridSize.z * m.gridSize.x) << "\n");
+				INFO("HeightMap::count   \t" << HeightMap::count << "\n");
+				INFO("Grid Chunks max    \t" << (m.gridSize.z * m.gridSize.y * m.gridSize.x) << "\n");
+				INFO("Chunk::count       \t" << Chunk::count << "\n");
+				INFO("Garbage            \t" << grid.getGarbageSize() << "\n");
 			}
 			std::string decimals = std::to_string(polygons / 1'000'000.0);
 			m.glfw->setTitle(
@@ -1731,17 +1777,17 @@ void	scene_octree() {
 			}
 			//D("octreeRender\n")
 			//renderer->renderAllObjects(m.renderVecOctree, cam, PG_FORCE_DRAW);
-#if (M_DRAW_GRID_BOX || M_DRAW_GRID_CHUNK)
+			#if (M_DRAW_GRID_BOX || M_DRAW_GRID_CHUNK)
 			glDisable(GL_CULL_FACE);
 			renderer->renderAllObjects(m.renderVecGrid, cam, PG_FORCE_DRAW);
 			glEnable(GL_CULL_FACE);
-#endif
+			#endif
 			//rendererSkybox.renderAllObjects(m.renderVecSkybox, cam, PG_FORCE_DRAW);
 
 			//rendererText_arial.render(text1, Math::Matrix4());
 			//rendererText_arial.render(text2, Math::Matrix4());
 
-#ifdef MINIMAP
+			#ifdef MINIMAP
 			if (chunks_lock.try_lock() && generator.grid[0][0][0]) {
 				D("[Main] Minimap lock\n")
 				//thread player management?
@@ -1769,7 +1815,7 @@ void	scene_octree() {
 				D("[Main] Minimap unlock\n")
 				chunks_lock.unlock();
 			}
-#endif
+			#endif
 			glfwSwapBuffers(m.glfw->_window);
 
 			if (m.thresholdUpdated) {
@@ -1779,6 +1825,16 @@ void	scene_octree() {
 
 			if (GLFW_PRESS == glfwGetKey(m.glfw->_window, GLFW_KEY_ESCAPE))
 				glfwSetWindowShouldClose(m.glfw->_window, GLFW_TRUE);
+
+			// garbage
+			size_t garbage = grid.getGarbageSize();
+			if (garbage >= GRID_GARBAGE_DELETION_RECOMMENDED) {
+				INFO("Too much garbage (" << garbage << "), trying to delete...\n");
+				grid.glth_try_emptyGarbage();
+			}
+		}
+		else {
+			grid.glth_try_emptyGarbage();
 		}
 	}
 
