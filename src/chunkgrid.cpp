@@ -457,7 +457,7 @@ std::string		ChunkGrid::getGridChecks() const {
 					nonulls++;
 				else
 					nulls++;
-				if (j == 0) {
+				if (y == 0) {
 					if (this->_heightMaps[z][x])
 						hmnonulls++;
 					else {

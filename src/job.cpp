@@ -70,7 +70,7 @@ bool	JobBuildHeightMap::deliver() const {
 
 //JobBuildChunk
 //tmp
-void	JobBuildChunk::_buildVertexArray() {
+void	JobBuildChunk::job_buildVertexArray() {
 	Math::Vector3	gridIndex = this->_grid->worldToGrid(this->getWorldIndex());
 	Math::Vector3 playerGridIndex = this->_grid->worldToGrid(this->_grid->getPlayerChunkWorldIndex());
 
@@ -98,7 +98,7 @@ bool	JobBuildChunk::execute() {
 	}
 	this->_chunk = new Chunk(this->_worldIndex, this->_chunkSize, *this->_settings, this->_hmap);
 	this->_hmap->unDispose();
-	this->_buildVertexArray();//tmp_leak_check
+	this->job_buildVertexArray();
 
 	this->done = true;
 	#ifdef CHUNK_GEN_DEBUG

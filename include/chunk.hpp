@@ -58,7 +58,7 @@ public:
 	Obj3d*		mesh;
 
 	void	glth_buildAllMeshes(); //with _vertexArray
-	int		buildVertexArray(Math::Vector3 pos_offset = Math::Vector3(0, 0, 0), const uint8_t desiredLod = 0, const double threshold = 0);
+	size_t	buildVertexArray(Math::Vector3 pos_offset = Math::Vector3(0, 0, 0), const uint8_t desiredLod = 0, const double threshold = 0);
 	void	glth_clearMeshesData();
 	void	clearOctreeData();
 	//bool operator<(const Chunk& rhs) const//tmp

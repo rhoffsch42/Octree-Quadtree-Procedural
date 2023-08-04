@@ -20,7 +20,7 @@
 #include <mutex>
 #include <functional>
 
-#define FOR(X, START, END) for(size_t X = START; X < END; X++)
+#define FOR(X, START, END) for(int X = START; X < END; X++)
 #define LF "\n"
 
 #ifdef _WIN32

@@ -5,7 +5,7 @@
 #include <set>
 
 #ifdef TREES_DEBUG
-//#define TREES_CHUNK_DEBUG
+#define TREES_CHUNK_DEBUG
 #endif
 #ifdef TREES_CHUNK_DEBUG 
 #define D(x) std::cout << "[Chunk] " << x
@@ -161,9 +161,9 @@ Chunk::~Chunk() {
 		if (Glfw::thread_id != thread_id) {
 			D("Error: Chunk meshBP " << this << " dtor called in the wrong thread. " << "Glfw::thread_id: " << Glfw::thread_id << ", != " << thread_id << "\n");
 		}
-		D_(else {
-			D("Good: Chunk meshBP " << this << " dtor called in the right thread. " << "Glfw::thread_id: " << Glfw::thread_id << ", != " << thread_id << "\n");
-		});
+		//D_(else {
+		//	D("Good: Chunk meshBP " << this << " dtor called in the right thread. " << "Glfw::thread_id: " << Glfw::thread_id << ", == " << thread_id << "\n");
+		//});
 	}
 
 	if (this->mesh) {
@@ -171,9 +171,9 @@ Chunk::~Chunk() {
 		if (Glfw::thread_id != thread_id) {
 			D("Error: Chunk mesh " << this << " dtor called in the wrong thread. " << "Glfw::thread_id: " << Glfw::thread_id << ", != " << thread_id << "\n");
 		}
-		D_(else {
-			D("Good: Chunk meshBP " << this << " dtor called in the right thread. " << "Glfw::thread_id: " << Glfw::thread_id << ", != " << thread_id << "\n");
-		});
+		//D_(else {
+		//	D("Good: Chunk meshBP " << this << " dtor called in the right thread. " << "Glfw::thread_id: " << Glfw::thread_id << ", == " << thread_id << "\n");
+		//});
 	}
 
 	//D("Chunk destroyed " << this->index.toString() << "\n");
@@ -206,6 +206,7 @@ void	Chunk::glth_buildAllMeshes() {
 						Misc::breakExit(31);
 					}
 					this->meshBP = bp;
+					this->meshBP->lodManager.deepDestruction = true;
 					this->mesh = new Obj3d(*this->meshBP, *Chunk::renderer);
 					this->mesh->local.setPos(this->pos);
 				}
@@ -273,7 +274,7 @@ int	Chunk::buildVertexArrayFromOctree(Octree_old* root, Math::Vector3 pos_offset
 #endif
 
 //we could make another func: void Octree::buildVertexArray(std::vector<SimpleVertex>& dst, uint8_t lod)
-int	Chunk::buildVertexArray(Math::Vector3 pos_offset, const uint8_t desiredLod, const double threshold) {
+size_t	Chunk::buildVertexArray(Math::Vector3 pos_offset, const uint8_t desiredLod, const double threshold) {
 	/*
 		for each chunck, build a linear vertex array with concatened faces and corresponding attributes (texcoord, color, etc)
 		it will use the chunk matrix so for the vertex position we simply add the chunk pos and the node pos to the vertex.position of the face
@@ -364,7 +365,7 @@ int	Chunk::buildVertexArray(Math::Vector3 pos_offset, const uint8_t desiredLod, 
 #endif
 
 	//std::cout << "\t> vertex array ready: " << this->_vertexArray.size() << std::endl;
-	return 1;
+	return this->_vertexArray->size();
 }
 
 void	Chunk::glth_clearMeshesData() {

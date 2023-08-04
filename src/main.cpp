@@ -1285,8 +1285,8 @@ unsigned int	grabObjects(ChunkGenerator& generator, ChunkGrid& grid, OctreeManag
 
 	if (1) {// actual grabbing + Obj3d creation
 		INFO(grid.getGridChecks());
-		grid.glth_loadAllChunksToGPU();//tmp_leak_check
-		grid.pushRenderedChunks(&manager.renderVecChunkShPtr);//tmp_leak_check
+		grid.glth_loadAllChunksToGPU();
+		grid.pushRenderedChunks(&manager.renderVecChunkShPtr);//todo: 18ms grabbing instead of 4ms usually? check if it's here the problem
 		int emptyptrCount = 0;
 		for (auto& sptr : manager.renderVecChunkShPtr) {
 			if (!sptr.get()) {
@@ -1321,7 +1321,7 @@ unsigned int	grabObjects(ChunkGenerator& generator, ChunkGrid& grid, OctreeManag
 			D("Done, " << manager.renderVecChunk.size() << " chunks merged.\n");
 			manager.renderVecChunk.clear();
 			manager.renderVecChunk.push_back(fullMesh);
-			//todo: this will leak in the next grab when clearing renderVecChunk
+			//todo: fixleak: this will leak in the next grab when clearing renderVecChunk
 		}
 
 	}
@@ -1547,12 +1547,11 @@ static void		keyCallback_debugGrid(GLFWwindow* window, int key, int scancode, in
 *	todo:
 *		- check why there are some chunks in the garbade after the first loop, although the player didnt move.
 *		- check every ctor by copy, they can access private members, useless to use accessors
-*		- inconsistencys with the use of ref or ptr on some pipeline
+*		- inconsistencys? with the use of ref or ptr on some pipeline
 *		- generate the vertexArray[lod] and its BP only when needed (when close enough from the cam/player)
 *	done:
-*		- garbage system : heightmap uses shared ptr, garbages in ChunkGrid::. [Main] try to remove if he has time or if garbage.size > GRID_..._RECOMMENDED
+*		- memory leaks in chunks generation : LODs were not deleted
 *	bugs :
-*		- memory leaks in chunks generation (probably)
 *		- when renderedGrid.size = grid.size, race between the renderer and grid.updater
 *
 *	[Checklist] all gl calls have to be done on the gl context (here main thread)
@@ -1980,13 +1979,53 @@ void	scene_checkMemory() {
 		HeightMap*			hmap = nullptr;
 		Chunk*				chunk = nullptr;
 		Math::Vector3		chunk_size(32, 32, 32);
-		Math::Vector3		index(1, 2, 3);
+		Math::Vector3		index(55, 1, 8); // 13554 vertices LOD_0
 
-		FOR(i, 0, 10000) {
+		if (0) {
+			// find big chunk
+			Math::Vector3 highest = index;
+			size_t highestV = 0;
+			size_t i = 0;
+			FOR(z, 0, 100) {
+				FOR(y, -10, 10) {
+					FOR(x, 0, 100) {
+						index = Math::Vector3(x, y, z);
+						hmap = new HeightMap(ps, index, chunk_size);
+						chunk = new Chunk(index, chunk_size, ps, hmap);
+						FOR(lod, 0, 1) {
+							size_t v = chunk->buildVertexArray(Math::Vector3(), lod, 0);
+							if (v > highestV) {
+								highestV = v;
+								highest = index;
+							}
+						}
+
+						delete hmap;
+						delete chunk;
+						{
+							int j = i + 1;
+							//std::cout << j << LF;
+							if (j % 100 == 0)
+								std::cout << ".";
+							if (j % 5000 == 0)
+								std::cout << " " << j << "\n";
+						}
+						i++;
+					}
+				}
+			}
+			std::cout << highest << "\t" << highestV << LF;
+			std::exit(0);
+		}
+
+		FOR(i, 0, 5000) {
 			hmap = new HeightMap(ps, index, chunk_size);
 			chunk = new Chunk(index, chunk_size, ps, hmap);
-			FOR(lod, 0, LODS_AMOUNT) { chunk->buildVertexArray(Math::Vector3(), lod, 0); }
-			//chunk->glth_buildAllMeshes();
+			FOR(lod, 0, LODS_AMOUNT) {
+				chunk->buildVertexArray(Math::Vector3(), lod, 0);
+			}
+			chunk->glth_buildAllMeshes();
+			//D(chunk->meshBP->lodManager.toString() << "\n");
 			delete hmap;
 			delete chunk;
 			{

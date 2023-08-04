@@ -58,7 +58,7 @@ public:
 private:
 	HeightMap*	_hmap = nullptr;
 	Chunk*		_chunk = nullptr;
-	void			_buildVertexArray();
+	void			job_buildVertexArray();
 };
 
 
