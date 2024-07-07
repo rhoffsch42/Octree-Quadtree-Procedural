@@ -211,15 +211,15 @@ void			ChunkGrid::_translateGrid(Math::Vector3 gridDiff) {
 	D("chunks referenced: " << chunks.size() << "\n");
 	D("hmaps referenced (with nulls): " << hmaps.size() << "\n");
 
+	// lock garbage to not let the gl thread look into it before we lose ownership of every ShPtr
+	this->garbageMutex.lock();
 	D("reassigning chunks...\n");
 	for (size_t n = 0; n < chunks.size(); n++) {
 		if (indexes_Z[n] < this->_gridSize.z && indexes_Y[n] < this->_gridSize.y && indexes_X[n] < this->_gridSize.x \
 			&& indexes_Z[n] >= 0 && indexes_Y[n] >= 0 && indexes_X[n] >= 0) {
 			this->_grid[indexes_Z[n]][indexes_Y[n]][indexes_X[n]] = chunks[n];
 		} else {//is outside of the memory grid
-			this->garbageMutex.lock();
 			this->_garbageChunks.push_back(chunks[n]);
-			this->garbageMutex.unlock();
 		}
 	}
 
@@ -231,13 +231,14 @@ void			ChunkGrid::_translateGrid(Math::Vector3 gridDiff) {
 				&& indexes_Z[n] >= 0 && indexes_X[n] >= 0) {
 				this->_heightMaps[indexes_Z[n]][indexes_X[n]] = hmaps[n];
 			} else {//is outside of the memory grid
-				this->garbageMutex.lock();
 				this->_garbageHeightmaps.push_back(hmaps[n]);
-				this->garbageMutex.unlock();
 			}
 		}
 	}
-
+	//release ownsership before the garbage unlock
+	chunks.clear();
+	hmaps.clear();
+	this->garbageMutex.unlock();
 	this->gridShifted = true;
 }
 
@@ -293,6 +294,7 @@ void			ChunkGrid::pushRenderedChunks(std::vector<ChunkShPtr>* dst) const {
 	//if (dst->size()) {
 	//	D("Warning: Pushing rendered chunks to a vector<ChunkShPtr> that is not empty\n");
 	//}
+	dst->reserve(this->_renderedGridSize.x * this->_renderedGridSize.y * this->_renderedGridSize.z);
 	Math::Vector3	renderedGridEndIndex = this->_renderedGridIndex + this->_renderedGridSize;
 	for (unsigned int k = this->_renderedGridIndex.z; k < renderedGridEndIndex.z; k++) {
 		for (unsigned int j = this->_renderedGridIndex.y; j < renderedGridEndIndex.y; j++) {

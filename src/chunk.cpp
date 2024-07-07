@@ -196,6 +196,7 @@ void	Chunk::glth_buildAllMeshes() {
 			//D("Building LOD_" << i << "\tvertexArray size: " << this->_vertexArray[i].size() << "\n");
 			if (i == 0 || this->_vertexArray[i].size() > LOD_MIN_VERTEX_ARRAY_SIZE) {
 				Obj3dBP* bp = new Obj3dBP(this->_vertexArray[i], this->_indices[i], BP_DONT_NORMALIZE);
+				bp->freeData(BP_FREE_ALL);
 				if (i == 0) {
 					if (this->meshBP) {
 						std::cout << "Error: overriding mesh bp: " << this->meshBP << " on chunk: " << this << "\n";
@@ -214,7 +215,6 @@ void	Chunk::glth_buildAllMeshes() {
 					//this->meshBP->lodManager.addLod(bp, this->size.x * (i+1));// 32 * (i+1);
 					this->meshBP->lodManager.addLod(bp, this->size.x * std::pow(2, i + 1));// 32 * { 1, 2, 4, 8, 16, 32 };
 				}
-				bp->freeData(BP_FREE_ALL);
 				this->mesh->getProgram()->linkBuffers(*bp);//we should not need to use a Obj3d to access the PG. todo: see obj3dPG::renderObject()
 			}
 			//else { D("Skipped LODS " << i << "+ for chunk " << this->index << "\n"); }

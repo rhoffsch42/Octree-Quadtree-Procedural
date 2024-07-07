@@ -144,6 +144,9 @@
     <ClCompile Include="SimpleGL\src\lod_manager.cpp">
       <Filter>SimpleGL\Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\scenes.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="SimpleGL\include\behavior.hpp">
@@ -266,6 +269,12 @@
     <ClInclude Include="SimpleGL\include\simplegl_includes.h">
       <Filter>SimpleGL\Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\poe-qual.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\scenes.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="SimpleGL\shaders\cubemap.fs.glsl">
@@ -293,6 +302,9 @@
       <Filter>SimpleGL\obj</Filter>
     </None>
     <None Include="SimpleGL\obj3d\cube_pastel.mtl">
+      <Filter>SimpleGL\obj</Filter>
+    </None>
+    <None Include="SimpleGL\obj3d\cube_grass.mtl">
       <Filter>SimpleGL\obj</Filter>
     </None>
   </ItemGroup>

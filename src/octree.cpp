@@ -184,19 +184,20 @@ Octree<T>::Octree(T*** arr, Math::Vector3 corner_pos, Math::Vector3 tree_size, u
 	| A | B |
 	|---|---|		lower layer seen from top
 	| C | D |
-	z``front`
+	z¨¨¨¨¨¨¨¨
+
 	o________x
 	| E | F |
 	|---|---|		higher layer seen from top
 	| G | H |
-	z``front`
-	   _________
+	z¨¨¨¨¨¨¨¨
+	   ________
 	  /___/___/|
 	y/___/___/ |
-	| G | H |  |
-	|---|---| /		both layers seen from front
-	| C | D |/
-	o````````x
+	 | G | H | |
+	 |---|---| /		both layers seen from front
+	 | C | D |/
+	 o¨¨¨¨¨¨¨¨x
 
 	*/
 

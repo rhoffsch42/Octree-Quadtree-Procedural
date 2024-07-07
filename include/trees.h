@@ -34,7 +34,7 @@
 #define SIMPLEGL_FOLDER		std::string("SimpleGL/")
 #define WIN32_VS_FOLDER		std::string("")
 
-#define TREES_DEBUG
+//#define TREES_DEBUG
 
 #define FLAG_IS(X, Y)           (((X) & (Y)) == (X))
 #define FLAG_HAS(X, Y)          (((X) & (Y)) != 0)

@@ -160,6 +160,7 @@
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\octree.cpp" />
     <ClCompile Include="src\quadtree.cpp" />
+    <ClCompile Include="src\scenes.cpp" />
     <ClCompile Include="src\utils.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -170,7 +171,9 @@
     <ClInclude Include="include\heightmap.hpp" />
     <ClInclude Include="include\job.hpp" />
     <ClInclude Include="include\octree.hpp" />
+    <ClInclude Include="include\poe-qual.h" />
     <ClInclude Include="include\quadtree.hpp" />
+    <ClInclude Include="include\scenes.hpp" />
     <ClInclude Include="include\trees.h" />
     <ClInclude Include="include\utils.hpp" />
     <ClInclude Include="SimpleGL\include\behavior.hpp" />
@@ -205,6 +208,7 @@
     <ClInclude Include="SimpleGL\include\uipanel.hpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="SimpleGL\obj3d\cube_grass.mtl" />
     <None Include="SimpleGL\obj3d\cube_pastel.mtl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</DeploymentContent>
