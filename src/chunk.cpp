@@ -1,5 +1,5 @@
 #include "chunk.hpp"
-#include "trees.h"
+#include "utils.hpp"
 //#include <iostream>
 #include <sstream>
 #include <set>
@@ -33,6 +33,10 @@ Obj3dPG* Chunk::renderer = nullptr;
 Chunk::Chunk(const Math::Vector3& chunk_index, const Math::Vector3& chunk_size, PerlinSettings& perlinSettings, HeightMap* hmap) {
 	_countAdd(1);
 	//D(__PRETTY_FUNCTION__ << "\n");
+	if (!hmap || !hmap->map) {
+		D(" no hmap or hmap->map" << hmap << "\t" << hmap->map << "\n");
+		return;
+	}
 	this->index = chunk_index;
 	this->pos = chunk_index;
 	this->pos.x *= chunk_size.x;
@@ -46,18 +50,16 @@ Chunk::Chunk(const Math::Vector3& chunk_index, const Math::Vector3& chunk_size, 
 		this->_generatedLod[i] = false;
 	}
 
-	uint8_t*** data;
-	data = new uint8_t * *[this->size.z];
-	for (unsigned int k = 0; k < this->size.z; k++) {
-		data[k] = new uint8_t * [this->size.y];
-		for (unsigned int j = 0; j < this->size.y; j++) {
-			data[k][j] = new uint8_t[this->size.x];
-			for (unsigned int i = 0; i < this->size.x; i++) {
-				//std::cout << "pos.y + j = " << (pos.y + j) << "  is > to " << int(map[k][i]) << "\t?" << std::endl;
-				if (!hmap || !hmap->map)
-					std::cout << "dd>>> " << hmap << "\t" << hmap->map << "\n";
+	Voxel***					voxels = new Voxel **[this->size.z];
+	std::unique_ptr<Voxel[]>	tmp = std::make_unique<Voxel[]>(this->size.x * this->size.y * this->size.z);
+	for (size_t k = 0; k < this->size.z; k++) {
+		voxels[k] = new Voxel * [this->size.y];
+		for (size_t j = 0; j < this->size.y; j++) {
+			voxels[k][j] = &(tmp[size_t(k * this->size.y * this->size.x + j * this->size.x)]);
+			for (size_t i = 0; i < this->size.x; i++) {
+
 				if (hmap && pos.y + j > int(hmap->map[k][i])) {//procedural: surface with heightmap
-					data[k][j][i] = VOXEL_EMPTY.r;
+					tmp[IND_3D_TO_1D(i, j, k, this->size.x, this->size.y)] = VOXEL_EMPTY;
 				}
 				else {
 					if (0) {//procedural: which dirt, 3d noise
@@ -68,83 +70,31 @@ Chunk::Chunk(const Math::Vector3& chunk_index, const Math::Vector3& chunk_size, 
 							perlinSettings.octaves);
 						uint8_t v = uint8_t(double(255.0) * value);
 						//v = v / 128 * 128;
-						if (v >= 128)
-							v = 150;
-						else
-							v = 75;
+						v = (v >= 128) ? 150 : 75;
 						//std::cout << value << " ";
 						//std::cout << (int)v << " ";
 					}
 					else {
-						data[k][j][i] = 75;
+						tmp[IND_3D_TO_1D(i, j, k, this->size.x, this->size.y)] = 75;
 					}
 				}
 			}
 		}
 	}
 
-#ifdef OCTREE_OLD
-	Pixel*** pix = new Pixel * *[this->size.z];
-	for (unsigned int k = 0; k < this->size.z; k++) {
-		pix[k] = new Pixel * [this->size.y];
-		for (unsigned int j = 0; j < this->size.y; j++) {
-			pix[k][j] = new Pixel[this->size.x];
-			for (unsigned int i = 0; i < this->size.x; i++) {
-				pix[k][j][i].r = data[k][j][i];
-				pix[k][j][i].g = data[k][j][i];
-				pix[k][j][i].b = data[k][j][i];
-			}
-		}
-	}
 	// important note: all chunks have their octree starting at pos 0 0 0.
-	int threshold = 0;
-	this->root = new Octree_old(pix, Math::Vector3(0, 0, 0), this->size, threshold);//octree(T data,...) template?  || classe abstraite pour def average() etc
-	this->root->verifyNeighbors(VOXEL_EMPTY);//white
-	if (this->buildVertexArrayFromOctree(this->root, Math::Vector3(0, 0, 0)) == 0) {
-		std::cout << "Error: failed to build vertex array for the chuck " << this << std::endl;
-		Misc::breakExit(23);
-	}
-	//delete tmp pix
-	for (unsigned int k = 0; k < this->size.z; k++) {
-		for (unsigned int j = 0; j < this->size.y; j++) {
-			delete[] pix[k][j];
-		}
-		delete[] pix[k];
-	}
-	delete[] pix;
-#else
-	Voxel*** voxels = new Voxel * *[this->size.z];
-	for (unsigned int k = 0; k < this->size.z; k++) {
-		voxels[k] = new Voxel * [this->size.y];
-		for (unsigned int j = 0; j < this->size.y; j++) {
-			voxels[k][j] = new Voxel[this->size.x];
-			for (unsigned int i = 0; i < this->size.x; i++) {
-				voxels[k][j][i]._value = data[k][j][i];
-			}
-		}
-	}
-	// important note: all chunks have their octree starting at pos 0 0 0.
+	//this->root = new Octree<Voxel>(tmp.get(), Math::Vector3(0, 0, 0), this->size, OCTREE_THRESHOLD);
 	this->root = new Octree<Voxel>(voxels, Math::Vector3(0, 0, 0), this->size, OCTREE_THRESHOLD);
-	this->root->verifyNeighbors(Voxel(255));
+	this->root->verifyNeighbors(Voxel(VOXEL_EMPTY));
 
-	//delete tmp pix
-	for (unsigned int k = 0; k < this->size.z; k++) {
-		for (unsigned int j = 0; j < this->size.y; j++) {
-			delete[] voxels[k][j];
-		}
+	//delete tmp voxels
+	for (size_t k = 0; k < this->size.z; k++) {
 		delete[] voxels[k];
 	}
 	delete[] voxels;
-#endif OCTREE_OLD
+	//delete[] tmp;
 
-	//delete data
-	for (unsigned int k = 0; k < this->size.z; k++) {
-		for (unsigned int j = 0; j < this->size.y; j++) {
-			delete[] data[k][j];
-		}
-		delete[] data[k];
-	}
-	delete[] data;
+
 }
 
 Chunk::~Chunk() {
@@ -226,52 +176,6 @@ void	Chunk::glth_buildAllMeshes() {
 		//D(this->meshBP->lodManager.toString() << "\n");
 
 }
-
-#ifdef OCTREE_OLD
-int	Chunk::buildVertexArrayFromOctree(Octree_old* root, Math::Vector3 pos_offset) {
-	/*
-		for each chunck, build a linear vertex array with concatened faces and corresponding attributes (texcoord, color, etc)
-		it will use the chunk matrix so for the vertex position we simply add the chunk pos and the node pos to the vertex.position of the face
-
-		this will be used with glDrawArray() later
-		we could even concat all chunk array for a single glDrawArray
-			cons: we need to remap data at every chunck change
-				-> display list? check what it is
-	*/
-
-	if (!Chunk::cubeBlueprint) {
-		std::cout << "Obj3dBP*	Chunk::cubeBlueprint is null" << std::endl;
-		return 0;
-	}
-	std::vector<SimpleVertex>	vertices = Chunk::cubeBlueprint->getVertices();
-	std::vector<SimpleVertex>* ptr_vertex_array = &this->_vertexArray;
-	root->browse([&pos_offset, ptr_vertex_array, &vertices](Octree_old* node) {
-		if ((node->pixel.r < VOXEL_EMPTY.r \
-		|| node->pixel.g < VOXEL_EMPTY.g \
-			|| node->pixel.b < VOXEL_EMPTY.b) \
-			&& node->neighbors < NEIGHBOR_ALL)// should be < NEIGHBOR_ALL or (node->n & NEIGHBOR_ALL) != 0
-		{
-			Math::Vector3	cube_pos(pos_offset);//can be the root pos or (0,0,0)
-			cube_pos += node->pos;//the position of the cube
-			int neighbors_flags[] = { NEIGHBOR_FRONT, NEIGHBOR_RIGHT, NEIGHBOR_LEFT, NEIGHBOR_BOTTOM, NEIGHBOR_TOP, NEIGHBOR_BACK };
-			for (size_t i = 0; i < 6; i++) {//6 faces
-				if ((node->neighbors & neighbors_flags[i]) != neighbors_flags[i]) {
-					for (size_t j = 0; j < 6; j++) {// push the 2 triangles = 2 * 3 vertex
-						SimpleVertex	vertex = vertices[i * 6 + j];
-						vertex.position.x *= node->size.x;
-						vertex.position.y *= node->size.y;
-						vertex.position.z *= node->size.z;
-						vertex.position += node->pos;
-						ptr_vertex_array->push_back(vertex);
-					}
-				}
-			}
-		}
-		});
-	//std::cout << "\t> vertex array ready: " << this->_vertexArray.size() << std::endl;
-	return 1;
-}
-#endif
 
 //we could make another func: void Octree::buildVertexArray(std::vector<SimpleVertex>& dst, uint8_t lod)
 size_t	Chunk::buildVertexArray(Math::Vector3 pos_offset, const uint8_t desiredLod, const double threshold) {
@@ -425,7 +329,7 @@ int	Chunk::buildVertexArrayFromOctree_homogeneous(Octree<Voxel>* root, Math::Vec
 	// fastest way : https://stackoverflow.com/questions/1041620/whats-the-most-efficient-way-to-erase-duplicates-and-sort-a-vector
 	std::set<VertexClass>		vertex_set;
 	std::vector<VertexClass>			full_vertex_vec;
-	std::map<VertexClass, unsigned int>	vertex_map;
+	std::map<VertexClass, size_t>	vertex_map;
 	std::vector<VertexClass>			final_vertex_vec;
 
 	/*
@@ -457,8 +361,8 @@ int	Chunk::buildVertexArrayFromOctree_homogeneous(Octree<Voxel>* root, Math::Vec
 			}
 		}
 		});
-	unsigned int i = 0;
-	unsigned int size = vertex_set.size();
+	size_t i = 0;
+	size_t size = vertex_set.size();
 #ifdef TINY_VERTEX
 	std::vector<VertexClass>* vertex_array = &final_vertex_vec;
 #else

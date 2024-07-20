@@ -18,7 +18,7 @@
 #define PERLIN_DEFAULT_HEIGHTCOEF	1
 #define PERLIN_DEFAULT_ISLAND		0
 #define	CHUNK_DEFAULT_SIZE			32
-#define VOXEL_EMPTY					Pixel(255, 255, 255) //todo: change this to 0,0,0 and adapt octree
+#define VOXEL_EMPTY					255 // todo: change this to 0 and adapt octree
 
 #include "compiler_settings.h"
 class PerlinSettings
@@ -51,10 +51,8 @@ public:
 
 		for (int z = 0; z < this->sizeZ; z++) {
 			for (int x = 0; x < this->sizeX; x++) {
-				if (z < 0) {
-					std::cout << z << " WTF" << std::endl;
-				}
-				Math::Vector3	currentPos(this->posX + x, 0, this->posZ + z);//we dont care of y
+
+				Math::Vector3	currentPos(this->posX + x, 0, this->posZ + z); // we dont care of y
 				double value = perlin.accumulatedOctaveNoise2D_0_1(
 					double(currentPos.x) / double(PERLIN_NORMALIZER) * this->frequency,
 					double(currentPos.z) / double(PERLIN_NORMALIZER) * this->frequency,
@@ -124,7 +122,7 @@ private:
 class HeightMap;
 typedef std::shared_ptr<HeightMap>	HeightMapShPtr;
 
-class HeightMap : public IDisposable//2D
+class HeightMap : public IDisposable // 2D
 {
 public:
 	static std::mutex	m;
@@ -133,27 +131,32 @@ public:
 	HeightMap(PerlinSettings& perlin_settings, int posx, int posz, int sizex, int sizez);
 	~HeightMap();
 
-	//opengl thread
+	// must be used in opengl thread
 	void			glth_buildPanel();
 	Math::Vector3	getIndex() const;
+	uint8_t			getMaxHeight() const;
+	uint8_t			getMinHeight() const;
+			
 	//bool operator<(const HeightMap& rhs) const//tmp
 	//{
 	//	return std::tie(this->tile.x, this->tile.y, this->tile.z) < std::tie(rhs.tile.x, rhs.tile.y, rhs.pos.z);
 	//}
 
-
-	uint8_t**	map = nullptr;//used by Chunk::
+	uint8_t**	map = nullptr; // used by Chunk::
 
 	//used to display the map tile on screen
-	uint8_t* textureData = nullptr;
-	Texture* texture = nullptr;
-	UIImage* panel = nullptr;
+	uint8_t*	textureData = nullptr;
+	Texture*	texture = nullptr;
+	UIImage*	panel = nullptr;
 private:
-	Math::Vector3	_index;
-	int				_posX;//not tile
+	Math::Vector3	_index; // tile index
+	int				_posX; // world position
 	int				_posZ;
 	unsigned int	_sizeX;
 	unsigned int	_sizeZ;
+	uint8_t			_maxHeight = 0;
+	uint8_t			_minHeight = 0;
 
-	void	buildMap(PerlinSettings& perlin_settings);
+	void	_buildMap(PerlinSettings& perlin_settings);
+	void	_calcMinMaxHeights();
 };

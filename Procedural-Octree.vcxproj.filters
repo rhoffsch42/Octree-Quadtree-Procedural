@@ -269,9 +269,6 @@
     <ClInclude Include="SimpleGL\include\simplegl_includes.h">
       <Filter>SimpleGL\Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\poe-qual.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="include\scenes.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>

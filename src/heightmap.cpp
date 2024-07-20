@@ -31,21 +31,37 @@ HeightMap::HeightMap(PerlinSettings& perlin_settings, Math::Vector3 chunk_index,
 	this->_sizeX = chunk_size.x;
 	this->_sizeZ = chunk_size.z;
 
-	this->buildMap(perlin_settings);
+	this->_buildMap(perlin_settings);
 }
 
 HeightMap::HeightMap(PerlinSettings& perlin_settings, int posx, int posz, int sizex, int sizez)
 	: IDisposable(), _posX(posx), _posZ(posz), _sizeX(sizex), _sizeZ(sizez)
 {
 	_countAdd(1);
-	this->buildMap(perlin_settings);
+	this->_buildMap(perlin_settings);
+	this->_calcMinMaxHeights();
 }
 
-void	HeightMap::buildMap(PerlinSettings& perlin_settings) {
+void	HeightMap::_buildMap(PerlinSettings& perlin_settings) {
 	this->map = perlin_settings.genHeightMap(this->_posX, this->_posZ, this->_sizeX, this->_sizeZ);
 	#if HMAP_BUILD_TEXTUREDATA_IN_CTOR
 	this->textureData = PerlinSettings::HeightmapToTextureData(map, this->_sizeX, this->_sizeZ);
 	#endif
+}
+
+void	HeightMap::_calcMinMaxHeights() {
+	this->_maxHeight = 0;
+	this->_minHeight = 255;
+	for (unsigned int z = 0; z < this->_sizeZ; z++) {
+		for (unsigned int x = 0; x < this->_sizeX; x++) {
+			if (this->map[z][x] > this->_maxHeight) {
+				this->_maxHeight = this->map[z][x];
+			}
+			if (this->map[z][x] < this->_minHeight) {
+				this->_minHeight = this->map[z][x];
+			}
+		}
+	}
 }
 
 HeightMap::~HeightMap() {
@@ -108,3 +124,5 @@ void	HeightMap::glth_buildPanel() {
 }
 
 Math::Vector3	HeightMap::getIndex() const { return this->_index; }
+uint8_t			HeightMap::getMaxHeight() const { return this->_maxHeight; }
+uint8_t			HeightMap::getMinHeight() const { return this->_minHeight; }

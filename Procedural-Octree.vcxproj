@@ -171,7 +171,6 @@
     <ClInclude Include="include\heightmap.hpp" />
     <ClInclude Include="include\job.hpp" />
     <ClInclude Include="include\octree.hpp" />
-    <ClInclude Include="include\poe-qual.h" />
     <ClInclude Include="include\quadtree.hpp" />
     <ClInclude Include="include\scenes.hpp" />
     <ClInclude Include="include\trees.h" />

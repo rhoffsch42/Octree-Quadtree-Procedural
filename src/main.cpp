@@ -325,7 +325,7 @@ void	scene_benchmarks() {
 #define M_DRAW_GRID_CHUNK		0
 #define M_DISPLAY_BLACK			0
 
-//#define TRIM_FLOOR
+#define TRIM_FLOOR				1
 
 void	printSettings(OctreeManager& m) {
 
@@ -517,7 +517,7 @@ unsigned int	grabObjects(ChunkGenerator& generator, ChunkGrid& grid, OctreeManag
 	startRendered = Math::Vector3();
 	endRendered = geometry.gridSize; //Math::Vector3(generator.gridSize);
 #endif
-#ifdef TRIM_FLOOR // only above ground and ground itself
+#if TRIM_FLOOR // only above ground and ground itself
 	Math::Vector3 minRendered = grid.worldToGrid(Math::Vector3(1, 1, 1)); // x and z ignored
 	startRendered.y = std::max(startRendered.y, minRendered.y);
 	endRendered.y = std::max(endRendered.y, startRendered.y + 5);
@@ -549,7 +549,7 @@ unsigned int	grabObjects(ChunkGenerator& generator, ChunkGrid& grid, OctreeManag
 				if (sptr.get()->mesh) {//nullptr means empty chunk (or not yet generated, but this shouldn't ne the case as glth_loadAllChunksToGPU() was called just above)
 					//std::cout << "o";
 					Math::Vector3 chunkGridIndex = grid.worldToGrid(sptr.get()->index);
-					#ifdef TRIM_FLOOR
+					#if TRIM_FLOOR
 					if (chunkGridIndex.y >= startRendered.y && chunkGridIndex.y < endRendered.y)
 					#endif
 						manager.renderVecChunk.push_back(sptr.get()->mesh);
@@ -619,15 +619,6 @@ unsigned int	grabObjects(ChunkGenerator& generator, ChunkGrid& grid, OctreeManag
 
 					if (0) {//coloring origin of each octree/chunk
 						Math::Vector3	siz(1, 1, 1);
-						#ifdef OCTREE_OLD
-						Octree_old* root = chunk->root->getRoot(chunk->root->pos, siz);
-						if (root) {
-							if (root->size.len() != siz.len())
-								root->pixel = Pixel(254, 0, 0);
-							else
-								root->pixel = Pixel(0, 255, 0);
-						}
-						#else // OCTREE_OLD
 						Octree<Voxel>* node = chunk->root->getNode(chunk->root->pos, siz);
 						if (node) {
 							if (node->size.len() != siz.len())
@@ -635,64 +626,8 @@ unsigned int	grabObjects(ChunkGenerator& generator, ChunkGrid& grid, OctreeManag
 							else
 								node->element._value = 253;
 						}
-						#endif // OCTREE_OLD
 					}
 
-					#if 0// oldcode, browsing to build 1 obj3d per cube (not chunk)
-					chunk->root->browse([&manager, &cubebp, &obj3d_prog, scale_coef, scale_coef2, chunk, tex, &hiddenBlocks](Octree_old* node) {
-						if (!node->isLeaf())
-						return;
-					if (M_DISPLAY_BLACK || (node->pixel.r != 0 && node->pixel.g != 0 && node->pixel.b != 0)) {// pixel 0?
-						Math::Vector3	worldPos = chunk->pos + node->pos;
-						Math::Vector3	center = worldPos + (node->size / 2);
-						if ((node->pixel.r < VOXEL_EMPTY.r \
-							|| node->pixel.g < VOXEL_EMPTY.g \
-							|| node->pixel.b < VOXEL_EMPTY.b) \
-							&& node->neighbors < NEIGHBOR_ALL)// should be < NEIGHBOR_ALL or (node->n & NEIGHBOR_ALL) != 0
-						{
-							Obj3d* cube = new Obj3d(cubebp, obj3d_prog);
-							cube->setColor(node->pixel.r, node->pixel.g, node->pixel.b);
-							cube->local.setPos(worldPos);
-							cube->local.setScale(node->size.x * scale_coef, node->size.y * scale_coef, node->size.z * scale_coef);
-							cube->setPolygonMode(manager.polygon_mode);
-							cube->displayTexture = true;
-							cube->displayTexture = false;
-							cube->setTexture(tex);
-
-							//if (node->neighbors == 1)// faire une texture pour chaque numero
-							//	cube->setColor(0, 127, 127);
-
-							//we can see if there is false positive on fully obstructed voxel, some are partially obstructed
-							if (node->neighbors == NEIGHBOR_ALL) {//should not be drawn
-								cube->setColor(100, 200, 100);
-								cube->setPolygonMode(manager.polygon_mode);
-								cube->setPolygonMode(GL_FILL);
-								hiddenBlocks++;
-								manager.renderVec.push_back(cube);
-							}
-							else {
-								// push only the faces next to an EMPTY_VOXEL in an all-in buffer
-								manager.renderVec.push_back(cube);
-								if ((node->neighbors & NEIGHBOR_FRONT) != NEIGHBOR_FRONT) { manager.renderVecVoxels[CUBE_FRONT_FACE].push_back(cube); }
-								if ((node->neighbors & NEIGHBOR_RIGHT) != NEIGHBOR_RIGHT) { manager.renderVecVoxels[CUBE_RIGHT_FACE].push_back(cube); }
-								if ((node->neighbors & NEIGHBOR_LEFT) != NEIGHBOR_LEFT) { manager.renderVecVoxels[CUBE_LEFT_FACE].push_back(cube); }
-								if ((node->neighbors & NEIGHBOR_BOTTOM) != NEIGHBOR_BOTTOM) { manager.renderVecVoxels[CUBE_BOTTOM_FACE].push_back(cube); }
-								if ((node->neighbors & NEIGHBOR_TOP) != NEIGHBOR_TOP) { manager.renderVecVoxels[CUBE_TOP_FACE].push_back(cube); }
-								if ((node->neighbors & NEIGHBOR_BACK) != NEIGHBOR_BACK) { manager.renderVecVoxels[CUBE_BACK_FACE].push_back(cube); }
-							}
-							if (M_DISPLAY_BLACK) {
-								Obj3d* cube2 = new Obj3d(cubebp, obj3d_prog);
-								cube2->setColor(0, 0, 0);
-								cube2->local.setPos(worldPos);
-								cube2->local.setScale(node->size.x * scale_coef2, node->size.y * scale_coef2, node->size.z * scale_coef2);
-								cube2->setPolygonMode(GL_LINE);
-								cube2->displayTexture = false;
-								manager.renderVecOctree.push_back(cube2);
-							}
-						}
-					}
-						});
-					#endif
 				}
 			}
 		}
@@ -816,7 +751,7 @@ static void		keyCallback_debugGrid(GLFWwindow* window, int key, int scancode, in
 *	V2:
 *   the grid is the entire world, ie the root of the octree
 *   we render everything in the grid
-*	chunks LODs are generated on the fly, depending on the distance from the player
+*	chunks treeLODs are generated on the fly, depending on the distance from the player
 *
 *	* treeLOD != obj3d LOD
 *	- start with a quadtree, then octree:
@@ -1359,17 +1294,6 @@ void	benchmark_octree() {
 }
 
 
-#include "poe-qual.h"
-void	test_poe_qual() {
-
-	double quality = 20;
-	std::cout << "Enter quality % :\n";
-	std::cin >> quality;
-
-	Gem::PoeNewGems(quality / 20.0);
-	std::exit(0);
-}
-
 void	printClassSizes() {
 	std::cout << "sizeof(Octree) = " << sizeof(Octree<Voxel>) << "\n";
 	std::cout << "sizeof(Voxel) = " << sizeof(Voxel) << "\n";
@@ -1410,8 +1334,6 @@ int		main(int ac, char **av) {
 	//	test_obj_loader();
 
 	D("____START____ :\t" << Misc::getCurrentDirectory() << "\n");
-	//test_polym_ref_ptr();
-	//test_poe_qual();
 	//test_memory_opengl_obj3dbp();
 	//test_memory_opengl();
 	//test_shared_ptr(); return 0;

@@ -9,7 +9,6 @@
 
 #include <algorithm>
 
-//#define OCTREE_OLD
 #define OCTREE_THRESHOLD 0
 /*
 	0 = no LOD, taking smallest voxels (size = 1)
@@ -47,15 +46,11 @@ public:
 	Math::Vector3	index;
 	Math::Vector3	pos;
 	Math::Vector3	size;
-#ifdef OCTREE_OLD
-	Octree_old*		root;
-#else
 	Octree<Voxel>*	root;
-#endif
 
 	//opengl
-	Obj3dBP*	meshBP;
-	Obj3d*		mesh;
+	Obj3dBP*	meshBP = nullptr;
+	Obj3d*		mesh = nullptr;
 
 	void	glth_buildAllMeshes(); //with _vertexArray
 	size_t	buildVertexArray(Math::Vector3 pos_offset = Math::Vector3(0, 0, 0), const uint8_t desiredLod = 0, const double threshold = 0);
@@ -67,11 +62,7 @@ public:
 	//}
 private:
 	// you should check for error: 0 means Chunk::cubebp is null, 1 means no error
-#ifdef OCTREE_OLD
-	int buildVertexArrayFromOctree(Octree_old* root, Math::Vector3 pos_offset = Math::Vector3(0, 0, 0));
-#else
 	int buildVertexArrayFromOctree_homogeneous(Octree<Voxel>* root, Math::Vector3 pos_offset = Math::Vector3(0, 0, 0));
-#endif
 	bool						_generatedLod[LODS_AMOUNT];//if the lod has been generated or not. if not: a job will be created when needed (care duplicate).
 	std::vector<SimpleVertex>	_vertexArray[LODS_AMOUNT];
 	std::vector<unsigned int>	_indices[LODS_AMOUNT];
