@@ -39,7 +39,6 @@ HeightMap::HeightMap(PerlinSettings& perlin_settings, int posx, int posz, int si
 {
 	_countAdd(1);
 	this->_buildMap(perlin_settings);
-	this->_calcMinMaxHeights();
 }
 
 void	HeightMap::_buildMap(PerlinSettings& perlin_settings) {
@@ -47,6 +46,7 @@ void	HeightMap::_buildMap(PerlinSettings& perlin_settings) {
 	#if HMAP_BUILD_TEXTUREDATA_IN_CTOR
 	this->textureData = PerlinSettings::HeightmapToTextureData(map, this->_sizeX, this->_sizeZ);
 	#endif
+	this->_calcMinMaxHeights();
 }
 
 void	HeightMap::_calcMinMaxHeights() {

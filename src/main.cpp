@@ -871,7 +871,7 @@ void	scene_octree() {
 	#endif
 
 	#ifndef GENERATOR
-	int grid_size = 40;
+	int grid_size = 36;
 	if (0) {
 		std::cout << "Enter grid size (min 7, max 35):\n";
 		std::cin >> grid_size;

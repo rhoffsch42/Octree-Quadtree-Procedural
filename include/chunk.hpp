@@ -39,14 +39,14 @@ public:
 	static Obj3dPG*	renderer;
 
 	// If a hmap is specified, its sizes must fit, undefined behavior if sizes are too small
-	Chunk(const Math::Vector3 &chunk_index, const Math::Vector3 &chunk_size, PerlinSettings &perlinSettings, HeightMap *map = nullptr);
+	Chunk(const Math::Vector3& chunk_index, const Math::Vector3& chunk_size, PerlinSettings& perlinSettings, const HeightMap* map = nullptr);
 	~Chunk();
 	std::string toString(uint8_t flags = PRINT_ALL) const;
 
 	Math::Vector3	index;
 	Math::Vector3	pos;
 	Math::Vector3	size;
-	Octree<Voxel>*	root;
+	Octree<Voxel>*	root = nullptr;
 
 	//opengl
 	Obj3dBP*	meshBP = nullptr;
@@ -62,7 +62,8 @@ public:
 	//}
 private:
 	// you should check for error: 0 means Chunk::cubebp is null, 1 means no error
-	int buildVertexArrayFromOctree_homogeneous(Octree<Voxel>* root, Math::Vector3 pos_offset = Math::Vector3(0, 0, 0));
+	void	_build(PerlinSettings& perlinSettings, const HeightMap* hmap);
+	int		_buildVertexArrayFromOctree_homogeneous(Octree<Voxel>* root, Math::Vector3 pos_offset = Math::Vector3(0, 0, 0));
 	bool						_generatedLod[LODS_AMOUNT];//if the lod has been generated or not. if not: a job will be created when needed (care duplicate).
 	std::vector<SimpleVertex>	_vertexArray[LODS_AMOUNT];
 	std::vector<unsigned int>	_indices[LODS_AMOUNT];

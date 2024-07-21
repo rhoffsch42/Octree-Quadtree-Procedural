@@ -2,6 +2,23 @@
 #include "compiler_settings.h"
 #include "utils.hpp"
 
+#ifdef TREES_DEBUG
+#define TREES_OCTREE_DEBUG
+#endif
+#define TREES_OCTREE_DEBUG
+#ifdef TREES_OCTREE_DEBUG 
+#define D(x) std::cout << "[Chunk] " << x
+#define D_(x) x
+#define D_SPACER "-- chunk.cpp -------------------------------------------------\n"
+#define D_SPACER_END "----------------------------------------------------------------\n"
+#else 
+#define D(x)
+#define D_(x)
+#define D_SPACER ""
+#define D_SPACER_END ""
+#endif
+
+
 template class Octree<Voxel>;
 
 #ifdef USE_TEMPLATE
@@ -38,7 +55,7 @@ void	VoxelDistanceAccumulator2::reset() {
 VoxelValueAccumulator2* Voxel::getValueAccumulator() { return new VoxelValueAccumulator2(); }
 VoxelDistanceAccumulator2* Voxel::getDistanceAccumulator() { return new VoxelDistanceAccumulator2(); }
 #else
-Voxel	Voxel::GetAverage(Voxel*** arr, const Math::Vector3& pos, const Math::Vector3& size) {
+Voxel	Voxel::getAverage(Voxel*** arr, const Math::Vector3& pos, const Math::Vector3& size) {
 	//std::cout << "__getAverage.. " << width << "x" << height << " at " << x << ":" << y << "\n";
 	//Add up values
 	double sum = 0;
@@ -46,13 +63,12 @@ Voxel	Voxel::GetAverage(Voxel*** arr, const Math::Vector3& pos, const Math::Vect
 		for (int y = pos.y; y < pos.y + size.y; y++) {
 			for (int x = pos.x; x < pos.x + size.x; x++) {
 				sum += arr[z][y][x]._value;
-				//sum += arr[IND_3D_TO_1D(x, y, z, size.x, size.y)]._value;
 			}
 		}
 	}
 	return Voxel(sum / (size.x * size.y * size.z));//care overflow
 }
-double	Voxel::MeasureDetail(Voxel*** arr, const Math::Vector3& pos, const Math::Vector3& size, const Voxel& average) {
+double	Voxel::measureDetail(Voxel*** arr, const Math::Vector3& pos, const Math::Vector3& size, const Voxel& average) {
 	// Calculates the distance between every voxel in the region
 	// and the average color. The Manhattan distance is used, and
 	// all the distances are added.
@@ -61,7 +77,6 @@ double	Voxel::MeasureDetail(Voxel*** arr, const Math::Vector3& pos, const Math::
 		for (int j = pos.y; j < pos.y + size.y; j++) {
 			for (int i = pos.x; i < pos.x + size.x; i++) {
 				sum += std::abs(int(average._value) - int(arr[k][j][i]._value));
-				//sum += std::abs(int(average._value) - int(arr[IND_3D_TO_1D(i, j, k, size.x, size.y)]._value));
 			}
 		}
 	}
@@ -76,6 +91,7 @@ Voxel::Voxel(uint8_t& v) : _value(v) {}
 Voxel::Voxel(uint8_t&& v) : _value(v) {}
 bool	Voxel::operator==(const Voxel& rhs) const { return this->_value == rhs._value; }
 bool	Voxel::operator!=(const Voxel& rhs) const { return this->_value != rhs._value; }
+Voxel&	Voxel::operator=(const Voxel& rhs) { this->_value = rhs._value; return *this; }
 Voxel::~Voxel() {}
 
 #ifdef USE_TEMPLATE
@@ -117,6 +133,7 @@ double	measureDetail(T*** arr, const Math::Vector3& pos, const Math::Vector3& si
 
 template <typename T>
 Octree<T>::Octree(T*** arr, Math::Vector3 corner_pos, Math::Vector3 tree_size, unsigned int threshold) {
+	//D("New octree : corner_pos " << corner_pos << " tree_size " << tree_size << " threshold " << threshold << LF);
 	//std::cout << "_ " << __PRETTY_FUNCTION__ << "\n";
 
 	this->children = nullptr;
@@ -127,16 +144,14 @@ Octree<T>::Octree(T*** arr, Math::Vector3 corner_pos, Math::Vector3 tree_size, u
 	this->summit = corner_pos + tree_size;
 	this->neighbors = 0;//all sides are not empty by default (could count corners too, so 26)
 	if (size.x == 1 && size.y == 1 && size.z == 1) {// or x*y*z==1
-		//this->element = arr[(int)this->pos.z][(int)this->pos.y][(int)this->pos.x];//use Vector3i to avoid casting
 		this->element._value = arr[(int)this->pos.z][(int)this->pos.y][(int)this->pos.x]._value;//use Vector3i to avoid casting
-		//this->element._value = arr[IND_3D_TO_1D(this->pos.x, this->pos.y, this->pos.z, this->size.x, this->size.y)]._value;
-#if 0 // checks not needed, the tree has only 1 voxel of size 1
-		this->detail = measureDetail(arr, pos, size, this->pixel);//should be 0
+		#if 0 // checks not needed, the tree has only 1 voxel of size 1
+		this->detail = measureDetail(arr, this->pos, this->size, this->pixel);//should be 0
 		if (this->detail != 0) {
 			std::cout << "error with 1x1 area, detail: " << this->detail << "\n";
 			exit(10);
 		}
-#endif
+		#endif
 		/*		if (size.x * size.y * size.z >= OC_DEBUG_LEAF_AREA && OC_DEBUG_LEAF) {
 					std::cout << "new leaf: " << size.x << "x" << size.y << "x" << size.z << " at ";
 					std::cout << pos.x << ":" << pos.y << ":" << pos.z << "\t";
@@ -146,20 +161,20 @@ Octree<T>::Octree(T*** arr, Math::Vector3 corner_pos, Math::Vector3 tree_size, u
 		*/
 		return;
 	}
-#ifdef USE_TEMPLATE
+	#ifdef USE_TEMPLATE
 	this->element = getAverage<T>(arr, pos, size);
 	this->detail = measureDetail<T>(arr, pos, size, this->element);
-#else
-	this->element = T::GetAverage(arr, pos, size);
-	this->detail = T::MeasureDetail(arr, pos, size, this->element);
-#endif
-#ifdef OC_DEBUG_NODE
+	#else
+	this->element = T::getAverage(arr, pos, size);
+	this->detail = T::measureDetail(arr, pos, size, this->element);
+	#endif
+	#ifdef OC_DEBUG_NODE
 	std::cout << "pos: " << pos << "\t";
 	std::cout << "size: " << size << "\t";
 	std::cout << "average: " << int(this->element._value) << "\t";
 	std::cout << "detail: " << this->detail << "\t";
 	std::cout << "\n---------------\n";
-#endif
+	#endif
 	if (this->detail <= double(threshold)) {//not that much details in the area, this is the end leaf
 		#ifdef OC_DEBUG_LEAF
 		if (size.x * size.y * size.z >= OC_DEBUG_LEAF_AREA) {//simple debug
@@ -301,7 +316,7 @@ Octree<T>*	Octree<T>::getNode(const Math::Vector3& target_pos, const Math::Vecto
 			std::cout << "\ttarget size:\t" << target_size.toString() << "\n";
 			std::cout << "\tnode pos:   \t" << this->pos.toString() << "\n";
 			std::cout << "\tnode size:  \t" << this->size.toString() << "\n";
-			exit(0);
+			exit(1);
 			return nullptr;
 		}
 	}

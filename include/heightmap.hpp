@@ -18,7 +18,7 @@
 #define PERLIN_DEFAULT_HEIGHTCOEF	1
 #define PERLIN_DEFAULT_ISLAND		0
 #define	CHUNK_DEFAULT_SIZE			32
-#define VOXEL_EMPTY					255 // todo: change this to 0 and adapt octree
+#define VOXEL_EMPTY					Voxel(255) // todo: change this to 0 and adapt octree
 
 #include "compiler_settings.h"
 class PerlinSettings
@@ -142,7 +142,7 @@ public:
 	//	return std::tie(this->tile.x, this->tile.y, this->tile.z) < std::tie(rhs.tile.x, rhs.tile.y, rhs.pos.z);
 	//}
 
-	uint8_t**	map = nullptr; // used by Chunk::
+	uint8_t**	map = nullptr; // used by Chunk:: // FIX: uin8_t implies 0..255, maximum terrain elevation... this is small
 
 	//used to display the map tile on screen
 	uint8_t*	textureData = nullptr;

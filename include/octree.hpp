@@ -95,13 +95,14 @@ public:
 	static VoxelValueAccumulator2* getValueAccumulator();
 	static VoxelDistanceAccumulator2* getDistanceAccumulator();
 #else
-	static Voxel	GetAverage(Voxel*** arr, const Math::Vector3& pos, const Math::Vector3& size);
-	static double	MeasureDetail(Voxel*** arr, const Math::Vector3& pos, const Math::Vector3& size, const Voxel& average);
+	static Voxel	getAverage(Voxel*** arr, const Math::Vector3& pos, const Math::Vector3& size);
+	static double	measureDetail(Voxel*** arr, const Math::Vector3& pos, const Math::Vector3& size, const Voxel& average);
 #endif
 
 	Voxel();
 	Voxel(uint8_t& v);
 	Voxel(uint8_t&& v);
+	Voxel& operator=(const Voxel& rhs);
 	~Voxel();
 
 	bool	operator==(const Voxel& rhs) const;

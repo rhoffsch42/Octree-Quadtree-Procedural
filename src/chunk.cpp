@@ -30,11 +30,15 @@ static void	_countAdd(int n) {
 Obj3dBP* Chunk::cubeBlueprint = nullptr;
 Obj3dPG* Chunk::renderer = nullptr;
 
-Chunk::Chunk(const Math::Vector3& chunk_index, const Math::Vector3& chunk_size, PerlinSettings& perlinSettings, HeightMap* hmap) {
+Chunk::Chunk(const Math::Vector3& chunk_index, const Math::Vector3& chunk_size, PerlinSettings& perlinSettings, const HeightMap* hmap) {
 	_countAdd(1);
 	//D(__PRETTY_FUNCTION__ << "\n");
-	if (!hmap || !hmap->map) {
-		D(" no hmap or hmap->map" << hmap << "\t" << hmap->map << "\n");
+	if (hmap  && !hmap->map) {
+		D(" no hmap->map :" << hmap << "\t" << hmap->map << "\n");
+		return;
+	}
+	if (int(chunk_size.x) <= 0 || int(chunk_size.y) <= 0 || int(chunk_size.z) <= 0) {
+		D("Error: invalid chunk size: " << chunk_size << "\n");
 		return;
 	}
 	this->index = chunk_index;
@@ -49,52 +53,7 @@ Chunk::Chunk(const Math::Vector3& chunk_index, const Math::Vector3& chunk_size, 
 	for (int i = 0; i < LODS_AMOUNT; i++) {
 		this->_generatedLod[i] = false;
 	}
-
-	Voxel***					voxels = new Voxel **[this->size.z];
-	std::unique_ptr<Voxel[]>	tmp = std::make_unique<Voxel[]>(this->size.x * this->size.y * this->size.z);
-	for (size_t k = 0; k < this->size.z; k++) {
-		voxels[k] = new Voxel * [this->size.y];
-		for (size_t j = 0; j < this->size.y; j++) {
-			voxels[k][j] = &(tmp[size_t(k * this->size.y * this->size.x + j * this->size.x)]);
-			for (size_t i = 0; i < this->size.x; i++) {
-
-				if (hmap && pos.y + j > int(hmap->map[k][i])) {//procedural: surface with heightmap
-					tmp[IND_3D_TO_1D(i, j, k, this->size.x, this->size.y)] = VOXEL_EMPTY;
-				}
-				else {
-					if (0) {//procedural: which dirt, 3d noise
-						double value = perlinSettings.perlin.accumulatedOctaveNoise3D_0_1(
-							double(pos.x + double(i)) / double(PERLIN_NORMALIZER) * perlinSettings.frequency,
-							double(pos.y + double(j)) / double(PERLIN_NORMALIZER) * perlinSettings.frequency,
-							double(pos.z + double(k)) / double(PERLIN_NORMALIZER) * perlinSettings.frequency,
-							perlinSettings.octaves);
-						uint8_t v = uint8_t(double(255.0) * value);
-						//v = v / 128 * 128;
-						v = (v >= 128) ? 150 : 75;
-						//std::cout << value << " ";
-						//std::cout << (int)v << " ";
-					}
-					else {
-						tmp[IND_3D_TO_1D(i, j, k, this->size.x, this->size.y)] = 75;
-					}
-				}
-			}
-		}
-	}
-
-	// important note: all chunks have their octree starting at pos 0 0 0.
-	//this->root = new Octree<Voxel>(tmp.get(), Math::Vector3(0, 0, 0), this->size, OCTREE_THRESHOLD);
-	this->root = new Octree<Voxel>(voxels, Math::Vector3(0, 0, 0), this->size, OCTREE_THRESHOLD);
-	this->root->verifyNeighbors(Voxel(VOXEL_EMPTY));
-
-	//delete tmp voxels
-	for (size_t k = 0; k < this->size.z; k++) {
-		delete[] voxels[k];
-	}
-	delete[] voxels;
-	//delete[] tmp;
-
-
+	this->_build(perlinSettings, hmap);
 }
 
 Chunk::~Chunk() {
@@ -102,31 +61,83 @@ Chunk::~Chunk() {
 	//D(__PRETTY_FUNCTION__ << "\n");
 	std::thread::id thread_id = std::this_thread::get_id();
 	if (Glfw::thread_id != thread_id) {
-		//D("Error: Chunk " << this << " dtor called in the wrong thread. " << "Glfw::thread_id: " << Glfw::thread_id << ", != " << thread_id << "\n");
+		D("Error: Chunk " << this << " dtor called in the wrong thread. " << "Glfw::thread_id: " << Glfw::thread_id << ", != " << thread_id << "\n");
 	}
 
 	if (this->root) { delete this->root; }
-	if (this->meshBP) {
-		delete this->meshBP;
-		if (Glfw::thread_id != thread_id) {
-			D("Error: Chunk meshBP " << this << " dtor called in the wrong thread. " << "Glfw::thread_id: " << Glfw::thread_id << ", != " << thread_id << "\n");
-		}
-		//D_(else {
-		//	D("Good: Chunk meshBP " << this << " dtor called in the right thread. " << "Glfw::thread_id: " << Glfw::thread_id << ", == " << thread_id << "\n");
-		//});
+	if (this->meshBP) { delete this->meshBP; }
+	if (this->mesh) { delete this->mesh; }
+}
+
+void	Chunk::_build(PerlinSettings& perlinSettings, const HeightMap* hmap) {
+	/*
+		Important: Do not try to convert Octree Voxel data to a 1d array, it will be a mess.
+		Octrees NEED a 3d array of Voxels, because they will extract cubes from it. Managing Voxels with a 1d array adds complexity.
+		Two possible solutions to keep managing a 1d array in Octree:: :
+			- send the 3d size of the first root, it would add another argument to the Octree constructor and build functions (getAverage, measureDetail).
+			- rebuild a 1d array for each new Octree containing the right data. (Bad because the goal of a 1d array is to avoid this kind of operation)
+
+		So what we're doing here is building a 1d array, then rebuilding a 3d array from it, avoiding multiple allocations for the X dimensions.
+		For the last dimensions, instead of `size.y` allocations of `size.x` voxels, we have 1 single allocation of `len` voxels.
+	*/
+	size_t	highestPoint = this->pos.y + (hmap ? hmap->getMaxHeight() : this->size.y);
+	size_t	len = this->size.x * this->size.y * this->size.z;
+	auto	array1d = std::make_unique<Voxel[]>(len);
+	auto	emptyRow = std::make_unique<Voxel[]>(this->size.x);
+	auto	voxels = std::make_unique<Voxel**[]>(this->size.z);
+	//std::unique_ptr<Voxel[]>	bedwallRow = std::make_unique<Voxel[]>(this->size.x);
+
+	for (size_t i = 0; i < this->size.x; i++) {
+		emptyRow[i] = VOXEL_EMPTY;
+		//bedwallRow[i] = Voxel(75);
 	}
 
-	if (this->mesh) {
-		delete this->mesh;
-		if (Glfw::thread_id != thread_id) {
-			D("Error: Chunk mesh " << this << " dtor called in the wrong thread. " << "Glfw::thread_id: " << Glfw::thread_id << ", != " << thread_id << "\n");
+	for (size_t k = 0; k < this->size.z; k++) {
+		voxels[k] = new Voxel * [this->size.y]; // don't forget to delete them
+		for (size_t j = 0; j < this->size.y; j++) {
+
+			if (hmap && size_t(this->pos.y + j) > highestPoint) { // it avoids building identical voxels rows above the highestPoint
+				voxels[k][j] = emptyRow.get();
+			}
+			/* no bedwall for now
+			else if (hmap && this->pos.y + j <= BEDWALL) {
+				voxels[k][j] = bedwallRow.get();
+			}
+			*/
+			else {
+				voxels[k][j] = &(array1d[size_t(k * this->size.y * this->size.x + j * this->size.x)]);
+				for (size_t i = 0; i < this->size.x; i++) {
+					size_t index = IND_3D_TO_1D(i, j, k, this->size.x, this->size.y);
+
+					if (hmap && this->pos.y + j > int(hmap->map[k][i])) {
+						array1d[index] = VOXEL_EMPTY;
+					} else if (0) {//procedural: which dirt, 3d noise
+						double value = perlinSettings.perlin.accumulatedOctaveNoise3D_0_1(
+							double(this->pos.x + double(i)) / double(PERLIN_NORMALIZER) * perlinSettings.frequency,
+							double(this->pos.y + double(j)) / double(PERLIN_NORMALIZER) * perlinSettings.frequency,
+							double(this->pos.z + double(k)) / double(PERLIN_NORMALIZER) * perlinSettings.frequency,
+							perlinSettings.octaves);
+						uint8_t v = uint8_t(double(255.0) * value);
+						//v = v / 128 * 128;
+						v = (v >= 128) ? 150 : 75;
+						//std::cout << value << " ";
+						//std::cout << (int)v << " ";
+					} else {
+						array1d[index] = 75;
+					}
+				}
+			}
+
 		}
-		//D_(else {
-		//	D("Good: Chunk meshBP " << this << " dtor called in the right thread. " << "Glfw::thread_id: " << Glfw::thread_id << ", == " << thread_id << "\n");
-		//});
 	}
 
-	//D("Chunk destroyed " << this->index.toString() << "\n");
+	// important note: all chunks have their octree starting at pos 0 0 0.
+	this->root = new Octree<Voxel>(&(voxels[0]), Math::Vector3(0, 0, 0), this->size, OCTREE_THRESHOLD);
+	this->root->verifyNeighbors(VOXEL_EMPTY);
+
+	for (size_t k = 0; k < this->size.z; k++) {
+		delete[] voxels[k];
+	}
 }
 
 /*
@@ -139,6 +150,7 @@ void	Chunk::glth_buildAllMeshes() {
 	if (!Chunk::renderer) {
 		D("Error: Chunk::renderer not found: " << Chunk::renderer << "\n");
 		Misc::breakExit(521);
+		return;
 	}
 	//D("Chunk::glth_buildAllMeshes() for chunk " << this->index << "\n");
 	for (int i = 0; i < LODS_AMOUNT; i++) {
@@ -162,10 +174,10 @@ void	Chunk::glth_buildAllMeshes() {
 					this->mesh->local.setPos(this->pos);
 				}
 				else {
-					//this->meshBP->lodManager.addLod(bp, this->size.x * (i+1));// 32 * (i+1);
-					this->meshBP->lodManager.addLod(bp, this->size.x * std::pow(2, i + 1));// 32 * { 1, 2, 4, 8, 16, 32 };
+					//this->meshBP->lodManager.addLod(bp, this->size.x * (i+1)); // 32 * (i+1);
+					this->meshBP->lodManager.addLod(bp, this->size.x * std::pow(2, i + 1)); // 32 * { 1, 2, 4, 8, 16, 32 };
 				}
-				this->mesh->getProgram()->linkBuffers(*bp);//we should not need to use a Obj3d to access the PG. todo: see obj3dPG::renderObject()
+				this->mesh->getProgram()->linkBuffers(*bp); // we should not need to use a Obj3d to access the PG. todo: see obj3dPG::renderObject()
 			}
 			//else { D("Skipped LODS " << i << "+ for chunk " << this->index << "\n"); }
 			this->_vertexArray[i].clear();
@@ -179,6 +191,8 @@ void	Chunk::glth_buildAllMeshes() {
 
 //we could make another func: void Octree::buildVertexArray(std::vector<SimpleVertex>& dst, uint8_t lod)
 size_t	Chunk::buildVertexArray(Math::Vector3 pos_offset, const uint8_t desiredLod, const double threshold) {
+	//D("Chunk::buildVertexArray() for chunk " << this->index << " desiredLod: " << int(desiredLod) << " threshold: " << threshold << "\n");
+
 	/*
 		for each chunck, build a linear vertex array with concatened faces and corresponding attributes (texcoord, color, etc)
 		it will use the chunk matrix so for the vertex position we simply add the chunk pos and the node pos to the vertex.position of the face
@@ -197,7 +211,7 @@ size_t	Chunk::buildVertexArray(Math::Vector3 pos_offset, const uint8_t desiredLo
 		Misc::breakExit(234);
 	}
 
-	static const std::vector<SimpleVertex>	vertices = Chunk::cubeBlueprint->getVertices();//lambda can access it
+	static const std::vector<SimpleVertex>	vertices = Chunk::cubeBlueprint->getVertices(); // lambda can access it
 	std::vector<SimpleVertex>*	ptr_vertex_array = this->_vertexArray;
 	uint8_t						neighbors_flags[] = { NEIGHBOR_FRONT, NEIGHBOR_RIGHT, NEIGHBOR_LEFT, NEIGHBOR_BOTTOM, NEIGHBOR_TOP, NEIGHBOR_BACK };
 	this->_vertexArray[desiredLod].clear();
@@ -241,18 +255,18 @@ size_t	Chunk::buildVertexArray(Math::Vector3 pos_offset, const uint8_t desiredLo
 	this->root->browse_until(
 		[desiredLod, threshold](Octree<Voxel>* node) {
 			int lod = std::log2(node->size.x); // todo: should be node->depth ?
-			return ((node->detail <= threshold && node->element._value < 200) || lod == desiredLod); //should be % of empty voxel > 50
+			return ((node->detail <= threshold && node->element._value < 200) || lod == desiredLod); // should be % of empty voxel > 50
 		},
 		[&pos_offset, ptr_vertex_array, &neighbors_flags, desiredLod, threshold](Octree<Voxel>* node) {
-			//inverse of std::pow(2, x)
+			// inverse of std::pow(2, x)
 			int lod = std::log2(node->size.x); // todo: should be node->depth ?
 
 			// recheck with the same condition because we want only the node at the desired LOD, or threshold, or leaf
 			if ((node->detail <= threshold && node->element._value < 200) || lod == desiredLod || node->isLeaf()) {
-				if (node->element._value != 255 && node->neighbors < NEIGHBOR_ALL) {// should be < NEIGHBOR_ALL or (node->n & NEIGHBOR_ALL) != 0
-					for (size_t i = 0; i < 6; i++) {//6 faces
+				if (node->element._value != 255 && node->neighbors < NEIGHBOR_ALL) { // should be < NEIGHBOR_ALL or (node->n & NEIGHBOR_ALL) != 0
+					for (size_t i = 0; i < 6; i++) { // 6 faces
 						if ((node->neighbors & neighbors_flags[i]) != neighbors_flags[i]) {
-							for (size_t j = 0; j < 6; j++) {// push the 2 triangles = 2 * 3 vertex
+							for (size_t j = 0; j < 6; j++) { // push the 2 triangles = 2 * 3 vertex
 								SimpleVertex	vertex = (vertices)[i * 6 + j];
 								vertex.position.x *= node->size.x;
 								vertex.position.y *= node->size.y;
@@ -303,7 +317,7 @@ typedef SimpleVertex VertexClass;
 	This can work only with identical voxels, with identical texture on each faces.
 	Lightning may be a problem
 */
-int	Chunk::buildVertexArrayFromOctree_homogeneous(Octree<Voxel>* root, Math::Vector3 pos_offset) {
+int	Chunk::_buildVertexArrayFromOctree_homogeneous(Octree<Voxel>* root, Math::Vector3 pos_offset) {
 	/*
 		for each chunck, build a vertex array and a indices array with concatened faces and corresponding attributes (texcoord, color, etc)
 		it will use the chunk matrix so for the vertex position we simply add the chunk pos and the node pos to the vertex.position of the face
@@ -329,7 +343,7 @@ int	Chunk::buildVertexArrayFromOctree_homogeneous(Octree<Voxel>* root, Math::Vec
 	// fastest way : https://stackoverflow.com/questions/1041620/whats-the-most-efficient-way-to-erase-duplicates-and-sort-a-vector
 	std::set<VertexClass>		vertex_set;
 	std::vector<VertexClass>			full_vertex_vec;
-	std::map<VertexClass, size_t>	vertex_map;
+	std::map<VertexClass, unsigned int>	vertex_map;
 	std::vector<VertexClass>			final_vertex_vec;
 
 	/*
