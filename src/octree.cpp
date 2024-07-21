@@ -86,7 +86,7 @@ double	Voxel::measureDetail(Voxel*** arr, const Math::Vector3& pos, const Math::
 }
 #endif
 
-Voxel::Voxel() {}
+Voxel::Voxel() { this->_value = 0; }
 Voxel::Voxel(uint8_t& v) : _value(v) {}
 Voxel::Voxel(uint8_t&& v) : _value(v) {}
 bool	Voxel::operator==(const Voxel& rhs) const { return this->_value == rhs._value; }
@@ -143,7 +143,7 @@ Octree<T>::Octree(T*** arr, Math::Vector3 corner_pos, Math::Vector3 tree_size, u
 	this->size = tree_size;
 	this->summit = corner_pos + tree_size;
 	this->neighbors = 0;//all sides are not empty by default (could count corners too, so 26)
-	if (size.x == 1 && size.y == 1 && size.z == 1) {// or x*y*z==1
+	if (this->size.x == 1 && this->size.y == 1 && this->size.z == 1) {
 		this->element._value = arr[(int)this->pos.z][(int)this->pos.y][(int)this->pos.x]._value;//use Vector3i to avoid casting
 		#if 0 // checks not needed, the tree has only 1 voxel of size 1
 		this->detail = measureDetail(arr, this->pos, this->size, this->pixel);//should be 0
@@ -175,7 +175,7 @@ Octree<T>::Octree(T*** arr, Math::Vector3 corner_pos, Math::Vector3 tree_size, u
 	std::cout << "detail: " << this->detail << "\t";
 	std::cout << "\n---------------\n";
 	#endif
-	if (this->detail <= double(threshold)) {//not that much details in the area, this is the end leaf
+	if (this->detail <= double(threshold)) { // not that much details in the area, this is the end leaf
 		#ifdef OC_DEBUG_LEAF
 		if (size.x * size.y * size.z >= OC_DEBUG_LEAF_AREA) {//simple debug
 			std::cout << "new leaf: ";

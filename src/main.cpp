@@ -738,7 +738,7 @@ static void		keyCallback_debugGrid(GLFWwindow* window, int key, int scancode, in
 *	todo:
 *		- check why there are some chunks in the garbade after the first loop, although the player didnt move.
 *		- check every ctor by copy, they can access private members, useless to use accessors
-*		- inconsistencys? with the use of ref or ptr on some pipeline
+*		- inconsistencies? with the use of ref or ptr on some pipeline
 *		- generate the vertexArray[lod] and its BP only when needed (when close enough from the cam/player)
 *	done:
 *		- memory leaks in chunks generation : LODs were not deleted
@@ -871,7 +871,7 @@ void	scene_octree() {
 	#endif
 
 	#ifndef GENERATOR
-	int grid_size = 36;
+	int grid_size = GRID_SIZE;
 	if (0) {
 		std::cout << "Enter grid size (min 7, max 35):\n";
 		std::cin >> grid_size;

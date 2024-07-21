@@ -18,7 +18,10 @@
 #define PERLIN_DEFAULT_HEIGHTCOEF	1
 #define PERLIN_DEFAULT_ISLAND		0
 #define	CHUNK_DEFAULT_SIZE			32
-#define VOXEL_EMPTY					Voxel(255) // todo: change this to 0 and adapt octree
+
+#define VOXEL_EMPTY		Voxel(0) // todo: change this to 0 and adapt octree
+#define VOXEL_WOOD		Voxel(75)
+#define VOXEL_LEAVES	Voxel(75)
 
 #include "compiler_settings.h"
 class PerlinSettings

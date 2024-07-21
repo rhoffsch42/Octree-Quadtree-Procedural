@@ -80,59 +80,45 @@ void	Chunk::_build(PerlinSettings& perlinSettings, const HeightMap* hmap) {
 		So what we're doing here is building a 1d array, then rebuilding a 3d array from it, avoiding multiple allocations for the X dimensions.
 		For the last dimensions, instead of `size.y` allocations of `size.x` voxels, we have 1 single allocation of `len` voxels.
 	*/
-	size_t	highestPoint = this->pos.y + (hmap ? hmap->getMaxHeight() : this->size.y);
 	size_t	len = this->size.x * this->size.y * this->size.z;
 	auto	array1d = std::make_unique<Voxel[]>(len);
-	auto	emptyRow = std::make_unique<Voxel[]>(this->size.x);
 	auto	voxels = std::make_unique<Voxel**[]>(this->size.z);
-	//std::unique_ptr<Voxel[]>	bedwallRow = std::make_unique<Voxel[]>(this->size.x);
-
-	for (size_t i = 0; i < this->size.x; i++) {
-		emptyRow[i] = VOXEL_EMPTY;
-		//bedwallRow[i] = Voxel(75);
-	}
 
 	for (size_t k = 0; k < this->size.z; k++) {
 		voxels[k] = new Voxel * [this->size.y]; // don't forget to delete them
 		for (size_t j = 0; j < this->size.y; j++) {
+			voxels[k][j] = &(array1d[size_t(k * this->size.y * this->size.x + j * this->size.x)]);
+			for (size_t i = 0; i < this->size.x; i++) {
+				size_t index = IND_3D_TO_1D(i, j, k, this->size.x, this->size.y);
 
-			if (hmap && size_t(this->pos.y + j) > highestPoint) { // it avoids building identical voxels rows above the highestPoint
-				voxels[k][j] = emptyRow.get();
-			}
-			/* no bedwall for now
-			else if (hmap && this->pos.y + j <= BEDWALL) {
-				voxels[k][j] = bedwallRow.get();
-			}
-			*/
-			else {
-				voxels[k][j] = &(array1d[size_t(k * this->size.y * this->size.x + j * this->size.x)]);
-				for (size_t i = 0; i < this->size.x; i++) {
-					size_t index = IND_3D_TO_1D(i, j, k, this->size.x, this->size.y);
-
-					if (hmap && this->pos.y + j > int(hmap->map[k][i])) {
-						array1d[index] = VOXEL_EMPTY;
-					} else if (0) {//procedural: which dirt, 3d noise
-						double value = perlinSettings.perlin.accumulatedOctaveNoise3D_0_1(
-							double(this->pos.x + double(i)) / double(PERLIN_NORMALIZER) * perlinSettings.frequency,
-							double(this->pos.y + double(j)) / double(PERLIN_NORMALIZER) * perlinSettings.frequency,
-							double(this->pos.z + double(k)) / double(PERLIN_NORMALIZER) * perlinSettings.frequency,
-							perlinSettings.octaves);
-						uint8_t v = uint8_t(double(255.0) * value);
-						//v = v / 128 * 128;
-						v = (v >= 128) ? 150 : 75;
-						//std::cout << value << " ";
-						//std::cout << (int)v << " ";
-					} else {
-						array1d[index] = 75;
-					}
+				#if 1
+				array1d[index] = VOXEL_EMPTY;
+				#elif 1
+				if (hmap && this->pos.y + j > int(hmap->map[k][i])) {
+					array1d[index] = VOXEL_EMPTY;
+				} else if (0) {//procedural: which dirt, 3d noise
+					double value = perlinSettings.perlin.accumulatedOctaveNoise3D_0_1(
+						double(this->pos.x + double(i)) / double(PERLIN_NORMALIZER) * perlinSettings.frequency,
+						double(this->pos.y + double(j)) / double(PERLIN_NORMALIZER) * perlinSettings.frequency,
+						double(this->pos.z + double(k)) / double(PERLIN_NORMALIZER) * perlinSettings.frequency,
+						perlinSettings.octaves);
+					uint8_t v = uint8_t(double(255.0) * value);
+					//v = v / 128 * 128;
+					v = (v >= 128) ? 150 : 75;
+					//std::cout << value << " ";
+					//std::cout << (int)v << " ";
+				} else {
+					array1d[index] = 75;
 				}
+				#endif
 			}
-
 		}
 	}
 
+	this->addTrees(voxels.get(), hmap, CHUNK_TREE_AMOUNT);
+
 	// important note: all chunks have their octree starting at pos 0 0 0.
-	this->root = new Octree<Voxel>(&(voxels[0]), Math::Vector3(0, 0, 0), this->size, OCTREE_THRESHOLD);
+	this->root = new Octree<Voxel>(voxels.get(), Math::Vector3(0, 0, 0), this->size, OCTREE_THRESHOLD);
 	this->root->verifyNeighbors(VOXEL_EMPTY);
 
 	for (size_t k = 0; k < this->size.z; k++) {
@@ -231,7 +217,7 @@ size_t	Chunk::buildVertexArray(Math::Vector3 pos_offset, const uint8_t desiredLo
 			//inverse of std::pow(2, x)
 			int lod = std::log2(node->size.x); // todo: should be node->depth ?
 
-			if (node->element._value != 255 && node->neighbors < NEIGHBOR_ALL) {// should be < NEIGHBOR_ALL or (node->n & NEIGHBOR_ALL) != 0
+			if (node->element != VOXEL_EMPTY && node->neighbors < NEIGHBOR_ALL) {// should be < NEIGHBOR_ALL or (node->n & NEIGHBOR_ALL) != 0
 				for (size_t i = 0; i < 6; i++) {//6 faces
 					if ((node->neighbors & neighbors_flags[i]) != neighbors_flags[i]) {
 						for (size_t j = 0; j < 6; j++) {// push the 2 triangles = 2 * 3 vertex
@@ -262,8 +248,8 @@ size_t	Chunk::buildVertexArray(Math::Vector3 pos_offset, const uint8_t desiredLo
 			int lod = std::log2(node->size.x); // todo: should be node->depth ?
 
 			// recheck with the same condition because we want only the node at the desired LOD, or threshold, or leaf
-			if ((node->detail <= threshold && node->element._value < 200) || lod == desiredLod || node->isLeaf()) {
-				if (node->element._value != 255 && node->neighbors < NEIGHBOR_ALL) { // should be < NEIGHBOR_ALL or (node->n & NEIGHBOR_ALL) != 0
+			if ((node->detail <= threshold/* && node->element._value < 200*/) || lod == desiredLod || node->isLeaf()) { // FIX 200 ??
+				if (node->element != VOXEL_EMPTY && node->neighbors < NEIGHBOR_ALL) { // should be < NEIGHBOR_ALL or (node->n & NEIGHBOR_ALL) != 0
 					for (size_t i = 0; i < 6; i++) { // 6 faces
 						if ((node->neighbors & neighbors_flags[i]) != neighbors_flags[i]) {
 							for (size_t j = 0; j < 6; j++) { // push the 2 triangles = 2 * 3 vertex
@@ -300,6 +286,89 @@ void	Chunk::glth_clearMeshesData() {
 void	Chunk::clearOctreeData() {
 	delete this->root;
 	this->root = nullptr;
+}
+
+static void	s_insertVoxels(Voxel*** dst, Math::Vector3 sizeDst, Voxel*** src, Math::Vector3 sizeSrc, Math::Vector3 pos) {
+	size_t posX = std::max(0, int(pos.x));
+	size_t posY = std::max(0, int(pos.y));
+	size_t posZ = std::max(0, int(pos.z));
+
+	size_t lenX = std::min(size_t(sizeDst.x) - posX, size_t(sizeSrc.x));
+	size_t lenY = std::min(size_t(sizeDst.y) - posY, size_t(sizeSrc.y));
+	size_t lenZ = std::min(size_t(sizeDst.z) - posZ, size_t(sizeSrc.z));
+
+	for (size_t k = 0; k < lenZ; k++) {
+		for (size_t j = 0; j < lenY; j++) {
+			for (size_t i = 0; i < lenX; i++) {
+				if (1 || src[k][j][i] != VOXEL_EMPTY && dst[posZ + k][posY + j][posX + i] == VOXEL_EMPTY) {
+					dst[posZ + k][posY + j][posX + i] = src[k][j][i];
+					//std::cout << (src[k][j][i] == VOXEL_WOOD ? "W" : "L");
+				}
+			}
+		}
+	}
+	std::cout << ".";
+}
+
+void	Chunk::addTrees(Voxel*** voxels, const HeightMap* hmap, int treeAmount) const {
+	int percent = 10;
+	treeAmount = float(treeAmount) * (1.0f + float(rand() % (percent*2) - percent) / 100); // add or remove percent% of trees
+	/*
+	*                        .
+	*      ...                 .
+	*     .....                .
+	*    ...o...                 .
+	*       o                 .
+	*       o                 .
+	*                        .
+	*/
+	Math::Vector3	treeSize(7, 5, 7);
+	auto	voxelTree = std::make_unique<Voxel **[]>(int(treeSize.z));
+	for (int k = 0; k < int(treeSize.z); k++) {
+		voxelTree[k] = new Voxel* [int(treeSize.y)];
+		for (int j = 0; j < int(treeSize.y); j++) {
+			voxelTree[k][j] = new Voxel[int(treeSize.x)];
+			for (int i = 0; i < int(treeSize.x); i++) {
+				voxelTree[k][j][i] = VOXEL_EMPTY;
+			}
+		}
+	}
+	// currently crash on operator=
+	// wood
+	voxelTree[3][0][3] = VOXEL_WOOD;
+	voxelTree[3][1][3] = VOXEL_WOOD;
+	voxelTree[3][2][3] = VOXEL_WOOD;
+
+	// leaves
+	for (int j = 2; j < int(treeSize.y); j++) {
+		for (int k = j - 2; k < int(treeSize.z) - (j - 2); k++) {
+			for (int i = j - 2; i < int(treeSize.x) - (j - 2); i++) {
+				if (j == 2 && (k == 3 || i == 3))
+					continue;
+				voxelTree[k][j][i] = VOXEL_LEAVES;
+			}
+		}
+	}
+
+	for (int i = 0; i < treeAmount; i++) {
+		int x = rand() % int(this->size.x);
+		int z = rand() % int(this->size.z);
+		int y = this->pos.y + (hmap ? hmap->map[z][x] : this->size.y);
+		x -= int(treeSize.x )/ 2;
+		z -= int(treeSize.z )/ 2;
+		//y += treeSize.y - 1;
+		//y -= 10;
+		if (y < 0 || y >= int(this->size.y))
+			continue;
+		s_insertVoxels(voxels, this->size, voxelTree.get(), treeSize, Math::Vector3(x, y, z));
+	}
+
+	for (int k = 0; k < 7; k++) {
+		for (int j = 0; j < 5; j++) {
+			delete[] voxelTree[k][j];
+		}
+		delete[] voxelTree[k];
+	}
 }
 
 //#define TINY_VERTEX
