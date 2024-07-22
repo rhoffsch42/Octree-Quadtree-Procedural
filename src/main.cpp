@@ -638,7 +638,8 @@ unsigned int	grabObjects(ChunkGenerator& generator, ChunkGrid& grid, OctreeManag
 	for (Object* o : manager.renderVecChunk) {
 		Obj3d* obj = dynamic_cast<Obj3d*>(o);
 		if (!obj) { D("grabObjects() : dynamic cast failed on object: " << o << "\n"); Misc::breakExit(456); }
-		total_polygons += obj->getBlueprint()->getPolygonAmount();
+		//total_polygons += obj->getBlueprint()->getPolygonAmount();
+		total_polygons += ((Obj3dBP*)obj->getBlueprint()->lodManager.getCurrentLodBlueprint())->getPolygonAmount();
 	}
 
 	if (grid.playerChangedChunk)
@@ -882,8 +883,8 @@ void	scene_octree() {
 	int	r = grid_size - 4;// g * 2 / 3;
 	//m.gridSize = Math::Vector3(g, std::max(5,g/4), g);
 	//m.renderedGridSize = Math::Vector3(r, std::max(3,r/4), r);
-	m.gridSize = Math::Vector3(g, g, g);
-	m.renderedGridSize = Math::Vector3(r, r, r);
+	m.gridSize = Math::Vector3(g, g/4, g);
+	m.renderedGridSize = Math::Vector3(r, r/4, r);
 
 	INFO("Grid size : " << m.gridSize.toString() << "\n");
 	INFO("Rebdered grid size : " << m.renderedGridSize.toString() << "\n");
@@ -938,7 +939,7 @@ void	scene_octree() {
 				std::to_string(fps.getFps()) + " fps | "
 				+ std::to_string(int(polygons/1'000'000)) + "m"
 				+ ( decimals.c_str()+decimals.find('.')+1 )
-				+ " polys (LOD_0) | threshold "
+				+ " polys | threshold "
 				+ std::to_string((int)m.threshold)
 			);
 

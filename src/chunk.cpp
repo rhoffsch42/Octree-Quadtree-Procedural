@@ -91,7 +91,7 @@ void	Chunk::_build(PerlinSettings& perlinSettings, const HeightMap* hmap) {
 			for (size_t i = 0; i < this->size.x; i++) {
 				size_t index = IND_3D_TO_1D(i, j, k, this->size.x, this->size.y);
 
-				#if 1
+				#if 0
 				array1d[index] = VOXEL_EMPTY;
 				#elif 1
 				if (hmap && this->pos.y + j > int(hmap->map[k][i])) {
@@ -114,7 +114,11 @@ void	Chunk::_build(PerlinSettings& perlinSettings, const HeightMap* hmap) {
 			}
 		}
 	}
-
+	// add tree to the chunk if his index is a multiple of 5
+	size_t multiple = 5;
+	if (int(this->index.x) % multiple == 0 && int(this->index.y) % multiple == 0 && int(this->index.z) % multiple == 0) {
+		this->addSphere(voxels.get(), this->size * 0.5, 12);
+	}
 	this->addTrees(voxels.get(), hmap, CHUNK_TREE_AMOUNT);
 
 	// important note: all chunks have their octree starting at pos 0 0 0.
@@ -288,6 +292,16 @@ void	Chunk::clearOctreeData() {
 	this->root = nullptr;
 }
 
+
+/*
+	Insert the src voxels into the dst voxels at the specified position.
+	Currently does not insert if the dst voxel is not empty.
+
+	TODO: This is the start of the voxel edition tools. It will have its own class later.
+	This one should have different modes :
+		- insert regardless of the dst voxel
+		- insert only on `Voxel filter` (default to VOXEL_EMPTY)
+*/
 static void	s_insertVoxels(Voxel*** dst, Math::Vector3 sizeDst, Voxel*** src, Math::Vector3 sizeSrc, Math::Vector3 pos) {
 	size_t posX = std::max(0, int(pos.x));
 	size_t posY = std::max(0, int(pos.y));
@@ -300,74 +314,83 @@ static void	s_insertVoxels(Voxel*** dst, Math::Vector3 sizeDst, Voxel*** src, Ma
 	for (size_t k = 0; k < lenZ; k++) {
 		for (size_t j = 0; j < lenY; j++) {
 			for (size_t i = 0; i < lenX; i++) {
-				if (1 || src[k][j][i] != VOXEL_EMPTY && dst[posZ + k][posY + j][posX + i] == VOXEL_EMPTY) {
+				if (src[k][j][i] != VOXEL_EMPTY && dst[posZ + k][posY + j][posX + i] == VOXEL_EMPTY) {
 					dst[posZ + k][posY + j][posX + i] = src[k][j][i];
-					//std::cout << (src[k][j][i] == VOXEL_WOOD ? "W" : "L");
 				}
 			}
 		}
 	}
-	std::cout << ".";
 }
 
+/*
+	TODO: migrate this to a voxel edition tool class
+*/
 void	Chunk::addTrees(Voxel*** voxels, const HeightMap* hmap, int treeAmount) const {
 	int percent = 10;
 	treeAmount = float(treeAmount) * (1.0f + float(rand() % (percent*2) - percent) / 100); // add or remove percent% of trees
-	/*
-	*                        .
-	*      ...                 .
-	*     .....                .
-	*    ...o...                 .
-	*       o                 .
-	*       o                 .
-	*                        .
-	*/
-	Math::Vector3	treeSize(7, 5, 7);
-	auto	voxelTree = std::make_unique<Voxel **[]>(int(treeSize.z));
-	for (int k = 0; k < int(treeSize.z); k++) {
-		voxelTree[k] = new Voxel* [int(treeSize.y)];
-		for (int j = 0; j < int(treeSize.y); j++) {
-			voxelTree[k][j] = new Voxel[int(treeSize.x)];
-			for (int i = 0; i < int(treeSize.x); i++) {
-				voxelTree[k][j][i] = VOXEL_EMPTY;
-			}
-		}
-	}
-	// currently crash on operator=
-	// wood
-	voxelTree[3][0][3] = VOXEL_WOOD;
-	voxelTree[3][1][3] = VOXEL_WOOD;
-	voxelTree[3][2][3] = VOXEL_WOOD;
 
-	// leaves
-	for (int j = 2; j < int(treeSize.y); j++) {
-		for (int k = j - 2; k < int(treeSize.z) - (j - 2); k++) {
-			for (int i = j - 2; i < int(treeSize.x) - (j - 2); i++) {
-				if (j == 2 && (k == 3 || i == 3))
-					continue;
-				voxelTree[k][j][i] = VOXEL_LEAVES;
+	/*
+	*      ...      
+	*     .....     
+	*     ..o..    
+	*       o       
+	*       o       
+	*/
+	Math::Vector3	treeSize(5, 5, 5);
+	static std::mutex	m;
+	m.lock(); // TODO: kind of ugly but it works. It avoids concurent access to the voxelTree between threads. This will be correctly generated later, in the procedural class.
+	static Voxel*** voxelTree = new Voxel**[int(treeSize.z)];
+
+	if (!voxelTree[0]) { // will be done once by the first thread locking the mutex
+		for (int k = 0; k < int(treeSize.z); k++) {
+			voxelTree[k] = new Voxel * [int(treeSize.y)];
+			for (int j = 0; j < int(treeSize.y); j++) {
+				voxelTree[k][j] = new Voxel[int(treeSize.x)];
+				for (int i = 0; i < int(treeSize.x); i++) {
+					voxelTree[k][j][i] = VOXEL_EMPTY;
+				}
 			}
 		}
+		for (int j = 2; j < int(treeSize.y); j++) {
+			for (int k = 0; k < int(treeSize.z); k++) {
+				for (int i = 0; i < int(treeSize.x); i++) {
+					if (!((k == 0 || k == int(treeSize.z) - 1 || i == 0 || i == int(treeSize.x) - 1) && j == int(treeSize.y) - 1))
+						voxelTree[k][j][i] = VOXEL_LEAVES;
+				}
+			}
+		}
+		voxelTree[2][0][2] = VOXEL_WOOD;
+		voxelTree[2][1][2] = VOXEL_WOOD;
+		voxelTree[2][2][2] = VOXEL_WOOD;
 	}
+	m.unlock();
 
 	for (int i = 0; i < treeAmount; i++) {
 		int x = rand() % int(this->size.x);
 		int z = rand() % int(this->size.z);
-		int y = this->pos.y + (hmap ? hmap->map[z][x] : this->size.y);
+		int y = (hmap ? hmap->map[z][x] : this->size.y);
 		x -= int(treeSize.x )/ 2;
 		z -= int(treeSize.z )/ 2;
-		//y += treeSize.y - 1;
-		//y -= 10;
-		if (y < 0 || y >= int(this->size.y))
-			continue;
-		s_insertVoxels(voxels, this->size, voxelTree.get(), treeSize, Math::Vector3(x, y, z));
+		y = y - this->pos.y + 1;
+
+		if (y >= 0 && y < this->size.y && x >= 0 && x < int(this->size.x) && z >= 0 && z < int(this->size.z))
+			s_insertVoxels(voxels, this->size, voxelTree, treeSize, Math::Vector3(x, y, z));
 	}
 
-	for (int k = 0; k < 7; k++) {
-		for (int j = 0; j < 5; j++) {
-			delete[] voxelTree[k][j];
+}
+
+/*
+	TODO: migrate this to a voxel edition tool class
+*/
+void	Chunk::addSphere(Voxel*** voxels, Math::Vector3 pos, int radius) const {
+	for (int i = 0; i < int(this->size.x); i++) {
+		for (int j = 0; j < int(this->size.y); j++) {
+			for (int k = 0; k < int(this->size.z); k++) {
+				if ((Math::Vector3(i, j, k) - pos).len() < radius) {
+					voxels[k][j][i] = VOXEL_WOOD;
+				}
+			}
 		}
-		delete[] voxelTree[k];
 	}
 }
 

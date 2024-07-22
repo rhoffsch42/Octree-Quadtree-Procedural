@@ -8,7 +8,7 @@
 
 #define GRID_GARBAGE_DELETION_STEP			10
 #define GRID_GARBAGE_DELETION_RECOMMENDED	1000
-#define GRID_SIZE	24
+#define GRID_SIZE	45
 
 typedef struct s_grid_gemoetry
 {

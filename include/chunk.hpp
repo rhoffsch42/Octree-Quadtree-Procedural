@@ -17,7 +17,7 @@
 #define LODS_AMOUNT 1
 #define LOD_MIN_VERTEX_ARRAY_SIZE	1000
 
-#define CHUNK_TREE_AMOUNT 10
+#define CHUNK_TREE_AMOUNT 5
 
 #define	PRINT_INDEX		0b10000000
 #define	PRINT_POS		0b01000000
@@ -59,6 +59,7 @@ public:
 	void	glth_clearMeshesData();
 	void	clearOctreeData();
 	void	addTrees(Voxel*** voxels, const HeightMap* hmap, int treeAmount) const;
+	void	addSphere(Voxel*** voxels, Math::Vector3 pos, int radius) const;
 
 	//bool operator<(const Chunk& rhs) const//tmp
 	//{
