@@ -38,7 +38,8 @@
     - cleanup useless code
 - vUnreal ?
     - sub process to generate ? server ? https://www.reddit.com/r/VoxelGameDev/comments/13qsr80/voxel_engine_networking/
-- v2 : fullWorld [DOUBLE_MIN:DOUBLE_MAX] in 1 octree, with precision based on distance.
+- v2 : fullWorld [DOUBLE_MIN:DOUBLE_MAX] in 1 octree, with lod based on distance.
+    - leave Math:: and use glm::
     - ImGui https://github.com/ocornut/imgui
     - dev settings UI
     - Server/Client ? UDP/TCP ? https://www.reddit.com/r/VoxelGameDev/comments/13qsr80/voxel_engine_networking/
@@ -49,6 +50,7 @@
         - Observer
         - tasks/jobs in multithreads : create, todo queue, assign, run, done queue, deliver, etc
     - refacto chunk generation/engine for fullWorld
+    - neighbor detection: nomore big squarres in the ground. Display only visible part of the node. It can add more triangles, but should cause less pixel draws during triangle rasterization.
     - 1 OpenGL call to rule them all (glMultiDrawArraysIndirect / glMultiDrawElementsIndirect )
     - voxel data compression
     - new blocks

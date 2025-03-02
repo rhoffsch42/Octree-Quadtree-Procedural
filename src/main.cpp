@@ -8,7 +8,7 @@ using namespace std::chrono_literals;
 
 #define TREES_DEBUG
 #ifdef TREES_DEBUG
- #define TREES_MAIN_DEBUG
+ //#define TREES_MAIN_DEBUG
  #define TREES_MAIN_INFO_DEBUG
 #endif
 #define TREES_MAIN_DEBUG

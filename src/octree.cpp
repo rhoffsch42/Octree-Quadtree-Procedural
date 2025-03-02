@@ -323,15 +323,18 @@ Octree<T>*	Octree<T>::getNode(const Math::Vector3& target_pos, const Math::Vecto
 }
 
 template <typename T>
-bool		Octree<T>::contains(const T& elem, const Math::Vector3& pos, const Math::Vector3& size) {
-	//the user has to send corrent pos and size
+bool		Octree<T>::contains(const T& elem, const Math::Vector3 pos, const Math::Vector3 size) {
 	Math::Vector3	unitSize(1, 1, 1);
 
-	for (int x = 0; x < size.x; x++) {
-		for (int y = 0; y < size.y; y++) {
-			for (int z = 0; z < size.z; z++) {
-				Math::Vector3	currentPos = pos + Math::Vector3(x, y, z);
-				Octree<T>* subnode = this->getNode(currentPos, unitSize);
+	Math::Vector3 current = pos;
+	Math::Vector3 max = pos + size;
+	for (;current.x < max.x; current.x++) {
+		current.z = pos.z;
+		current.y = pos.y;
+		for (;current.y < max.y; current.y++) {
+			current.z = pos.z;
+			for (;current.z < max.z; current.z++) {
+				Octree<T>* subnode = this->getNode(current, unitSize);
 
 				// if neighbor is out of the current octree (we're on the edge)// we could check with the right neighboring octree (chunk)
 				// || equal to elem
@@ -353,7 +356,7 @@ void		Octree<T>::verifyNeighbors(const T& filter) {
 	this->browse([root, &minSummit, &maxSummit, &filter](Octree<T>* node) {
 		node->neighbors = 0;
 		/*
-			we need to know if there is EMPTY_VOXEL in the neighbour right next to us (more consuming),
+			we need to know if there is EMPTY_VOXEL in the neighbor right next to us (more consuming),
 			but how to differenciate an averaged voxel with EMPTY_VOXEL from one without EMPTY_VOXEL ?
 				if all voxels are the same, there is no problem. we could use a first octree to map non empty voxels,
 				then on each leaf, make another octree maping the different voxels
@@ -370,11 +373,11 @@ void		Octree<T>::verifyNeighbors(const T& filter) {
 		//#define USE_BACKTRACKING_SEARCH
 
 		#ifdef USE_SAMESIZE_SEARCH
-			/*
-				this requires that the entire node should be non empty
-				check isLeaf: as long as all non-empty voxels are the same, we're sure there is no empty voxels here
-					cf average method
-			*/
+		/*
+			this requires that the entire node should be non empty
+			check isLeaf: as long as all non-empty voxels are the same, we're sure there is no empty voxels here
+				cf average method
+		*/
 		Math::Vector3	node_left = node->pos - Math::Vector3(node->size.x, 0, 0);
 		Math::Vector3	node_right = node->pos + Math::Vector3(node->size.x, 0, 0);
 		Math::Vector3	node_bot = node->pos - Math::Vector3(0, node->size.y, 0);

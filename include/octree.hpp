@@ -151,7 +151,7 @@ public:
 		? should the average ignore empty nodes?
 	*/
 	Octree<T>*		getNode(const Math::Vector3& target_pos, const Math::Vector3& target_size);
-	bool			contains(const T& elem, const Math::Vector3& pos, const Math::Vector3& size);//	need operator==()
+	bool			contains(const T& elem, const Math::Vector3 pos, const Math::Vector3 size);//	need operator==()
 	void			verifyNeighbors(const T& filter);
 	//virtual T		getAverage(T*** arr, Math::Vector3 pos, Math::Vector3 size) = 0;
 	//virtual double	measureDetail(T*** arr, Math::Vector3 pos, Math::Vector3 size, T average) = 0;
