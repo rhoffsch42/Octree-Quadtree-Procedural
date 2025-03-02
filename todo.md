@@ -33,7 +33,6 @@
 *
 
 - pre v2:
-    - archive v1 on a new branch
     - abandon old ways of building the voxels data
     - cleanup useless code
 - vUnreal ?

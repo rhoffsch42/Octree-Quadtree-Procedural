@@ -5,7 +5,6 @@
 #include "math.hpp"
 #include "dispose.hpp"
 
-
 #define HMAP_BUILD_TEXTUREDATA_IN_CTOR	1 // this is usually done in builder threads, while the UIPanel has to be done on the gl thread
 #define PERLIN_GENERATION				1
 #define OCTREE_OPTIMISATION				1

@@ -125,6 +125,18 @@
       <IgnoreSpecificDefaultLibraries>LIBCMT;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
     </Link>
   </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(ProjectDir)include;$(ProjectDir)SimpleGL\include;$(ProjectDir)SimpleGL\dependencies\assimp\5.2.5_x64\include;$(ProjectDir)SimpleGL\dependencies\GLFW\include;$(ProjectDir)SimpleGL\dependencies\GLEW\include;$(ProjectDir)SimpleGL\dependencies\glm\include;$(ProjectDir)SimpleGL\dependencies\freetype;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <Optimization>
+      </Optimization>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>$(ProjectDir)SimpleGL\dependencies\GLFW\lib-vc2022;$(ProjectDir)SimpleGL\dependencies\GLEW\lib\Release\x64;$(ProjectDir)SimpleGL\dependencies\GLEW\bin\Release\x64;$(ProjectDir)SimpleGL\dependencies\freetype\win64;$(ProjectDir)SimpleGL\dependencies\assimp\5.2.5_x64\lib\x64;$(ProjectDir)x64\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>glew32.lib;glew32s.lib;glfw3.lib;glfw3dll.lib;opengl32.lib;freetype.lib;assimp-vc143-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="SimpleGL\src\behavior.cpp" />
     <ClCompile Include="SimpleGL\src\behaviormanaged.cpp" />

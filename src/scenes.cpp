@@ -43,8 +43,8 @@ void	blitToWindow(FrameBuffer* readFramebuffer, GLenum attachmentPoint, UIPanel*
 	GLenum drawBuffers[1] = { GL_COLOR_ATTACHMENT0 };
 	glDrawBuffers(1, drawBuffers);
 
-	int w;
-	int h;
+	int w = 0;
+	int h = 0;
 	if (readFramebuffer) {
 		w = readFramebuffer->getWidth();
 		h = readFramebuffer->getHeight();
@@ -120,6 +120,7 @@ class AnchorCameraBH : public Behavior
 public:
 	AnchorCameraBH() : Behavior() {
 		this->copyRotation = true;
+		this->_anchor = nullptr;
 	}
 	void	behaveOnTarget(BehaviorManaged* target) {
 		if (this->_anchor) {
@@ -154,7 +155,7 @@ public:
 
 	bool			copyRotation;
 private:
-	Object* _anchor;
+	Object*			_anchor;
 	Math::Vector3	_offset;
 
 };
