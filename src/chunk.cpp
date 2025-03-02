@@ -119,7 +119,7 @@ void	Chunk::_build(PerlinSettings& perlinSettings, const HeightMap* hmap) {
 	if (int(this->index.x) % multiple == 0 && int(this->index.y) % multiple == 0 && int(this->index.z) % multiple == 0) {
 		this->addSphere(voxels.get(), this->size * 0.5, 12);
 	}
-	//this->addTrees(voxels.get(), hmap, CHUNK_TREE_AMOUNT);
+	this->addTrees(voxels.get(), hmap, CHUNK_TREE_AMOUNT);
 
 	// important note: all chunks have their octree starting at pos 0 0 0.
 	this->root = new Octree<Voxel>(voxels.get(), Math::Vector3(0, 0, 0), this->size, OCTREE_THRESHOLD);
