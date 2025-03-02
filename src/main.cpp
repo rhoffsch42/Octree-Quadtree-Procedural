@@ -9,7 +9,7 @@ using namespace std::chrono_literals;
 #define TREES_DEBUG
 #ifdef TREES_DEBUG
  //#define TREES_MAIN_DEBUG
- #define TREES_MAIN_INFO_DEBUG
+ //#define TREES_MAIN_INFO_DEBUG
 #endif
 #define TREES_MAIN_DEBUG
 #ifdef TREES_MAIN_DEBUG 
@@ -91,7 +91,7 @@ public:
 
 		this->cpuThreadAmount = std::thread::hardware_concurrency();
 		if (this->cpuThreadAmount < 3) {
-			D("Not enough threads: " << this->cpuThreadAmount << "\n");
+			D("Not enough threads: " << this->cpuThreadAmount << LF);
 			Misc::breakExit(-44);
 		}
 	}
@@ -160,7 +160,7 @@ void	scene_benchmarks() {
 	lambobp0.lodManager.addLod(&lambobp1, 8);
 	lambobp0.lodManager.addLod(&lambobp2, 30);
 	lambobp0.lodManager.addLod(&lambobp3, 80);
-	std::cout << lambobp0.lodManager.toString() << "\n";
+	std::cout << lambobp0.lodManager.toString() << LF;
 	//std::exit(0);
 
 	Texture*	lenatex = new Texture(SIMPLEGL_FOLDER + "images/lena.bmp");
@@ -254,7 +254,7 @@ void	scene_benchmarks() {
 
 	Fps	fps(1000);
 	std::cout << "Fps tick: " << fps.getTick() << std::endl;
-	D("renderVec: " << m.renderVec.size() << "\n");
+	D("renderVec: " << m.renderVec.size() << LF);
 	D("Begin while loop\n");
 	while (!glfwWindowShouldClose(m.glfw->_window)) {
 		if (fps.wait_for_next_frame()) {
@@ -335,35 +335,35 @@ void	printSettings(OctreeManager& m) {
 
 	//INFO(D_VALUE_NAME(PG_FORCE_LINKBUFFERS));
 
-	INFO(D_VALUE_NAME(M_PERLIN_GENERATION)) << LF;
-	INFO(D_VALUE_NAME(M_OCTREE_OPTIMISATION)) << LF;
-	INFO(D_VALUE_NAME(M_DRAW_MINIMAP)) << LF;
-	INFO(D_VALUE_NAME(M_MERGE_CHUNKS)) << LF;
+	INFO(D_VALUE_NAME(M_PERLIN_GENERATION) << LF);
+	INFO(D_VALUE_NAME(M_OCTREE_OPTIMISATION) << LF);
+	INFO(D_VALUE_NAME(M_DRAW_MINIMAP) << LF);
+	INFO(D_VALUE_NAME(M_MERGE_CHUNKS) << LF);
 
-	INFO(D_VALUE_NAME(M_DRAW_DEBUG)) << LF;
-	INFO(D_VALUE_NAME(M_DRAW_GRID_BOX)) << LF;
-	INFO(D_VALUE_NAME(M_DRAW_GRID_CHUNK)) << LF;
-	INFO(D_VALUE_NAME(M_DISPLAY_BLACK)) << LF;
+	INFO(D_VALUE_NAME(M_DRAW_DEBUG) << LF);
+	INFO(D_VALUE_NAME(M_DRAW_GRID_BOX) << LF);
+	INFO(D_VALUE_NAME(M_DRAW_GRID_CHUNK) << LF);
+	INFO(D_VALUE_NAME(M_DISPLAY_BLACK) << LF);
 
-	INFO(D_VALUE_NAME(LODS_AMOUNT)) << LF;
-	INFO(D_VALUE_NAME(LOD_MIN_VERTEX_ARRAY_SIZE)) << LF;
-	INFO(D_VALUE_NAME(OCTREE_THRESHOLD)) << LF;
-	INFO(D_VALUE_NAME(CHUNK_DEFAULT_SIZE)) << LF;
-	INFO(D_VALUE_NAME(GRID_GARBAGE_DELETION_STEP)) << LF;
-	INFO(D_VALUE_NAME(GRID_GARBAGE_DELETION_RECOMMENDED)) << LF;
+	INFO(D_VALUE_NAME(LODS_AMOUNT) << LF);
+	INFO(D_VALUE_NAME(LOD_MIN_VERTEX_ARRAY_SIZE) << LF);
+	INFO(D_VALUE_NAME(OCTREE_THRESHOLD) << LF);
+	INFO(D_VALUE_NAME(CHUNK_DEFAULT_SIZE) << LF);
+	INFO(D_VALUE_NAME(GRID_GARBAGE_DELETION_STEP) << LF);
+	INFO(D_VALUE_NAME(GRID_GARBAGE_DELETION_RECOMMENDED) << LF);
 
-	INFO(D_VALUE_NAME(HMAP_BUILD_TEXTUREDATA_IN_CTOR)) << LF;
-	INFO(D_VALUE_NAME(PERLIN_NORMALIZER)) << LF;
-	INFO(D_VALUE_NAME(PERLIN_DEFAULT_OCTAVES)) << LF;
-	INFO(D_VALUE_NAME(PERLIN_DEFAULT_FREQUENCY)) << LF;
-	INFO(D_VALUE_NAME(PERLIN_DEFAULT_FLATTERING)) << LF;
-	INFO(D_VALUE_NAME(PERLIN_DEFAULT_HEIGHTCOEF)) << LF;
-	INFO(D_VALUE_NAME(PERLIN_DEFAULT_ISLAND)) << LF;
+	INFO(D_VALUE_NAME(HMAP_BUILD_TEXTUREDATA_IN_CTOR) << LF);
+	INFO(D_VALUE_NAME(PERLIN_NORMALIZER) << LF);
+	INFO(D_VALUE_NAME(PERLIN_DEFAULT_OCTAVES) << LF);
+	INFO(D_VALUE_NAME(PERLIN_DEFAULT_FREQUENCY) << LF);
+	INFO(D_VALUE_NAME(PERLIN_DEFAULT_FLATTERING) << LF);
+	INFO(D_VALUE_NAME(PERLIN_DEFAULT_HEIGHTCOEF) << LF);
+	INFO(D_VALUE_NAME(PERLIN_DEFAULT_ISLAND) << LF);
 }
 
 static void		keyCallback_ocTree(GLFWwindow* window, int key, int scancode, int action, int mods) {
 	(void)window; (void)key; (void)scancode; (void)action; (void)mods;
-	//D(__PRETTY_FUNCTION__ << "\n")
+	//D(__PRETTY_FUNCTION__ << LF)
 
 	float	move = 150;
 	OctreeManager* manager = static_cast<OctreeManager*>(glfwGetWindowUserPointer(window));
@@ -372,7 +372,7 @@ static void		keyCallback_ocTree(GLFWwindow* window, int key, int scancode, int a
 		return;
 	}
 	if (action == GLFW_PRESS) {
-		D("GLFW_PRESS:" << key << "\n");
+		D("GLFW_PRESS:" << key << LF);
 		if (manager->glfw) {
 			if (key == GLFW_KEY_EQUAL) {
 				double inc = std::clamp(manager->threshold * 0.05, 1.0, 5.0);
@@ -401,7 +401,7 @@ static void		keyCallback_ocTree(GLFWwindow* window, int key, int scancode, int a
 		}
 	}
 	else if (action == GLFW_RELEASE) {
-		D("GLFW_RELEASE:" << key << "\n");
+		D("GLFW_RELEASE:" << key << LF);
 		if (manager->glfw) {
 			if (key == GLFW_KEY_LEFT_SHIFT) {
 				D("GLFW_KEY_LEFT_SHIFT\n");
@@ -418,7 +418,7 @@ Obj3dBP* createMergedBP_offsetVerticesWithPos(std::vector<Object*> objects) {
 	for (auto obj : objects) {
 		Obj3d* o = dynamic_cast<Obj3d*>(obj);
 		if (!o) {
-			D("dynamic cast failed on object: " << obj << "\n");
+			D("dynamic cast failed on object: " << obj << LF);
 			Misc::breakExit(456);
 		}
 		Math::Vector3 pos = o->local.getPos();
@@ -428,7 +428,7 @@ Obj3dBP* createMergedBP_offsetVerticesWithPos(std::vector<Object*> objects) {
 		std::for_each(verts.begin(), verts.end(), [pos](SimpleVertex& vertex) { vertex.position += pos; });
 		vertices.insert(vertices.end(), verts.begin(), verts.end());
 	}
-	D_(std::cout << "\n");
+	D_(std::cout << LF);
 
 	// recreating full mesh without updating it in the ChunkGrid:: ?? todo: it should crash when entering a new chunk, check that and fix if needed
 
@@ -458,8 +458,8 @@ static void	debugGridGeometry(int len, int start, int end, std::string prefix = 
 		- gl thread loads hmap/chunk in the GPU
 */
 unsigned int	grabObjects(ChunkGenerator& generator, ChunkGrid& grid, OctreeManager& manager, Obj3dBP& cubebp, Obj3dPG& obj3d_prog, Texture* tex) {
-	D(__PRETTY_FUNCTION__ << "\n");
-	INFO(grid.getGridChecks() << "\n");
+	D(__PRETTY_FUNCTION__ << LF);
+	INFO(grid.getGridChecks() << LF);
 
 	#if M_DRAW_MINIMAP
 		//assemble minimap (currently inverted on the Y axis)
@@ -528,8 +528,8 @@ unsigned int	grabObjects(ChunkGenerator& generator, ChunkGrid& grid, OctreeManag
 	//debugGridGeometry(grid.getSize().x, startRendered.x, endRendered.x, "x");
 	debugGridGeometry(grid.getSize().y, startRendered.y, endRendered.y, "y");
 	//debugGridGeometry(grid.getSize().z, startRendered.z, endRendered.z, "z");
-	D(" > Grid index rendered : " << startRendered << " -> " << endRendered << "\n");
-	D(" > World index rendered : " << grid.gridToWorld(startRendered) << " -> " << grid.gridToWorld(endRendered) << "\n");
+	D(" > Grid index rendered : " << startRendered << " -> " << endRendered << LF);
+	D(" > World index rendered : " << grid.gridToWorld(startRendered) << " -> " << grid.gridToWorld(endRendered) << LF);
 
 	if (1) {// actual grabbing + Obj3d creation
 		INFO(grid.getGridChecks());
@@ -602,7 +602,7 @@ unsigned int	grabObjects(ChunkGenerator& generator, ChunkGrid& grid, OctreeManag
 	for (unsigned int k = startRendered.z; k < endRendered.z; k++) {
 		for (unsigned int j = startRendered.y; j < endRendered.y; j++) {
 			for (unsigned int i = startRendered.x; i < endRendered.x; i++) {
-				if (chunkArray[k][j][i]) {//at this point, the chunk might not be generated yet
+				if (chunkArray[k][j][i]) { // at this point, the chunk might not be generated yet
 					Chunk* chunk = chunkArray[k][j][i].get();
 
 					#if M_DRAW_GRID_CHUNK
@@ -617,18 +617,6 @@ unsigned int	grabObjects(ChunkGenerator& generator, ChunkGrid& grid, OctreeManag
 						cubgrid++;
 					}
 					#endif // M_DRAW_GRID_CHUNK
-
-					if (0) {//coloring origin of each octree/chunk
-						Math::Vector3	siz(1, 1, 1);
-						Octree<Voxel>* node = chunk->root->getNode(chunk->root->pos, siz);
-						if (node) {
-							if (node->size.len() != siz.len())
-								node->element._value = 254;
-							else
-								node->element._value = 253;
-						}
-					}
-
 				}
 			}
 		}
@@ -638,7 +626,7 @@ unsigned int	grabObjects(ChunkGenerator& generator, ChunkGrid& grid, OctreeManag
 	//INFO("Counting total_polygons from renderVecChunk\n");
 	for (Object* o : manager.renderVecChunk) {
 		Obj3d* obj = dynamic_cast<Obj3d*>(o);
-		if (!obj) { D("grabObjects() : dynamic cast failed on object: " << o << "\n"); Misc::breakExit(456); }
+		if (!obj) { D("grabObjects() : dynamic cast failed on object: " << o << LF); Misc::breakExit(456); }
 		//total_polygons += obj->getBlueprint()->getPolygonAmount();
 		total_polygons += ((Obj3dBP*)obj->getBlueprint()->lodManager.getCurrentLodBlueprint())->getPolygonAmount();
 	}
@@ -648,16 +636,16 @@ unsigned int	grabObjects(ChunkGenerator& generator, ChunkGrid& grid, OctreeManag
 	if (grid.chunksChanged)
 		grid.chunksChanged = false;
 
-	//INFO("polygon debug:\n" << polygon_debug.str() << "\n");
-	//INFO("total polygons:\t" << total_polygons << "\n");
-	//INFO("LOD:\t" << LOD << "\n");
-	//INFO("hiddenBlocks:\t" << hiddenBlocks << "\n");
+	//INFO("polygon debug:\n" << polygon_debug.str() << LF);
+	//INFO("total polygons:\t" << total_polygons << LF);
+	//INFO("LOD:\t" << LOD << LF);
+	//INFO("hiddenBlocks:\t" << hiddenBlocks << LF);
 	//for (auto i : manager.renderVecVoxels)
-	//	INFO("renderVecVoxels[]: " << i.size() << "\n");
-	//INFO("renderVecOctree: " << manager.renderVecOctree.size() << "\n");
-	//INFO("renderVecChunk: " << manager.renderVecChunk.size() << "\n");
-	//INFO("renderVecGrid: " << manager.renderVecGrid.size() << "\n");
-	//INFO("cubes grid : " << cubgrid << "\n");
+	//	INFO("renderVecVoxels[]: " << i.size() << LF);
+	//INFO("renderVecOctree: " << manager.renderVecOctree.size() << LF);
+	//INFO("renderVecChunk: " << manager.renderVecChunk.size() << LF);
+	//INFO("renderVecGrid: " << manager.renderVecGrid.size() << LF);
+	//INFO("cubes grid : " << cubgrid << LF);
 	//D(D_SPACER_END);
 
 	Math::Vector3	gridSize = grid.getSize();
@@ -665,13 +653,13 @@ unsigned int	grabObjects(ChunkGenerator& generator, ChunkGrid& grid, OctreeManag
 	int chunks_max = hmap_max * int(gridSize.y);
 	HeightMap::m.lock();
 	if (hmap_max < HeightMap::count)
-		INFO("Error: HeightMap::count should not exceed " << hmap_max << ". ");
-	INFO("HeightMap::count\t" << HeightMap::count << "\n");
+		INFO("Error: HeightMap::count should not exceed " << hmap_max << ". " << LF);
+	INFO("HeightMap::count\t" << HeightMap::count << LF);
 	HeightMap::m.unlock();
 	Chunk::m.lock();
 	if (chunks_max < Chunk::count)
-		INFO("Error: Chunk::count should not exceed " << chunks_max << ". ");
-	INFO("Chunk::count    \t" << Chunk::count << "\n");
+		INFO("Error: Chunk::count should not exceed " << chunks_max << ". " << LF);
+	INFO("Chunk::count    \t" << Chunk::count << LF);
 	Chunk::m.unlock();
 	return total_polygons;
 }
@@ -699,7 +687,7 @@ unsigned int 	rebuildWithThreshold(ChunkGenerator& generator, ChunkGrid& grid, O
 
 static void		keyCallback_debugGrid(GLFWwindow* window, int key, int scancode, int action, int mods) {
 	(void)window; (void)key; (void)scancode; (void)action; (void)mods;
-	//D(__PRETTY_FUNCTION__ << "\n")
+	//D(__PRETTY_FUNCTION__ << LF)
 
 	OctreeManager* m = static_cast<OctreeManager*>(glfwGetWindowUserPointer(window));
 	if (!m) {
@@ -707,12 +695,12 @@ static void		keyCallback_debugGrid(GLFWwindow* window, int key, int scancode, in
 		return;
 	}
 	if (action == GLFW_PRESS) {
-		D("GLFW_PRESS:" << key << "\n");
+		D("GLFW_PRESS:" << key << LF);
 		if (m->glfw) {
 			if (key == GLFW_KEY_B) {
 				std::cout << "B pressed : debug\n";
-				std::cout << m->grid->getGridChecks() << "\n";
-				std::cout << "jobs remaining : " << m->generator->jobsToDo.size() << "\n";
+				std::cout << m->grid->getGridChecks() << LF;
+				std::cout << "jobs remaining : " << m->generator->jobsToDo.size() << LF;
 				std::cout << m->grid->toString() << std::endl;
 			}
 			else if (key == GLFW_KEY_T) {
@@ -801,7 +789,7 @@ void	scene_octree() {
 	cam.lockedMovement = false;
 	cam.lockedOrientation = false;
 	//m.glfw->setMouseAngle(-1);//?
-	D("MouseAngle: " << m.glfw->getMouseAngle() << "\n");
+	D("MouseAngle: " << m.glfw->getMouseAngle() << LF);
 	m.cam = &cam;
 	#endif //INIT_GLFW
 
@@ -846,10 +834,10 @@ void	scene_octree() {
 	m.gridSize = Math::Vector3(g, g/4, g);
 	m.renderedGridSize = Math::Vector3(r, r/4, r);
 
-	INFO("Grid size : " << m.gridSize.toString() << "\n");
-	INFO("Rebdered grid size : " << m.renderedGridSize.toString() << "\n");
-	INFO("Total hmaps : " << m.gridSize.x * m.gridSize.z << "\n");
-	INFO("Total chunks : " << m.gridSize.x * m.gridSize.y * m.gridSize.z << "\n");
+	INFO("Grid size : " << m.gridSize.toString() << LF);
+	INFO("Rebdered grid size : " << m.renderedGridSize.toString() << LF);
+	INFO("Total hmaps : " << m.gridSize.x * m.gridSize.z << LF);
+	INFO("Total chunks : " << m.gridSize.x * m.gridSize.y * m.gridSize.z << LF);
 	ChunkGrid		grid(m.chunk_size, m.gridSize, m.renderedGridSize);
 	ChunkGenerator	generator(*m.ps);
 	m.generator = &generator;
@@ -863,9 +851,9 @@ void	scene_octree() {
 	#endif // GENERATOR
 
 	Fps	fps(135);
-	INFO("Maximum fps : " << fps.getMaxFps() << "\n");
-	INFO("Maximum tick : " << fps.getMaxTick() << "\n");
-	INFO("Tick : " << fps.getTick() << "\n");
+	INFO("Maximum fps : " << fps.getMaxFps() << LF);
+	INFO("Maximum tick : " << fps.getMaxTick() << LF);
+	INFO("Tick : " << fps.getTick() << LF);
 
 	//#define MINIMAP // need to build a framebuffer with the entire map, update it each time the player changes chunk
 
@@ -877,8 +865,8 @@ void	scene_octree() {
 
 	unsigned int polygons = 0;
 	unsigned int frames = 0;
-	D("cam: " << cam.local.getPos().toString() << "\n");
-	INFO("Begin while loop, renderer: " << typeid(renderer).name() << "\n");
+	D("cam: " << cam.local.getPos().toString() << LF);
+	INFO("Begin while loop, renderer: " << typeid(renderer).name() << LF);
 	//std::cout.setstate(std::ios_base::failbit);
 
 	while (!glfwWindowShouldClose(m.glfw->_window)) {
@@ -887,12 +875,12 @@ void	scene_octree() {
 			frames++;
 			if (frames % 1000 == 0) {
 				INFO("\n>>>>>>>> " << frames << " FRAMES <<<<<<<<\n");
-				INFO("cam: " << cam.local.getPos() << "\n");
-				INFO("Grid HeightMaps max\t" << (m.gridSize.z * m.gridSize.x) << "\n");
-				INFO("HeightMap::count   \t" << HeightMap::count << "\n");
-				INFO("Grid Chunks max    \t" << (m.gridSize.z * m.gridSize.y * m.gridSize.x) << "\n");
-				INFO("Chunk::count       \t" << Chunk::count << "\n");
-				INFO("Garbage            \t" << grid.getGarbageSize() << "\n");
+				INFO("cam: " << cam.local.getPos() << LF);
+				INFO("Grid HeightMaps max\t" << (m.gridSize.z * m.gridSize.x) << LF);
+				INFO("HeightMap::count   \t" << HeightMap::count << LF);
+				INFO("Grid Chunks max    \t" << (m.gridSize.z * m.gridSize.y * m.gridSize.x) << LF);
+				INFO("Chunk::count       \t" << Chunk::count << LF);
+				INFO("Garbage            \t" << grid.getGarbageSize() << LF);
 			}
 			std::string decimals = std::to_string(polygons / 1'000'000.0);
 			m.glfw->setTitle(
@@ -939,6 +927,7 @@ void	scene_octree() {
 			}
 			else if (1) { // converted to mesh
 				grid.chunks_mutex.lock();
+				//Chunk::renderer->renderAllObjects(m.renderVecChunk, cam, PG_FORCE_DRAW);//PG_FRUSTUM_CULLING PG_FORCE_DRAW
 				Chunk::renderer->renderAllObjects(m.renderVecChunk, cam, PG_FORCE_DRAW);//PG_FRUSTUM_CULLING PG_FORCE_DRAW
 				//Chunk::renderer->renderAllObjectsMultiDraw(m.renderVecChunk, cam, PG_FORCE_DRAW);
 				grid.chunks_mutex.unlock();
@@ -1092,13 +1081,13 @@ void	scene_octree() {
 }
 
 void	maxUniforms() {
-	D("GL_MAX_VERTEX_UNIFORM_COMPONENTS\t" << GL_MAX_VERTEX_UNIFORM_COMPONENTS << "\n");
-	D("GL_MAX_GEOMETRY_UNIFORM_COMPONENTS\t" << GL_MAX_GEOMETRY_UNIFORM_COMPONENTS << "\n");
-	D("GL_MAX_FRAGMENT_UNIFORM_COMPONENTS\t" << GL_MAX_FRAGMENT_UNIFORM_COMPONENTS << "\n");
-	D("GL_MAX_TESS_CONTROL_UNIFORM_COMPONENTS\t" << GL_MAX_TESS_CONTROL_UNIFORM_COMPONENTS << "\n");
-	D("GL_MAX_TESS_EVALUATION_UNIFORM_COMPONENTS\t" << GL_MAX_TESS_EVALUATION_UNIFORM_COMPONENTS << "\n");
-	D("GL_MAX_COMPUTE_UNIFORM_COMPONENTS\t" << GL_MAX_COMPUTE_UNIFORM_COMPONENTS << "\n");
-	D("GL_MAX_UNIFORM_LOCATIONS\t" << GL_MAX_UNIFORM_LOCATIONS << "\n");
+	D("GL_MAX_VERTEX_UNIFORM_COMPONENTS\t" << GL_MAX_VERTEX_UNIFORM_COMPONENTS << LF);
+	D("GL_MAX_GEOMETRY_UNIFORM_COMPONENTS\t" << GL_MAX_GEOMETRY_UNIFORM_COMPONENTS << LF);
+	D("GL_MAX_FRAGMENT_UNIFORM_COMPONENTS\t" << GL_MAX_FRAGMENT_UNIFORM_COMPONENTS << LF);
+	D("GL_MAX_TESS_CONTROL_UNIFORM_COMPONENTS\t" << GL_MAX_TESS_CONTROL_UNIFORM_COMPONENTS << LF);
+	D("GL_MAX_TESS_EVALUATION_UNIFORM_COMPONENTS\t" << GL_MAX_TESS_EVALUATION_UNIFORM_COMPONENTS << LF);
+	D("GL_MAX_COMPUTE_UNIFORM_COMPONENTS\t" << GL_MAX_COMPUTE_UNIFORM_COMPONENTS << LF);
+	D("GL_MAX_UNIFORM_LOCATIONS\t" << GL_MAX_UNIFORM_LOCATIONS << LF);
 	Misc::breakExit(0);
 }
 
@@ -1177,7 +1166,7 @@ void	scene_checkMemory() {
 							if (j % 100 == 0)
 								std::cout << ".";
 							if (j % 5000 == 0)
-								std::cout << " " << j << "\n";
+								std::cout << " " << j << LF;
 						}
 						i++;
 					}
@@ -1194,7 +1183,7 @@ void	scene_checkMemory() {
 				chunk->buildVertexArray(Math::Vector3(), lod, 0);
 			}
 			chunk->glth_buildAllMeshes();
-			//D(chunk->meshBP->lodManager.toString() << "\n");
+			//D(chunk->meshBP->lodManager.toString() << LF);
 			delete hmap;
 			delete chunk;
 			{
@@ -1202,7 +1191,7 @@ void	scene_checkMemory() {
 				if (j % 100 == 0)
 					std::cout << ".";
 				if (j % 5000 == 0)
-					std::cout << " " << j << "\n";
+					std::cout << " " << j << LF;
 			}
 
 
@@ -1233,7 +1222,7 @@ void	benchmark_octree() {
 	Chunk* test = new Chunk(index, size, *m.ps, hmap);
 	//test->glth_buildAllMeshes();
 	if (test->meshBP) {
-		D("polys: " << test->meshBP->getPolygonAmount() << "\n");
+		D("polys: " << test->meshBP->getPolygonAmount() << LF);
 		test->meshBP->freeData(BP_FREE_ALL);
 		delete test->meshBP;
 		test->meshBP = nullptr;
@@ -1254,16 +1243,15 @@ void	benchmark_octree() {
 	Misc::breakExit(0);
 }
 
-
 void	printClassSizes() {
-	std::cout << "sizeof(Octree) = " << sizeof(Octree<Voxel>) << "\n";
-	std::cout << "sizeof(Voxel) = " << sizeof(Voxel) << "\n";
-	std::cout << "sizeof(Chunk) = " << sizeof(Chunk) << "\n";
-	std::cout << "sizeof(HeightMap) = " << sizeof(HeightMap) << "\n";
-	std::cout << "sizeof(SimpleVector2) = " << sizeof(SimpleVector2) << "\n";
-	std::cout << "sizeof(SimpleVertex) = " << sizeof(SimpleVertex) << "\n";
-	std::cout << "sizeof(std::vector) = " << sizeof(std::vector<SimpleVertex>) << "\n";
-	std::cout << "sizeof(std::vector) = " << sizeof(std::vector<unsigned int>) << "\n";
+	std::cout << "sizeof(Octree) = " << sizeof(Octree<Voxel>) << LF;
+	std::cout << "sizeof(Voxel) = " << sizeof(Voxel) << LF;
+	std::cout << "sizeof(Chunk) = " << sizeof(Chunk) << LF;
+	std::cout << "sizeof(HeightMap) = " << sizeof(HeightMap) << LF;
+	std::cout << "sizeof(SimpleVector2) = " << sizeof(SimpleVector2) << LF;
+	std::cout << "sizeof(SimpleVertex) = " << sizeof(SimpleVertex) << LF;
+	std::cout << "sizeof(std::vector) = " << sizeof(std::vector<SimpleVertex>) << LF;
+	std::cout << "sizeof(std::vector) = " << sizeof(std::vector<unsigned int>) << LF;
 }	
 
 #if 1 // main
@@ -1294,7 +1282,7 @@ int		main(int ac, char **av) {
 	//test_mult_mat4(); Misc::breakExit(0);
 	//	test_obj_loader();
 
-	D("____START____ :\t" << Misc::getCurrentDirectory() << "\n");
+	D("____START____ :\t" << Misc::getCurrentDirectory() << LF);
 	//test_memory_opengl_obj3dbp();
 	//test_memory_opengl();
 	//test_shared_ptr(); return 0;

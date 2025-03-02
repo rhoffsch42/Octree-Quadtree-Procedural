@@ -24,56 +24,6 @@
 #define NEIGHBOR_TOP	0b00000010
 #define NEIGHBOR_BACK	0b00000001
 
-//#define USE_TEMPLATE // and accumulators with about 15% performence loss
-#ifdef USE_TEMPLATE
-class Voxel;
-
-template <typename T>
-class IAccumulator {
-public:
-	virtual T		getAverage() const = 0;
-	virtual void	reset() = 0;
-protected:
-	double _count = 0;
-};
-
-template <typename T>
-class IValueAccumulator : public IAccumulator<T> {
-public:
-	//IValueAccumulator() : IAccumulator() {}
-	virtual void	add(const T&) = 0;
-};
-
-template <typename T>
-class IDistanceAccumulator : public IAccumulator<T> {
-public:
-	//IDistanceAccumulator() : IAccumulator() {}
-	virtual void	add(const T& vox1, const T& vox2) = 0;
-	virtual double	getDetail() const = 0;
-};
-
-class VoxelValueAccumulator2 : public IValueAccumulator<Voxel> {
-public:
-	VoxelValueAccumulator2();
-	virtual void	add(const Voxel& vox);
-	virtual Voxel	getAverage() const;
-	virtual void	reset();
-private:
-	double	_v1 = 0;
-};
-
-class VoxelDistanceAccumulator2 : public IDistanceAccumulator<Voxel> {
-public:
-	VoxelDistanceAccumulator2();
-	virtual void	add(const Voxel& vox1, const Voxel& vox2);
-	virtual Voxel	getAverage() const;
-	virtual double	getDetail() const;
-	virtual void	reset();
-private:
-	double	_v1 = 0;
-};
-#endif
-
 
 /*
 	https://www.youtube.com/watch?v=bGN445_2NSw
@@ -91,13 +41,8 @@ private:
 
 class Voxel {
 public:
-#ifdef USE_TEMPLATE
-	static VoxelValueAccumulator2* getValueAccumulator();
-	static VoxelDistanceAccumulator2* getDistanceAccumulator();
-#else
 	static Voxel	getAverage(Voxel*** arr, const Math::Vector3& pos, const Math::Vector3& size);
 	static double	measureDetail(Voxel*** arr, const Math::Vector3& pos, const Math::Vector3& size, const Voxel& average);
-#endif
 
 	Voxel();
 	Voxel(uint8_t& v);
@@ -144,13 +89,17 @@ public:
 	bool	isLeaf() const;
 
 	/*
+		Get the node containing the target pos, if the node is a leaf, it will return itself
+	*/
+	Octree<T>* getNode(const Math::Vector3 targetPos, const Math::Vector3 nodeSize = Math::Vector3(1, 1, 1));
+	/*
 		- Size must correspond to a valid root depending on the pos, will return NULL if not.
 		- if returned root is bigger (ie contains the requested root), it means it is a leaf,
 			the user should check the size, and be aware of this
 		? should the empty node be null instead of storing them in the octree?
 		? should the average ignore empty nodes?
 	*/
-	Octree<T>*		getNode(const Math::Vector3& target_pos, const Math::Vector3& target_size);
+	Octree<T>*		getNodeExact(const Math::Vector3 node_origin, const Math::Vector3 nodeSize);
 	bool			contains(const T& elem, const Math::Vector3 pos, const Math::Vector3 size);//	need operator==()
 	void			verifyNeighbors(const T& filter);
 	//virtual T		getAverage(T*** arr, Math::Vector3 pos, Math::Vector3 size) = 0;
