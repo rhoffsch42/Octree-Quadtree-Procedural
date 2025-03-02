@@ -14,7 +14,7 @@
 	0 = no LOD, taking smallest voxels (size = 1)
 	5 = log2(32), max level, ie the size of a chunk
 */
-#define LODS_AMOUNT 1
+#define LODS_AMOUNT 5
 #define LOD_MIN_VERTEX_ARRAY_SIZE	1000
 
 #define CHUNK_TREE_AMOUNT 5
@@ -43,7 +43,7 @@ public:
 	// If a hmap is specified, its sizes must fit, undefined behavior if sizes are too small
 	Chunk(const Math::Vector3& chunk_index, const Math::Vector3& chunk_size, PerlinSettings& perlinSettings, const HeightMap* map = nullptr);
 	~Chunk();
-	std::string toString(uint8_t flags = PRINT_ALL) const;
+	std::string toString(uint8_t flags = PRINT_ALL) const; // todo: operator <<
 
 	Math::Vector3	index;
 	Math::Vector3	pos;
