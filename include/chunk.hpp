@@ -14,8 +14,10 @@
 	0 = no LOD, taking smallest voxels (size = 1)
 	5 = log2(32), max level, ie the size of a chunk
 */
-#define LODS_AMOUNT 6
+#define LODS_AMOUNT 5
 #define LOD_MIN_VERTEX_ARRAY_SIZE	1000
+
+#define CHUNK_TREE_AMOUNT 5
 
 #define	PRINT_INDEX		0b10000000
 #define	PRINT_POS		0b01000000
@@ -41,7 +43,7 @@ public:
 	// If a hmap is specified, its sizes must fit, undefined behavior if sizes are too small
 	Chunk(const Math::Vector3& chunk_index, const Math::Vector3& chunk_size, PerlinSettings& perlinSettings, const HeightMap* map = nullptr);
 	~Chunk();
-	std::string toString(uint8_t flags = PRINT_ALL) const;
+	std::string toString(uint8_t flags = PRINT_ALL) const; // todo: operator <<
 
 	Math::Vector3	index;
 	Math::Vector3	pos;
@@ -56,6 +58,9 @@ public:
 	size_t	buildVertexArray(Math::Vector3 pos_offset = Math::Vector3(0, 0, 0), const uint8_t desiredLod = 0, const double threshold = 0);
 	void	glth_clearMeshesData();
 	void	clearOctreeData();
+	void	addTrees(Voxel*** voxels, const HeightMap* hmap, int treeAmount) const;
+	void	addSphere(Voxel*** voxels, Math::Vector3 pos, int radius) const;
+
 	//bool operator<(const Chunk& rhs) const//tmp
 	//{
 	//	return std::tie(this->index.x, this->index.y, this->index.z) < std::tie(rhs.index.x, rhs.index.y, rhs.index.z);

@@ -6,8 +6,9 @@
 #include <chrono>
 using namespace std::chrono_literals;
 
+#define TREES_DEBUG
 #ifdef TREES_DEBUG
- #define TREES_MAIN_DEBUG
+ //#define TREES_MAIN_DEBUG
  #define TREES_MAIN_INFO_DEBUG
 #endif
 #define TREES_MAIN_DEBUG
@@ -334,30 +335,30 @@ void	printSettings(OctreeManager& m) {
 
 	//INFO(D_VALUE_NAME(PG_FORCE_LINKBUFFERS));
 
-	INFO(D_VALUE_NAME(M_PERLIN_GENERATION));
-	INFO(D_VALUE_NAME(M_OCTREE_OPTIMISATION));
-	INFO(D_VALUE_NAME(M_DRAW_MINIMAP));
-	INFO(D_VALUE_NAME(M_MERGE_CHUNKS));
+	INFO(D_VALUE_NAME(M_PERLIN_GENERATION)) << LF;
+	INFO(D_VALUE_NAME(M_OCTREE_OPTIMISATION)) << LF;
+	INFO(D_VALUE_NAME(M_DRAW_MINIMAP)) << LF;
+	INFO(D_VALUE_NAME(M_MERGE_CHUNKS)) << LF;
 
-	INFO(D_VALUE_NAME(M_DRAW_DEBUG));
-	INFO(D_VALUE_NAME(M_DRAW_GRID_BOX));
-	INFO(D_VALUE_NAME(M_DRAW_GRID_CHUNK));
-	INFO(D_VALUE_NAME(M_DISPLAY_BLACK));
+	INFO(D_VALUE_NAME(M_DRAW_DEBUG)) << LF;
+	INFO(D_VALUE_NAME(M_DRAW_GRID_BOX)) << LF;
+	INFO(D_VALUE_NAME(M_DRAW_GRID_CHUNK)) << LF;
+	INFO(D_VALUE_NAME(M_DISPLAY_BLACK)) << LF;
 
-	INFO(D_VALUE_NAME(LODS_AMOUNT));
-	INFO(D_VALUE_NAME(LOD_MIN_VERTEX_ARRAY_SIZE));
-	INFO(D_VALUE_NAME(OCTREE_THRESHOLD));
-	INFO(D_VALUE_NAME(CHUNK_DEFAULT_SIZE));
-	INFO(D_VALUE_NAME(GRID_GARBAGE_DELETION_STEP));
-	INFO(D_VALUE_NAME(GRID_GARBAGE_DELETION_RECOMMENDED));
+	INFO(D_VALUE_NAME(LODS_AMOUNT)) << LF;
+	INFO(D_VALUE_NAME(LOD_MIN_VERTEX_ARRAY_SIZE)) << LF;
+	INFO(D_VALUE_NAME(OCTREE_THRESHOLD)) << LF;
+	INFO(D_VALUE_NAME(CHUNK_DEFAULT_SIZE)) << LF;
+	INFO(D_VALUE_NAME(GRID_GARBAGE_DELETION_STEP)) << LF;
+	INFO(D_VALUE_NAME(GRID_GARBAGE_DELETION_RECOMMENDED)) << LF;
 
-	INFO(D_VALUE_NAME(HMAP_BUILD_TEXTUREDATA_IN_CTOR));
-	INFO(D_VALUE_NAME(PERLIN_NORMALIZER));
-	INFO(D_VALUE_NAME(PERLIN_DEFAULT_OCTAVES));
-	INFO(D_VALUE_NAME(PERLIN_DEFAULT_FREQUENCY));
-	INFO(D_VALUE_NAME(PERLIN_DEFAULT_FLATTERING));
-	INFO(D_VALUE_NAME(PERLIN_DEFAULT_HEIGHTCOEF));
-	INFO(D_VALUE_NAME(PERLIN_DEFAULT_ISLAND));
+	INFO(D_VALUE_NAME(HMAP_BUILD_TEXTUREDATA_IN_CTOR)) << LF;
+	INFO(D_VALUE_NAME(PERLIN_NORMALIZER)) << LF;
+	INFO(D_VALUE_NAME(PERLIN_DEFAULT_OCTAVES)) << LF;
+	INFO(D_VALUE_NAME(PERLIN_DEFAULT_FREQUENCY)) << LF;
+	INFO(D_VALUE_NAME(PERLIN_DEFAULT_FLATTERING)) << LF;
+	INFO(D_VALUE_NAME(PERLIN_DEFAULT_HEIGHTCOEF)) << LF;
+	INFO(D_VALUE_NAME(PERLIN_DEFAULT_ISLAND)) << LF;
 }
 
 static void		keyCallback_ocTree(GLFWwindow* window, int key, int scancode, int action, int mods) {
@@ -638,7 +639,8 @@ unsigned int	grabObjects(ChunkGenerator& generator, ChunkGrid& grid, OctreeManag
 	for (Object* o : manager.renderVecChunk) {
 		Obj3d* obj = dynamic_cast<Obj3d*>(o);
 		if (!obj) { D("grabObjects() : dynamic cast failed on object: " << o << "\n"); Misc::breakExit(456); }
-		total_polygons += obj->getBlueprint()->getPolygonAmount();
+		//total_polygons += obj->getBlueprint()->getPolygonAmount();
+		total_polygons += ((Obj3dBP*)obj->getBlueprint()->lodManager.getCurrentLodBlueprint())->getPolygonAmount();
 	}
 
 	if (grid.playerChangedChunk)
@@ -721,47 +723,6 @@ static void		keyCallback_debugGrid(GLFWwindow* window, int key, int scancode, in
 	}
 }
 
-/*
-*   V1:
-*	current grid generation loop:
-*		- [helper0] checks for player chunk change and shift grid if needed
-*		- [helper0] builds jobs for missing hmaps and chunks
-*		- [threads] execute jobs:
-			- build chunks by generating the octree with perlinsettings
-			- build the vertexArrays depending on LOD and octree_threshold, plug vertex in the corresponding vertex_array[lod]
-*		- [helper0] delivers jobs:
-						- plugs hmap/chunk in the grid, put old hmap/chunk in garbage if needed
-*		- [gl_main] build new meshes:
-						- for all LODs if vertex_array[lod] is not empty
-						- grabs all rendered chunks, selecting available meshes in all vertex_array[]
-* 
-*	todo:
-*		- check why there are some chunks in the garbade after the first loop, although the player didnt move.
-*		- check every ctor by copy, they can access private members, useless to use accessors
-*		- inconsistencys? with the use of ref or ptr on some pipeline
-*		- generate the vertexArray[lod] and its BP only when needed (when close enough from the cam/player)
-*	done:
-*		- memory leaks in chunks generation : LODs were not deleted
-*	bugs :
-*		- when renderedGrid.size = grid.size, race between the renderer and grid.updater
-*
-*	[Checklist] all gl calls have to be done on the gl context (here main thread)
-*
-*  -------------------------------------------------------------------------------------------
-*	V2:
-*   the grid is the entire world, ie the root of the octree
-*   we render everything in the grid
-*	chunks treeLODs are generated on the fly, depending on the distance from the player
-*
-*	* treeLOD != obj3d LOD
-*	- start with a quadtree, then octree:
-*		- start by generating the world with a crappy treeLOD. 1 single leaf or 8 leaves ?
-*		- then, depending on the distance from the player, generate the next treeLODs, 1 per 1
-*
-*
-*
-* 
-*/
 void	scene_octree() {
 	#ifndef INIT_GLFW
 	float	win_height = 1080;
@@ -871,7 +832,7 @@ void	scene_octree() {
 	#endif
 
 	#ifndef GENERATOR
-	int grid_size = 36;
+	int grid_size = GRID_SIZE;
 	if (0) {
 		std::cout << "Enter grid size (min 7, max 35):\n";
 		std::cin >> grid_size;
@@ -882,8 +843,8 @@ void	scene_octree() {
 	int	r = grid_size - 4;// g * 2 / 3;
 	//m.gridSize = Math::Vector3(g, std::max(5,g/4), g);
 	//m.renderedGridSize = Math::Vector3(r, std::max(3,r/4), r);
-	m.gridSize = Math::Vector3(g, g, g);
-	m.renderedGridSize = Math::Vector3(r, r, r);
+	m.gridSize = Math::Vector3(g, g/4, g);
+	m.renderedGridSize = Math::Vector3(r, r/4, r);
 
 	INFO("Grid size : " << m.gridSize.toString() << "\n");
 	INFO("Rebdered grid size : " << m.renderedGridSize.toString() << "\n");
@@ -938,7 +899,7 @@ void	scene_octree() {
 				std::to_string(fps.getFps()) + " fps | "
 				+ std::to_string(int(polygons/1'000'000)) + "m"
 				+ ( decimals.c_str()+decimals.find('.')+1 )
-				+ " polys (LOD_0) | threshold "
+				+ " polys | threshold "
 				+ std::to_string((int)m.threshold)
 			);
 
