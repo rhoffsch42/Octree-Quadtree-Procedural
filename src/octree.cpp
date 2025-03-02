@@ -18,43 +18,8 @@
 #define D_SPACER_END ""
 #endif
 
-
 template class Octree<Voxel>;
 
-#ifdef USE_TEMPLATE
-VoxelValueAccumulator2::VoxelValueAccumulator2() : IValueAccumulator<Voxel>() {}
-void	VoxelValueAccumulator2::add(const Voxel& vox) {
-	_v1 += vox._value;
-	_count++;
-}
-Voxel	VoxelValueAccumulator2::getAverage() const {
-	return Voxel(_v1 / _count);
-}
-void	VoxelValueAccumulator2::reset() {
-	_v1 = 0;
-	_count = 0;
-}
-
-VoxelDistanceAccumulator2::VoxelDistanceAccumulator2() : IDistanceAccumulator<Voxel>() {}
-void	VoxelDistanceAccumulator2::add(const Voxel& vox1, const Voxel& vox2)
-{
-	_v1 += std::abs(int(vox1._value) - int(vox2._value));
-	_count++;
-}
-Voxel	VoxelDistanceAccumulator2::getAverage() const {
-	return Voxel(_v1 / _count);
-}
-double	VoxelDistanceAccumulator2::getDetail() const {
-	return (_v1 / (1 * _count)); // X * count, X beeing the number of values in the class (here Voxel::)
-}
-void	VoxelDistanceAccumulator2::reset() {
-	_v1 = 0;
-	_count = 0;
-}
-
-VoxelValueAccumulator2* Voxel::getValueAccumulator() { return new VoxelValueAccumulator2(); }
-VoxelDistanceAccumulator2* Voxel::getDistanceAccumulator() { return new VoxelDistanceAccumulator2(); }
-#else
 Voxel	Voxel::getAverage(Voxel*** arr, const Math::Vector3& pos, const Math::Vector3& size) {
 	//std::cout << "__getAverage.. " << width << "x" << height << " at " << x << ":" << y << "\n";
 	//Add up values
@@ -68,6 +33,7 @@ Voxel	Voxel::getAverage(Voxel*** arr, const Math::Vector3& pos, const Math::Vect
 	}
 	return Voxel(sum / (size.x * size.y * size.z));//care overflow
 }
+
 double	Voxel::measureDetail(Voxel*** arr, const Math::Vector3& pos, const Math::Vector3& size, const Voxel& average) {
 	// Calculates the distance between every voxel in the region
 	// and the average color. The Manhattan distance is used, and
@@ -84,7 +50,6 @@ double	Voxel::measureDetail(Voxel*** arr, const Math::Vector3& pos, const Math::
 	// We mult by 1, because we are averaging over 1 value.
 	return (sum / double(1 * size.x * size.y * size.z));
 }
-#endif
 
 Voxel::Voxel() { this->_value = 0; }
 Voxel::Voxel(uint8_t& v) : _value(v) {}
@@ -93,43 +58,6 @@ bool	Voxel::operator==(const Voxel& rhs) const { return this->_value == rhs._val
 bool	Voxel::operator!=(const Voxel& rhs) const { return this->_value != rhs._value; }
 Voxel&	Voxel::operator=(const Voxel& rhs) { this->_value = rhs._value; return *this; }
 Voxel::~Voxel() {}
-
-#ifdef USE_TEMPLATE
-template <typename T>
-T	getAverage(T***arr, const Math::Vector3& pos, const Math::Vector3& size) {
-	//std::cout << "__getAverage.. " << width << "x" << height << " at " << x << ":" << y << "\n";
-	//Add up values
-	static IValueAccumulator<T>* valueAcc = dynamic_cast<IValueAccumulator<T>*>(T::getValueAccumulator());
-	valueAcc->reset();
-	for (int z = pos.z; z < pos.z + size.z; z++) {
-		for (int y = pos.y; y < pos.y + size.y; y++) {
-			for (int x = pos.x; x < pos.x + size.x; x++) {
-				valueAcc->add(arr[z][y][x]);
-			}
-		}
-	}
-	return valueAcc->getAverage();
-}
-
-template <typename T>
-double	measureDetail(T*** arr, const Math::Vector3& pos, const Math::Vector3& size, const T& average) {
-	// Calculates the distance between every T in the region
-	// and the average T value. The Manhattan distance is used, and
-	// all the distances are added.
-	static IDistanceAccumulator<T>* distanceAcc = dynamic_cast<IDistanceAccumulator<T>*>(T::getDistanceAccumulator());
-	distanceAcc->reset();
-	for (int z = pos.z; z < pos.z + size.z; z++) {
-		for (int y = pos.y; y < pos.y + size.y; y++) {
-			for (int x = pos.x; x < pos.x + size.x; x++) {
-				distanceAcc->add(average, arr[z][y][x]);
-			}
-		}
-	}
-	// Calculates the average distance, and returns the result.
-	// Mult by T::n, because we are averaging over T::n values
-	return distanceAcc->getDetail();
-}
-#endif
 
 template <typename T>
 Octree<T>::Octree(T*** arr, Math::Vector3 corner_pos, Math::Vector3 tree_size, unsigned int threshold) {
@@ -141,33 +69,24 @@ Octree<T>::Octree(T*** arr, Math::Vector3 corner_pos, Math::Vector3 tree_size, u
 	this->element = T();
 	this->pos = corner_pos;
 	this->size = tree_size;
-	this->summit = corner_pos + tree_size;
+	this->summit = corner_pos + tree_size - Math::Vector3(1, 1, 1);
 	this->neighbors = 0;//all sides are not empty by default (could count corners too, so 26)
 	if (this->size.x == 1 && this->size.y == 1 && this->size.z == 1) {
 		this->element._value = arr[(int)this->pos.z][(int)this->pos.y][(int)this->pos.x]._value;//use Vector3i to avoid casting
-		#if 0 // checks not needed, the tree has only 1 voxel of size 1
-		this->detail = measureDetail(arr, this->pos, this->size, this->pixel);//should be 0
-		if (this->detail != 0) {
-			std::cout << "error with 1x1 area, detail: " << this->detail << "\n";
-			exit(10);
+		#ifdef OC_DEBUG_LEAF
+		if (size.x * size.y * size.z >= OC_DEBUG_LEAF_AREA) {
+			std::cout << "new leaf: " << size.x << "x" << size.y << "x" << size.z << " at ";
+			std::cout << pos.x << ":" << pos.y << ":" << pos.z << "\t";
+			std::cout << (int)this->pixel.r << "  \t" << (int)this->pixel.g << "  \t" << (int)this->pixel.b;
+			std::cout << "\t" << this->detail << "\n";
 		}
 		#endif
-		/*		if (size.x * size.y * size.z >= OC_DEBUG_LEAF_AREA && OC_DEBUG_LEAF) {
-					std::cout << "new leaf: " << size.x << "x" << size.y << "x" << size.z << " at ";
-					std::cout << pos.x << ":" << pos.y << ":" << pos.z << "\t";
-					std::cout << (int)this->pixel.r << "  \t" << (int)this->pixel.g << "  \t" << (int)this->pixel.b;
-					std::cout << "\t" << this->detail << "\n";
-				}
-		*/
 		return;
 	}
-	#ifdef USE_TEMPLATE
-	this->element = getAverage<T>(arr, pos, size);
-	this->detail = measureDetail<T>(arr, pos, size, this->element);
-	#else
+
 	this->element = T::getAverage(arr, pos, size);
 	this->detail = T::measureDetail(arr, pos, size, this->element);
-	#endif
+
 	#ifdef OC_DEBUG_NODE
 	std::cout << "pos: " << pos << "\t";
 	std::cout << "size: " << size << "\t";
@@ -217,11 +136,18 @@ Octree<T>::Octree(T*** arr, Math::Vector3 corner_pos, Math::Vector3 tree_size, u
 	 o¨¨¨¨¨¨¨¨x
 
 	*/
-
-	//sizes
-	int	xBDFH = this->size.x / 2; // is rounded down, so smaller when width is odd
-	int yEFGH = this->size.y / 2; // is rounded down, so smaller when height is odd
-	int	zCDGH = this->size.z / 2; // is rounded down, so smaller when depth is odd
+	/*
+		FIX: choose if we force the size to be even, and all dimensions to be the same.
+		All of the following could be avoided if the size is forced to be even(even better : power of 2), and all dimensions are the same. ie a node is always a cube.
+		At least, it currently handles odd and different sizes, but it is more complex.
+	*/
+	/*
+		Sizes of subnodes.When current node size is odd, sides closest to the origin are prioritized for the split.
+		Farthest sides are crushed by the cast to int: 5/2 = 2, 1/2 = 0
+	*/
+	int	xBDFH = this->size.x / 2; // smaller when width is odd
+	int yEFGH = this->size.y / 2; // smaller when height is odd
+	int	zCDGH = this->size.z / 2; // smaller when depth is odd
 	int xACEG = this->size.x - xBDFH;
 	int yABCD = this->size.y - yEFGH;
 	int zABEF = this->size.z - zCDGH;
@@ -273,50 +199,80 @@ bool		Octree<T>::isLeaf() const {
 }
 
 template <typename T>
-Octree<T>*	Octree<T>::getNode(const Math::Vector3& target_pos, const Math::Vector3& target_size) {
+Octree<T>* Octree<T>::getNode(const Math::Vector3 targetPos, const Math::Vector3 nodeSize) {
+	// This could be done by generating the index array to access the exact node: this->children[index[0]]->children[index[1]]->children[index[2]]...
+
+	if (nodeSize.x <= 0 || nodeSize.y <= 0 || nodeSize.z <= 0) {
+		std::cout << "Problem with nodeSize (negative or zero) in " << __PRETTY_FUNCTION__ << LF;
+		std::cout << "\tnodeSize:\t" << nodeSize.toString() << LF;
+		return nullptr;
+	}
+
+	if (targetPos.x < this->pos.x || targetPos.y < this->pos.y || targetPos.z < this->pos.z || \
+		targetPos.x > this->summit.x || targetPos.y > this->summit.y || targetPos.z > this->summit.z) {
+		return nullptr;
+	} else if (this->isLeaf() || this->size == nodeSize) {
+		return this;
+	} else {
+		// send the request to the right child!
+		int index = 0;
+		if (targetPos.x >= this->pos.x + this->size.x - int(this->size.x / 2)) // cf layer sizes, in the constructor
+			index += 1;
+		if (targetPos.y >= this->pos.y + this->size.y - int(this->size.y / 2)) // same
+			index += 4;
+		if (targetPos.z >= this->pos.z + this->size.z - int(this->size.z / 2)) // same
+			index += 2;
+
+		if (this->children[index]) { // if not, then it will return null, should be impossible (detected with summits)
+			return this->children[index]->getNode(targetPos, nodeSize);
+		} else {
+			std::cout << "Problem with data in " << __PRETTY_FUNCTION__ << "\n";
+			std::cout << "\ttarget pos: \t" << targetPos.toString() << "\n";
+			std::cout << "\ttarget size:\t" << nodeSize.toString() << "\n";
+			std::cout << "\tnode pos:   \t" << this->pos.toString() << "\n";
+			std::cout << "\tnode size:  \t" << this->size.toString() << "\n";
+			std::exit(1);
+			return nullptr;
+		}
+	}
+}
+
+
+template <typename T>
+Octree<T>*	Octree<T>::getNodeExact(const Math::Vector3 nodeOrigin, const Math::Vector3 nodeSize) {
+	// This could be done by generating the index array to access the exact node: this->children[index[0]]->children[index[1]]->children[index[2]]...
 	static int ii = 0;
 	ii++;
 
-	Math::Vector3	target_summit = target_pos + target_size;//the highest summit of the node;
-
-	if (target_pos.x < this->pos.x || target_pos.y < this->pos.y || target_pos.z < this->pos.z || \
-		this->summit.x <= target_pos.x || this->summit.y <= target_pos.y || this->summit.z <= target_pos.z) {
-		// ie the required node is fully or partially outside of the current node
-		//std::cout << ">>1";
+	if (nodeSize.x <= 0 || nodeSize.y <= 0 || nodeSize.z <= 0) {
+		std::cout << "Problem with nodeSize (negative or zero) in " << __PRETTY_FUNCTION__ << LF;
+		std::cout << "\ttarget size:\t" << nodeSize.toString() << LF;
 		return nullptr;
 	}
-	else if (this->pos == target_pos && this->size == target_size) {
-		//found the exact node (pos and size)
-		//std::cout << ">>2";
+	if (this->pos == nodeOrigin && this->size == nodeSize) {
 		return this;
-	}
-	else if (this->isLeaf()) {
-		//the exact node is contained in this current leaf node
-		//	/!\ size could be invalid, from the current octree perspective
-		//std::cout << ">>3";
-		return this;
-	}
-	else {
+	} else if (this->isLeaf()) {
+		return nullptr;
+	} else {
 		// send the request to the right child!
 		int index = 0;
-		if (target_pos.x >= this->pos.x + this->size.x - int(this->size.x / 2))// cf layer sizes, in the constructor
+		if (nodeOrigin.x >= this->pos.x + this->size.x - int(this->size.x / 2))// cf layer sizes, in the constructor
 			index += 1;
-		if (target_pos.y >= this->pos.y + this->size.y - int(this->size.y / 2))// same
+		if (nodeOrigin.y >= this->pos.y + this->size.y - int(this->size.y / 2))// same
 			index += 4;
-		if (target_pos.z >= this->pos.z + this->size.z - int(this->size.z / 2))// same
+		if (nodeOrigin.z >= this->pos.z + this->size.z - int(this->size.z / 2))// same
 			index += 2;
 
 		if (this->children[index]) {//if not, then it will return null, should be impossible (detected with summits)
-			return this->children[index]->getNode(target_pos, target_size);
+			return this->children[index]->getNodeExact(nodeOrigin, nodeSize);
 			//std::cout << ">>4";
-		}
-		else {
+		} else {
 			std::cout << "Problem with data in " << __PRETTY_FUNCTION__ << "\n";
-			std::cout << "\ttarget pos: \t" << target_pos.toString() << "\n";
-			std::cout << "\ttarget size:\t" << target_size.toString() << "\n";
+			std::cout << "\ttarget pos: \t" << nodeOrigin.toString() << "\n";
+			std::cout << "\ttarget size:\t" << nodeSize.toString() << "\n";
 			std::cout << "\tnode pos:   \t" << this->pos.toString() << "\n";
 			std::cout << "\tnode size:  \t" << this->size.toString() << "\n";
-			exit(1);
+			std::exit(1);
 			return nullptr;
 		}
 	}
@@ -437,16 +393,8 @@ void		Octree<T>::verifyNeighbors(const T& filter) {
 			#endif
 		}
 
-
-		//if (!root->contains(filter, close_left, sizeXaxis)) { node->neighbors |= NEIGHBOR_LEFT; }
-		//if (!root->contains(filter, close_right, sizeXaxis)) { node->neighbors |= NEIGHBOR_RIGHT; }
-		//if (!root->contains(filter, close_bot, sizeYaxis)) { node->neighbors |= NEIGHBOR_BOTTOM; }
-		//if (!root->contains(filter, close_top, sizeYaxis)) { node->neighbors |= NEIGHBOR_TOP; }
-		//if (!root->contains(filter, close_back, sizeZaxis)) { node->neighbors |= NEIGHBOR_BACK; }
-		//if (!root->contains(filter, close_front, sizeZaxis)) { node->neighbors |= NEIGHBOR_FRONT; }
-
 		#ifdef USE_BACKTRACKING_SEARCH
-		// getNode() on size/2 until we find all adjacent leafs, and check if empty
+		// getNodeExact() on size/2 until we find all adjacent leafs, and check if empty
 		// backtracking
 		#endif USE_BACKTRACKING_SEARCH
 	});
