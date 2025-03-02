@@ -116,11 +116,11 @@
       <PreprocessorDefinitions>GLEW_STATIC;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <WarningLevel>Level3</WarningLevel>
-      <AdditionalIncludeDirectories>$(SolutionDir)SimpleGL\dependencies\assimp\include;$(SolutionDir)SimpleGL\dependencies\GLEW\include;$(SolutionDir)SimpleGL\dependencies\GLFW\include;$(SolutionDir)SimpleGL\dependencies\freetype;$(SolutionDir)SimpleGL\include\tinyobjloader;$(SolutionDir)SimpleGL\include;$(SolutionDir)include;$(SolutionDir)SimpleGL\dependencies\glm\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)SimpleGL\dependencies\assimp\5.2.5_x64\include;$(SolutionDir)SimpleGL\dependencies\GLEW\include;$(SolutionDir)SimpleGL\dependencies\GLFW\include;$(SolutionDir)SimpleGL\dependencies\freetype;$(SolutionDir)SimpleGL\include\tinyobjloader;$(SolutionDir)SimpleGL\include;$(SolutionDir)include;$(SolutionDir)SimpleGL\dependencies\glm\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories);$(SolutionDir)SimpleGL\dependencies\GLFW\lib-vc2019;$(SolutionDir)SimpleGL\dependencies\assimp\lib;$(SolutionDir)SimpleGL\dependencies\GLEW\lib\Release\x64;$(SolutionDir)SimpleGL\dependencies\freetype\win64</AdditionalLibraryDirectories>
-      <AdditionalDependencies>glfw3.lib;glew32s.lib;opengl32.lib;assimp.lib;freetype.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories);$(SolutionDir)SimpleGL\dependencies\GLFW\lib-vc2022;$(SolutionDir)SimpleGL\dependencies\assimp\5.2.5_x64\lib\x64;$(SolutionDir)SimpleGL\dependencies\GLEW\lib\Release\x64;$(SolutionDir)SimpleGL\dependencies\freetype\win64</AdditionalLibraryDirectories>
+      <AdditionalDependencies>glfw3.lib;glew32s.lib;opengl32.lib;assimp-vc143-mt.lib;freetype.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Console</SubSystem>
       <IgnoreSpecificDefaultLibraries>LIBCMT;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
     </Link>
